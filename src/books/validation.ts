@@ -1,4 +1,15 @@
-import { BOOK_STATUSES, type Book, type BookEditInput, type BookInput } from './types';
+import { BOOK_STATUSES, BOOK_TYPES, type Book, type BookEditInput, type BookInput, type BookType } from './types';
+
+function normalizeType(value: unknown): BookType | null {
+  if (value == null) return null;
+  if (typeof value !== 'string' || !BOOK_TYPES.includes(value as BookType)) throw new Error('作品类型无效');
+  return value as BookType;
+}
+
+function normalizeTagIds(value: unknown): string[] {
+  if (!Array.isArray(value) || value.some(id => typeof id !== 'string' || !id.trim())) throw new Error('标签无效');
+  return [...new Set(value)];
+}
 
 function normalizeRatingHalfStars(value: unknown): number | null {
   if (value == null) return null;
@@ -26,22 +37,26 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
   if (input.ratingHalfStars !== undefined) {
     edited.ratingHalfStars = normalizeRatingHalfStars(input.ratingHalfStars);
   }
+  if (input.bookType !== undefined) edited.bookType = normalizeType(input.bookType);
+  if (input.tagIds !== undefined) edited.tagIds = normalizeTagIds(input.tagIds);
   return edited;
 }
 
 export function normalizeBookCreate(
   input: BookInput,
-): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars'> {
+): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars' | 'bookType'> & { tagIds: string[] } {
   const normalized = normalizeBookEdit({
     title: input.title,
     author: input.author ?? null,
     status: input.status,
     protagonists: input.protagonists ?? [],
     ratingHalfStars: input.ratingHalfStars ?? null,
+    bookType: input.bookType ?? null,
+    tagIds: input.tagIds ?? [],
   });
   const ratingHalfStars = normalized.ratingHalfStars ?? null;
   if (normalized.status !== 'finished' && ratingHalfStars !== null) {
     throw new Error('只有读完的小说才能新增评分');
   }
-  return { ...normalized, ratingHalfStars };
+  return { ...normalized, bookType: normalized.bookType ?? null, tagIds: normalized.tagIds ?? [], ratingHalfStars };
 }

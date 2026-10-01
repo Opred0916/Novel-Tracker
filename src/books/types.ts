@@ -2,6 +2,10 @@ export const BOOK_STATUSES = ['want_to_read', 'reading', 'finished', 'dropped'] 
 
 export type BookStatus = (typeof BOOK_STATUSES)[number];
 
+export const BOOK_TYPES = ['romance_male_male', 'romance_female_male', 'romance_female_female', 'no_romance', 'other'] as const;
+export type BookType = (typeof BOOK_TYPES)[number];
+export type Tag = { id: string; name: string; isSystem: boolean };
+
 export type Book = {
   id: string;
   title: string;
@@ -9,12 +13,14 @@ export type Book = {
   status: BookStatus;
   protagonists: string[];
   ratingHalfStars: number | null;
+  bookType: BookType | null;
+  tags: Tag[];
   createdAt: string;
   updatedAt: string;
 };
 
 export type BookInput = Pick<Book, 'title' | 'status'> &
-  Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars'>>;
+  Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars' | 'bookType'>> & { tagIds?: string[] };
 
 export type BookEditInput = Pick<Book, 'title' | 'author' | 'status' | 'protagonists'> &
-  Partial<Pick<Book, 'ratingHalfStars'>>;
+  Partial<Pick<Book, 'ratingHalfStars' | 'bookType'>> & { tagIds?: string[] };
