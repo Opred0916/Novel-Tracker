@@ -40,7 +40,7 @@
 - `src/app/index.tsx`、`src/app/book/[id].tsx`、`src/app/book/[id]/edit.tsx`、`src/app/_layout.tsx`：连接页面，并在页面重新获得焦点时读取最新数据。
 - `tests/books/`：数据库升级、仓储、表单及页面/卡片测试。`README.md`：新增使用流程和真机验收说明。
 
-### 任务 1：升级 SQLite，并保留已有小说
+### Task 1: 升级 SQLite，并保留已有小说
 
 **文件：** 修改 `src/storage/database.ts`；新建 `tests/helpers/inMemoryDatabase.ts`、`tests/books/migration.test.ts`；调整 `tests/books/sqliteRepository.test.ts`，改用共用的测试适配器。
 
@@ -53,7 +53,7 @@
 - [ ] **步骤 5：重新运行升级测试和原有仓储测试。** 运行 `npm.cmd test -- --runInBand tests/books/migration.test.ts tests/books/sqliteRepository.test.ts`，两组都应通过；再运行 `npx.cmd tsc --noEmit`。
 - [ ] **步骤 6：提交。** 只暂存任务 1 的文件，提交信息为 `feat: migrate novel details schema`。
 
-### 任务 2：校验并原子保存编辑内容
+### Task 2: 校验并原子保存编辑内容
 
 **文件：** 修改 `src/books/types.ts`、`src/books/repository.ts`、`src/books/sqliteRepository.ts`；新建 `src/books/validation.ts`、`tests/books/editBook.test.ts`。
 
@@ -65,7 +65,7 @@
 - [ ] **步骤 4：验证。** 重新运行 `tests/books/editBook.test.ts`、`tests/books/sqliteRepository.test.ts` 及 `npx.cmd tsc --noEmit`；全部通过。
 - [ ] **步骤 5：提交。** 只暂存任务 2 的文件，提交信息为 `feat: persist editable novel details`。
 
-### 任务 3：制作详情展示与编辑表单
+### Task 3: 制作详情展示与编辑表单
 
 **文件：** 新建 `src/books/status.ts`、`src/books/BookEditForm.tsx`、`src/books/BookDetail.tsx`、`tests/books/BookEditForm.test.tsx`、`tests/books/BookDetail.test.tsx`。
 
@@ -77,7 +77,7 @@
 - [ ] **步骤 4：验证。** 重新运行针对性测试及 `npx.cmd tsc --noEmit`；全部通过。
 - [ ] **步骤 5：提交。** 只暂存任务 3 的文件，提交信息为 `feat: add novel detail and edit components`。
 
-### 任务 4：连接书架、详情页和编辑页
+### Task 4: 连接书架、详情页和编辑页
 
 **文件：** 新建 `src/books/BookCard.tsx`、`src/app/book/[id].tsx`、`src/app/book/[id]/edit.tsx`、`tests/books/bookRoutes.test.tsx`；修改 `src/app/index.tsx`、`src/app/_layout.tsx`、`README.md`。
 
