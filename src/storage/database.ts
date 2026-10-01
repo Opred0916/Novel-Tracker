@@ -2,11 +2,26 @@ import type * as SQLite from 'expo-sqlite';
 
 export type Database = Pick<SQLite.SQLiteDatabase, 'execAsync' | 'runAsync' | 'getAllAsync' | 'getFirstAsync' | 'withExclusiveTransactionAsync'>;
 
+export const SYSTEM_TAG_NAMES = [
+  '古代', '现代', '都市', '星际', '架空', '西幻', '玄幻', '仙侠', '校园', '职场', '娱乐圈', '豪门',
+  '悬疑', '无限流', '末世', '穿越', '重生', '系统', '快穿', '种田', '哨向', '兽人', '群像',
+  '慢热', '轻松', '治愈', '甜', '虐', '酸涩', '强强', '年上', '年下', '竹马竹马', '欢喜冤家',
+  '先婚后爱', '双向暗恋', '追妻火葬场', '替身', '白月光', '宿敌', '万人迷', '复仇',
+  '权谋', '救赎', '美强惨', '日常向', 'HE', 'BE', 'OE', '短篇', '长篇', '交通发达',
+  '荤素搭配', '清水', '大女主', 'ABO', '第一人称', '第二人称', '主攻', '主受', '破镜重圆',
+] as const;
+
+export const DEFAULT_QUICK_TAG_NAMES = ['古代', '现代', '悬疑', '群像', '慢热'] as const;
+
+const TYPE_CHECK = "type IN ('romance_male_male', 'romance_female_male', 'romance_female_female', 'no_romance', 'other')";
+
 export async function migrateDatabase(db: Database): Promise<void> {
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
     PRAGMA foreign_keys = ON;
   `);
+
+  const version = (await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version ?? 0;
 
   const booksTable = await db.getFirstAsync<{ name: string }>(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'books'",
@@ -20,6 +35,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         author TEXT,
+        type TEXT CHECK (type IS NULL OR ${TYPE_CHECK}),
         rating_half_stars INTEGER CHECK (
           rating_half_stars IS NULL OR
           (typeof(rating_half_stars) = 'integer' AND rating_half_stars BETWEEN 1 AND 10)
@@ -37,6 +53,9 @@ export async function migrateDatabase(db: Database): Promise<void> {
         (typeof(rating_half_stars) = 'integer' AND rating_half_stars BETWEEN 1 AND 10)
       )`);
     }
+    if (!columns.some(column => column.name === 'type')) {
+      await db.execAsync(`ALTER TABLE books ADD COLUMN type TEXT CHECK (type IS NULL OR ${TYPE_CHECK})`);
+    }
   }
 
   await db.execAsync(`
@@ -47,8 +66,37 @@ export async function migrateDatabase(db: Database): Promise<void> {
       PRIMARY KEY (book_id, position),
       FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
     );
-    PRAGMA user_version = 3;
+    CREATE TABLE IF NOT EXISTS tags (
+      id TEXT PRIMARY KEY NOT NULL,
+      name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+      is_system INTEGER NOT NULL CHECK (is_system IN (0, 1))
+    );
+    CREATE TABLE IF NOT EXISTS book_tags (
+      book_id TEXT NOT NULL,
+      tag_id TEXT NOT NULL,
+      position INTEGER NOT NULL,
+      PRIMARY KEY (book_id, tag_id),
+      FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+      FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS quick_tags (
+      tag_id TEXT PRIMARY KEY NOT NULL,
+      position INTEGER NOT NULL,
+      FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+    );
   `);
+
+  if (version < 4) {
+    await db.withExclusiveTransactionAsync(async txn => {
+      for (const name of SYSTEM_TAG_NAMES) {
+        await txn.runAsync('INSERT OR IGNORE INTO tags (id, name, is_system) VALUES (?, ?, 1)', `system:${name}`, name);
+      }
+      for (const [position, name] of DEFAULT_QUICK_TAG_NAMES.entries()) {
+        await txn.runAsync('INSERT OR IGNORE INTO quick_tags (tag_id, position) VALUES (?, ?)', `system:${name}`, position);
+      }
+    });
+  }
+  await db.execAsync('PRAGMA user_version = 4');
 }
 
 export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
