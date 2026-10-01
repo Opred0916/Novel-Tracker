@@ -39,7 +39,7 @@ export function AddBookForm({ onSave }: { onSave: (input: BookInput) => Promise<
     finally { savingRef.current = false; setSaving(false); }
   }
 
-  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={styles.label}>书名 *</Text>
     <TextInput placeholder="输入小说书名" value={title} onChangeText={setTitle} style={styles.input} autoFocus />
     <Text style={styles.help}>只填书名也能保存，其他资料可以现在填写或以后补充。</Text>

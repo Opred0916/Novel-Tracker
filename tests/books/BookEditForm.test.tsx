@@ -14,6 +14,13 @@ test('starts with two blank protagonist inputs when the book has none', async ()
   expect(screen.getByDisplayValue('长夜')).toBeTruthy();
 });
 
+test('allows editing lower protagonist fields above the iPhone keyboard', async () => {
+  const screen = await render(<BookEditForm book={baseBook} onSave={async () => {}} />);
+  const scroll = screen.root;
+  expect(scroll).not.toBeNull();
+  expect(scroll?.props.automaticallyAdjustKeyboardInsets).toBe(true);
+});
+
 test('shows every existing protagonist when there are more than two', async () => {
   const book = { ...baseBook, protagonists: ['阿青', '李四', '王五'] };
   const screen = await render(<BookEditForm book={book} onSave={async () => {}} />);
@@ -42,7 +49,7 @@ test('keeps an existing rating when a finished book becomes reading', async () =
   const screen = await render(<BookEditForm book={{ ...baseBook, status: 'finished', ratingHalfStars: 9 }} onSave={onSave} />);
   await fireEvent.press(screen.getByText('在读'));
   expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
-  expect(screen.queryByLabelText('5 星')).toBeNull();
+  expect(screen.queryByTestId('rating-slider')).toBeNull();
   await fireEvent.press(screen.getByText('保存修改'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
     status: 'reading', ratingHalfStars: 9,
@@ -52,7 +59,7 @@ test('keeps an existing rating when a finished book becomes reading', async () =
 test('does not submit an uncommitted new rating after leaving finished status', async () => {
   const onSave = jest.fn().mockResolvedValue(undefined);
   const screen = await render(<BookEditForm book={{ ...baseBook, status: 'finished', ratingHalfStars: 9 }} onSave={onSave} />);
-  await fireEvent.press(screen.getByLabelText('5 星'));
+  await fireEvent(screen.getByTestId('rating-slider'), 'valueChange', 5);
   await fireEvent.press(screen.getByText('在读'));
   await fireEvent.press(screen.getByText('保存修改'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
@@ -72,7 +79,7 @@ test('can score a book after changing its status to finished', async () => {
   const onSave = jest.fn().mockResolvedValue(undefined);
   const screen = await render(<BookEditForm book={baseBook} onSave={onSave} />);
   await fireEvent.press(screen.getByText('读完'));
-  await fireEvent.press(screen.getByLabelText('4.5 星'));
+  await fireEvent(screen.getByTestId('rating-slider'), 'valueChange', 4.5);
   await fireEvent.press(screen.getByText('保存修改'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
     status: 'finished', ratingHalfStars: 9,

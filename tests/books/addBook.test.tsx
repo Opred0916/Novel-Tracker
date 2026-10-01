@@ -12,6 +12,13 @@ test('adds a novel with only its title', async () => {
   }));
 });
 
+test('allows the form to scroll above the iPhone keyboard', async () => {
+  const screen = await render(<AddBookForm onSave={async () => {}} />);
+  const scroll = screen.root;
+  expect(scroll).not.toBeNull();
+  expect(scroll?.props.automaticallyAdjustKeyboardInsets).toBe(true);
+});
+
 test('adds a finished novel with author, ordered protagonists and 4.5 stars', async () => {
   const onSave = jest.fn().mockResolvedValue(undefined);
   const screen = await render(<AddBookForm onSave={onSave} />);
@@ -22,7 +29,7 @@ test('adds a finished novel with author, ordered protagonists and 4.5 stars', as
   await fireEvent.press(screen.getByText('＋ 添加主角'));
   await fireEvent.changeText(screen.getAllByPlaceholderText('主角名字')[2], ' 李四 ');
   await fireEvent.press(screen.getByText('读完'));
-  await fireEvent.press(screen.getByLabelText('4.5 星'));
+  await fireEvent(screen.getByTestId('rating-slider'), 'valueChange', 4.5);
   await fireEvent.press(screen.getByText('保存小说'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
     title: '长夜', author: '某作者', status: 'finished',
@@ -44,9 +51,9 @@ test('hides a draft rating outside finished status and restores it when finished
   const screen = await render(<AddBookForm onSave={onSave} />);
   await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '长夜');
   await fireEvent.press(screen.getByText('读完'));
-  await fireEvent.press(screen.getByLabelText('4.5 星'));
+  await fireEvent(screen.getByTestId('rating-slider'), 'valueChange', 4.5);
   await fireEvent.press(screen.getByText('在读'));
-  expect(screen.queryByLabelText('4.5 星')).toBeNull();
+  expect(screen.queryByTestId('rating-slider')).toBeNull();
   await fireEvent.press(screen.getByText('保存小说'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
     status: 'reading', ratingHalfStars: null,
@@ -63,7 +70,7 @@ test('submits all details after switching finished to reading and back', async (
   await fireEvent.changeText(screen.getAllByPlaceholderText('主角名字')[0], ' 阿青 ');
   await fireEvent.changeText(screen.getAllByPlaceholderText('主角名字')[1], ' 李四 ');
   await fireEvent.press(screen.getByText('读完'));
-  await fireEvent.press(screen.getByLabelText('4.5 星'));
+  await fireEvent(screen.getByTestId('rating-slider'), 'valueChange', 4.5);
   await fireEvent.press(screen.getByText('在读'));
   await fireEvent.press(screen.getByText('读完'));
   await fireEvent.press(screen.getByText('保存小说'));
@@ -89,7 +96,7 @@ test('keeps all details after a save failure and allows retry', async () => {
   await fireEvent.changeText(screen.getByPlaceholderText('作者名字'), '某作者');
   await fireEvent.changeText(screen.getAllByPlaceholderText('主角名字')[0], '阿青');
   await fireEvent.press(screen.getByText('读完'));
-  await fireEvent.press(screen.getByLabelText('4.5 星'));
+  await fireEvent(screen.getByTestId('rating-slider'), 'valueChange', 4.5);
   await fireEvent.press(screen.getByText('保存小说'));
   await waitFor(() => expect(screen.getByText('保存失败，请重试')).toBeTruthy());
   expect(screen.getByDisplayValue('某作者')).toBeTruthy();

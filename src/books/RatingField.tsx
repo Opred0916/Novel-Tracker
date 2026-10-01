@@ -1,4 +1,6 @@
 import React from 'react';
+import Slider from '@react-native-community/slider';
+import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 type RatingFieldProps = {
@@ -11,14 +13,21 @@ export function RatingField({ value, onChange, allowNewValue }: RatingFieldProps
   return <View style={styles.container}>
     <Text style={styles.label}>总体评分</Text>
     <Text style={styles.value}>{value === null ? '未评分' : `${value / 2} / 5 星`}</Text>
-    {allowNewValue ? <View style={styles.choices}>
-      {Array.from({ length: 10 }, (_, index) => index + 1).map(halfStars => <Pressable
-        key={halfStars} accessibilityRole="radio" accessibilityLabel={`${halfStars / 2} 星`}
-        accessibilityState={{ checked: value === halfStars }} onPress={() => onChange(halfStars)}
-        style={[styles.choice, value === halfStars && styles.selected]}>
-        <Text style={[styles.choiceText, value === halfStars && styles.selectedText]}>{halfStars / 2} ★</Text>
-      </Pressable>)}
-    </View> : null}
+    <View style={styles.stars} accessible={false}>
+      {Array.from({ length: 5 }, (_, index) => {
+        const filled = (value ?? 0) - index * 2;
+        const name = filled >= 2 ? 'star' : filled === 1 ? 'star-half' : 'star-outline';
+        const fillLabel = name === 'star' ? '实心' : name === 'star-half' ? '半星' : '空心';
+        return <Ionicons key={index} testID={`rating-star-${index + 1}`}
+          accessibilityLabel={`第 ${index + 1} 颗星：${fillLabel}`} name={name} size={32}
+          color={filled > 0 ? '#593f72' : '#b8aebe'} />;
+      })}
+    </View>
+    {allowNewValue ? <Slider testID="rating-slider" accessibilityLabel="总体评分"
+      minimumValue={0} maximumValue={5} step={0.5} value={value === null ? 0 : value / 2}
+      minimumTrackTintColor="#593f72" maximumTrackTintColor="#d6cec4" thumbTintColor="#593f72"
+      onValueChange={stars => onChange(stars === 0 ? null : Math.round(stars * 2))}
+      style={styles.slider} /> : null}
     {value !== null ? <Pressable accessibilityRole="button" onPress={() => onChange(null)} style={styles.clear}>
       <Text style={styles.clearText}>清除评分</Text>
     </Pressable> : null}
@@ -29,11 +38,8 @@ const styles = StyleSheet.create({
   container: { gap: 10, marginTop: 8 },
   label: { fontSize: 15, fontWeight: '600', color: '#302a25' },
   value: { color: '#593f72', fontSize: 17, fontWeight: '600' },
-  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  choice: { minWidth: 56, paddingVertical: 9, paddingHorizontal: 8, borderRadius: 10, borderWidth: 1, borderColor: '#d6cec4', alignItems: 'center', backgroundColor: '#fff' },
-  selected: { backgroundColor: '#593f72', borderColor: '#593f72' },
-  choiceText: { color: '#302a25', fontSize: 14 },
-  selectedText: { color: '#fff', fontWeight: '700' },
+  stars: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  slider: { width: '100%', height: 44 },
   clear: { alignSelf: 'flex-start', paddingVertical: 8 },
   clearText: { color: '#593f72', fontWeight: '600' },
 });

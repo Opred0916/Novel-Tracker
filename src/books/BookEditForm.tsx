@@ -48,7 +48,7 @@ export function BookEditForm({ book, onSave }: { book: Book; onSave: (input: Boo
     }
   }
 
-  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={styles.label}>书名 *</Text>
     <TextInput placeholder="输入小说书名" value={title} onChangeText={setTitle} style={styles.input} />
     <Text style={styles.label}>作者</Text>
