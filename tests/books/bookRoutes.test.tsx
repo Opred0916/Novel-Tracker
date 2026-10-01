@@ -60,6 +60,14 @@ test('detail page loads the novel and offers an edit entry', async () => {
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]/edit', params: { id: book.id } });
 });
 
+test('detail page can scroll when a novel has many protagonists', async () => {
+  repo.get.mockResolvedValue({ ...book, protagonists: Array.from({ length: 30 }, (_, index) => `主角 ${index + 1}`) });
+  const screen = await render(<BookPage />);
+  await waitFor(() => expect(screen.getByText('主角 30')).toBeTruthy());
+  expect(screen.getByTestId('book-detail-scroll')).toBeTruthy();
+  expect(screen.getByText('编辑资料')).toBeTruthy();
+});
+
 test('edit page preloads details and returns only after a successful update', async () => {
   const screen = await render(<EditBookPage />);
   await waitFor(() => expect(screen.getByDisplayValue('长夜')).toBeTruthy());

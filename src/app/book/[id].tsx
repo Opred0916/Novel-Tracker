@@ -1,6 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookDetail } from '../../books/BookDetail';
 import type { Book } from '../../books/types';
 import { useBooks } from '../../storage/AppProvider';
@@ -43,16 +43,17 @@ export default function BookPage() {
   </View>;
   if (!book) return null;
 
-  return <View style={styles.page}>
+  return <ScrollView testID="book-detail-scroll" style={styles.page} contentContainerStyle={styles.content}>
     <BookDetail book={book} />
     <Pressable accessibilityRole="button" style={styles.edit} onPress={() => router.push({ pathname: '/book/[id]/edit', params: { id } })}>
       <Text style={styles.editText}>编辑资料</Text>
     </Pressable>
-  </View>;
+  </ScrollView>;
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
+  content: { paddingBottom: 24 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 14, padding: 24 },
   message: { fontSize: 17, color: '#302a25' },
   link: { fontSize: 16, color: '#593f72', fontWeight: '600' },
