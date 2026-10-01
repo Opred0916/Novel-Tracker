@@ -1,15 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SqliteBookRepository } from '../books/sqliteRepository';
+import { SqliteReadingHistoryRepository } from '../books/readingHistoryRepository';
 import { SqliteTagRepository } from '../books/tagRepository';
 import { openDatabase } from './database';
 
 const RepositoryContext = createContext<SqliteBookRepository | null>(null);
 const TagRepositoryContext = createContext<SqliteTagRepository | null>(null);
+const ReadingHistoryContext = createContext<SqliteReadingHistoryRepository | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [repository, setRepository] = useState<SqliteBookRepository | null>(null);
   const [tagRepository, setTagRepository] = useState<SqliteTagRepository | null>(null);
+  const [readingHistory, setReadingHistory] = useState<SqliteReadingHistoryRepository | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -18,6 +21,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (active) {
         setRepository(new SqliteBookRepository(db));
         setTagRepository(new SqliteTagRepository(db));
+        setReadingHistory(new SqliteReadingHistoryRepository(db));
       }
     }).catch(e => {
       if (active) setError(String(e));
@@ -26,8 +30,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (error) return <View style={{ padding: 24 }}><Text>无法打开书架：{error}</Text></View>;
-  if (!repository || !tagRepository) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
-  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}>{children}</TagRepositoryContext.Provider></RepositoryContext.Provider>;
+  if (!repository || !tagRepository || !readingHistory) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
+  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}>{children}</ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;
 }
 
 export function useBooks(): SqliteBookRepository {
@@ -39,5 +43,11 @@ export function useBooks(): SqliteBookRepository {
 export function useTags(): SqliteTagRepository {
   const repository = useContext(TagRepositoryContext);
   if (!repository) throw new Error('Tag repository is not ready');
+  return repository;
+}
+
+export function useReadingHistory(): SqliteReadingHistoryRepository {
+  const repository = useContext(ReadingHistoryContext);
+  if (!repository) throw new Error('Reading history repository is not ready');
   return repository;
 }
