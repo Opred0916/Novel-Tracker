@@ -12,6 +12,10 @@ export function BookDetail({ book }: { book: Book }) {
       <Text style={styles.value}>{book.author ?? '未填写作者'}</Text>
     </View>
     <View style={styles.section}>
+      <Text style={styles.label}>总体评分</Text>
+      <Text style={styles.value}>{book.ratingHalfStars === null ? '未评分' : `${book.ratingHalfStars / 2} / 5 星`}</Text>
+    </View>
+    <View style={styles.section}>
       <Text style={styles.label}>主角</Text>
       {book.protagonists.length
         ? book.protagonists.map((name, index) => <Text key={`${index}-${name}`} style={styles.value}>{name}</Text>)

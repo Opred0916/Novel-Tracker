@@ -22,4 +22,10 @@ test('explains when optional details have not been entered', async () => {
   const screen = await render(<BookDetail book={baseBook} />);
   expect(screen.getByText('未填写作者')).toBeTruthy();
   expect(screen.getByText('还没有记录主角')).toBeTruthy();
+  expect(screen.getByText('未评分')).toBeTruthy();
+});
+
+test('shows the overall rating even when the book is now being reread', async () => {
+  const screen = await render(<BookDetail book={{ ...baseBook, status: 'reading', ratingHalfStars: 9 }} />);
+  expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
 });
