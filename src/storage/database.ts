@@ -36,6 +36,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
         updated_at TEXT NOT NULL,
         author TEXT,
         type TEXT CHECK (type IS NULL OR ${TYPE_CHECK}),
+        legacy_read_count INTEGER NOT NULL DEFAULT 0 CHECK (legacy_read_count IN (0, 1)),
         rating_half_stars INTEGER CHECK (
           rating_half_stars IS NULL OR
           (typeof(rating_half_stars) = 'integer' AND rating_half_stars BETWEEN 1 AND 10)
@@ -55,6 +56,9 @@ export async function migrateDatabase(db: Database): Promise<void> {
     }
     if (!columns.some(column => column.name === 'type')) {
       await db.execAsync(`ALTER TABLE books ADD COLUMN type TEXT CHECK (type IS NULL OR ${TYPE_CHECK})`);
+    }
+    if (!columns.some(column => column.name === 'legacy_read_count')) {
+      await db.execAsync('ALTER TABLE books ADD COLUMN legacy_read_count INTEGER NOT NULL DEFAULT 0 CHECK (legacy_read_count IN (0, 1))');
     }
   }
 
@@ -84,6 +88,19 @@ export async function migrateDatabase(db: Database): Promise<void> {
       position INTEGER NOT NULL,
       FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS reading_sessions (
+      id TEXT PRIMARY KEY NOT NULL,
+      book_id TEXT NOT NULL,
+      ordinal INTEGER NOT NULL CHECK (ordinal > 0),
+      started_on TEXT NOT NULL,
+      ended_on TEXT,
+      outcome TEXT NOT NULL CHECK (outcome IN ('reading', 'finished', 'dropped')),
+      UNIQUE (book_id, ordinal),
+      CHECK ((outcome = 'reading' AND ended_on IS NULL) OR (outcome != 'reading' AND ended_on IS NOT NULL)),
+      FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS one_active_reading_per_book
+      ON reading_sessions(book_id) WHERE outcome = 'reading';
   `);
 
   if (version < 4) {
@@ -96,7 +113,10 @@ export async function migrateDatabase(db: Database): Promise<void> {
       }
     });
   }
-  await db.execAsync('PRAGMA user_version = 4');
+  if (version < 5) {
+    await db.runAsync("UPDATE books SET legacy_read_count = 1 WHERE status = 'finished'");
+  }
+  await db.execAsync('PRAGMA user_version = 5');
 }
 
 export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
