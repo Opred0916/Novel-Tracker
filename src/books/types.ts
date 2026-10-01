@@ -8,10 +8,13 @@ export type Book = {
   author: string | null;
   status: BookStatus;
   protagonists: string[];
+  ratingHalfStars: number | null;
   createdAt: string;
   updatedAt: string;
 };
 
-export type BookInput = Pick<Book, 'title' | 'status'>;
+export type BookInput = Pick<Book, 'title' | 'status'> &
+  Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars'>>;
 
-export type BookEditInput = Pick<Book, 'title' | 'author' | 'status' | 'protagonists'>;
+export type BookEditInput = Pick<Book, 'title' | 'author' | 'status' | 'protagonists'> &
+  Partial<Pick<Book, 'ratingHalfStars'>>;

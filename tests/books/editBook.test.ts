@@ -15,7 +15,32 @@ test('new novels have no author or protagonists until edited', async () => {
     const book = await repo.create({ title: '长夜', status: 'want_to_read' });
     expect(book.author).toBeNull();
     expect(book.protagonists).toEqual([]);
-    expect(await repo.get(book.id)).toMatchObject({ author: null, protagonists: [] });
+    expect(book.ratingHalfStars).toBeNull();
+    expect(await repo.get(book.id)).toMatchObject({ author: null, protagonists: [], ratingHalfStars: null });
+  } finally {
+    db.close();
+  }
+});
+
+test('preserves, clears and changes ratings only for allowed status transitions', async () => {
+  const { db, repo } = await setup();
+  try {
+    const original = await repo.create({ title: '长夜', status: 'finished', ratingHalfStars: 9 });
+    const details = { title: '长夜', author: null, protagonists: [] };
+    const rereading = await repo.update(original.id, { ...details, status: 'reading' });
+    expect(rereading.ratingHalfStars).toBe(9);
+    expect(rereading.createdAt).toBe(original.createdAt);
+
+    await expect(repo.update(original.id, {
+      ...details, status: 'reading', ratingHalfStars: 10,
+    })).rejects.toThrow();
+    expect((await repo.get(original.id))?.ratingHalfStars).toBe(9);
+
+    const cleared = await repo.update(original.id, { ...details, status: 'reading', ratingHalfStars: null });
+    expect(cleared.ratingHalfStars).toBeNull();
+    const scored = await repo.update(original.id, { ...details, status: 'finished', ratingHalfStars: 1 });
+    expect(scored.ratingHalfStars).toBe(1);
+    expect(await repo.get(original.id)).toEqual(scored);
   } finally {
     db.close();
   }
@@ -84,7 +109,7 @@ test('rolls back both novel fields and protagonists when insertion fails', async
   try {
     const created = await repo.create({ title: '长夜', status: 'want_to_read' });
     const original = await repo.update(created.id, {
-      title: '长夜', author: '原作者', status: 'reading', protagonists: ['旧主角'],
+      title: '长夜', author: '原作者', status: 'finished', protagonists: ['旧主角'], ratingHalfStars: 9,
     });
     await db.execAsync(`
       CREATE TRIGGER fail_protagonist_insert BEFORE INSERT ON book_protagonists
@@ -92,7 +117,7 @@ test('rolls back both novel fields and protagonists when insertion fails', async
     `);
 
     await expect(repo.update(created.id, {
-      title: '不应保存', author: '新作者', status: 'finished', protagonists: ['出错'],
+      title: '不应保存', author: '新作者', status: 'finished', protagonists: ['出错'], ratingHalfStars: 10,
     })).rejects.toThrow('injected failure');
     expect(await repo.get(created.id)).toEqual(original);
   } finally {
