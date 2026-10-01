@@ -16,7 +16,8 @@
 - Only title is required; all other book fields are optional. Default status is `want_to_read`.
 - States: `want_to_read`, `reading`, `finished`, `dropped`; rating is an optional integer from 1 through 5; duration is optional nonnegative hours.
 - Multiple tags and notes per book, one editable review; same title is allowed on separate records.
-- No account, server, automatic book lookup, OCR, recommendation engine, reading timer, or cross-device sync in V1.
+- No account, persistent server, automatic book lookup, recommendation engine, reading timer, or cross-device sync in the core offline V1.
+- A later AI-assisted entry flow may accept a user-selected screenshot, extract candidate book data, and optionally request network enrichment. Both extraction and enrichment require explicit user confirmation before saving and must degrade gracefully when offline.
 - Backup is a versioned single file containing all records and copied covers. Restore validates before user-confirmed replacement; invalid input leaves current data untouched.
 - The user performs physical iPhone checks with instructions and reports/screenshots supplied by Codex; a remote code run does not prove physical-device behavior.
 - Before moving from Expo Go to a standalone app, export the data from Expo Go and explicitly import it into the new app; their local app storage is separate.
