@@ -46,11 +46,7 @@ export default function EditBookPage() {
   </View>;
   if (!book) return null;
 
-  return <BookEditForm book={book} allTags={allTags} onCreateTag={async name => {
-    const tag = await tagRepo.create(name);
-    setAllTags(current => [...current, tag]);
-    return tag;
-  }} onSave={async input => {
+  return <BookEditForm book={book} allTags={allTags} onSave={async input => {
     await repo.update(id, input);
     router.back();
   }} />;

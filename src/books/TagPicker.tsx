@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Tag } from './types';
 
@@ -11,11 +11,18 @@ type Props = {
 };
 
 export function TagPicker({ tags, selectedIds, onChange, searchable = false, onCreateTag }: Props) {
+  const selectedIdsRef = useRef(selectedIds);
+  useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
   const [query, setQuery] = useState('');
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const visible = tags.filter(tag => tag.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+
+  function changeSelection(ids: string[]) {
+    selectedIdsRef.current = ids;
+    onChange(ids);
+  }
 
   async function createTag() {
     const name = newName.trim();
@@ -25,7 +32,7 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, onC
     setError('');
     try {
       const tag = await onCreateTag(name);
-      onChange([...selectedIds, tag.id]);
+      changeSelection([...new Set([...selectedIdsRef.current, tag.id])]);
       setNewName('');
       setQuery('');
     } catch (cause) {
@@ -41,7 +48,9 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, onC
       {visible.map(tag => {
         const selected = selectedIds.includes(tag.id);
         return <Pressable key={tag.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}
-          onPress={() => onChange(selected ? selectedIds.filter(id => id !== tag.id) : [...selectedIds, tag.id])}
+          onPress={() => changeSelection(selectedIdsRef.current.includes(tag.id)
+            ? selectedIdsRef.current.filter(id => id !== tag.id)
+            : [...selectedIdsRef.current, tag.id])}
           style={[styles.option, selected && styles.selected]}>
           <Text style={[styles.text, selected && styles.selectedText]}>{tag.name}</Text>
         </Pressable>;

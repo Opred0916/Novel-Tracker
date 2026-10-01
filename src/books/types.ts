@@ -23,4 +23,7 @@ export type BookInput = Pick<Book, 'title' | 'status'> &
   Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars' | 'bookType'>> & { tagIds?: string[] };
 
 export type BookEditInput = Pick<Book, 'title' | 'author' | 'status' | 'protagonists'> &
-  Partial<Pick<Book, 'ratingHalfStars' | 'bookType'>> & { tagIds?: string[] };
+  Partial<Pick<Book, 'ratingHalfStars' | 'bookType'>> & {
+    tagIds?: string[];
+    newTags?: Pick<Tag, 'id' | 'name'>[];
+  };

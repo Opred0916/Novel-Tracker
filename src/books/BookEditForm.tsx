@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { randomUUID } from 'expo-crypto';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BOOK_STATUS_LABELS } from './status';
 import { RatingField } from './RatingField';
@@ -7,9 +8,9 @@ import { TypePicker } from './TypePicker';
 import { BOOK_STATUSES, type Book, type BookEditInput, type BookStatus, type BookType, type Tag } from './types';
 import { normalizeBookEdit } from './validation';
 
-export function BookEditForm({ book, onSave, allTags = [], onCreateTag }: {
+export function BookEditForm({ book, onSave, allTags = [] }: {
   book: Book; onSave: (input: BookEditInput) => Promise<void>;
-  allTags?: Tag[]; onCreateTag?: (name: string) => Promise<Tag>;
+  allTags?: Tag[];
 }) {
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author ?? '');
@@ -18,6 +19,7 @@ export function BookEditForm({ book, onSave, allTags = [], onCreateTag }: {
   const [ratingCleared, setRatingCleared] = useState(false);
   const [bookType, setBookType] = useState<BookType | null>(book.bookType);
   const [tagIds, setTagIds] = useState<string[]>(book.tags.map(tag => tag.id));
+  const [pendingTags, setPendingTags] = useState<Tag[]>([]);
   const [protagonists, setProtagonists] = useState<string[]>([
     ...book.protagonists,
     ...Array(Math.max(0, 2 - book.protagonists.length)).fill(''),
@@ -33,11 +35,26 @@ export function BookEditForm({ book, onSave, allTags = [], onCreateTag }: {
     setProtagonists(current => current.map((name, nameIndex) => nameIndex === index ? value : name));
   }
 
+  async function createPendingTag(name: string): Promise<Tag> {
+    const normalized = name.trim();
+    if ([...allTags, ...pendingTags].some(tag => tag.name.toLocaleLowerCase() === normalized.toLocaleLowerCase())) {
+      throw new Error('标签名称已存在');
+    }
+    const tag: Tag = { id: randomUUID(), name: normalized, isSystem: false };
+    setPendingTags(current => [...current, tag]);
+    return tag;
+  }
+
   async function save() {
     if (savingRef.current) return;
     let input: BookEditInput;
     try {
-      input = normalizeBookEdit({ title, author, status, protagonists, ratingHalfStars: effectiveRatingHalfStars, bookType, tagIds });
+      input = normalizeBookEdit({
+        title, author, status, protagonists, ratingHalfStars: effectiveRatingHalfStars, bookType, tagIds,
+        ...(pendingTags.some(tag => tagIds.includes(tag.id)) ? {
+          newTags: pendingTags.filter(tag => tagIds.includes(tag.id)).map(({ id, name }) => ({ id, name })),
+        } : {}),
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '输入有误');
       return;
@@ -71,7 +88,7 @@ export function BookEditForm({ book, onSave, allTags = [], onCreateTag }: {
     <Text style={styles.label}>作品类型</Text>
     <TypePicker value={bookType} onChange={setBookType} />
     <Text style={styles.label}>标签</Text>
-    <TagPicker tags={allTags} selectedIds={tagIds} onChange={setTagIds} searchable onCreateTag={onCreateTag} />
+    <TagPicker tags={[...allTags, ...pendingTags]} selectedIds={tagIds} onChange={setTagIds} searchable onCreateTag={createPendingTag} />
     {(status === 'finished' || book.ratingHalfStars !== null) ? <RatingField
       value={effectiveRatingHalfStars}
       allowNewValue={status === 'finished'}

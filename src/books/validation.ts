@@ -39,6 +39,17 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
   }
   if (input.bookType !== undefined) edited.bookType = normalizeType(input.bookType);
   if (input.tagIds !== undefined) edited.tagIds = normalizeTagIds(input.tagIds);
+  if (input.newTags !== undefined) {
+    if (!Array.isArray(input.newTags) || input.newTags.some(tag =>
+      !tag || typeof tag.id !== 'string' || !tag.id.trim() || typeof tag.name !== 'string' || !tag.name.trim()
+    )) throw new Error('新标签无效');
+    const names = input.newTags.map(tag => tag.name.trim().toLocaleLowerCase());
+    if (new Set(names).size !== names.length || new Set(input.newTags.map(tag => tag.id)).size !== input.newTags.length ||
+      !edited.tagIds || input.newTags.some(tag => !edited.tagIds?.includes(tag.id))) {
+      throw new Error('新标签无效');
+    }
+    edited.newTags = input.newTags.map(tag => ({ id: tag.id, name: tag.name.trim() }));
+  }
   return edited;
 }
 

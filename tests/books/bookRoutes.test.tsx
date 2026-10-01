@@ -17,6 +17,7 @@ jest.mock('expo-router', () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
 jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useTags: jest.fn() }));
+jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'new-tag-id') }));
 
 const book: Book = {
   id: 'book-1', title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青'], ratingHalfStars: null, bookType: null, tags: [],
@@ -136,6 +137,30 @@ test('edit page preloads details and returns only after a successful update', as
     title: '长夜', author: '新作者', status: 'reading', protagonists: ['阿青'], ratingHalfStars: null, bookType: null, tagIds: [],
   }));
   await waitFor(() => expect(router.back).toHaveBeenCalledTimes(1));
+});
+
+test('custom tags are not written when editing is abandoned', async () => {
+  const screen = await render(<EditBookPage />);
+  await waitFor(() => expect(screen.getByDisplayValue('长夜')).toBeTruthy());
+  await fireEvent.changeText(screen.getByPlaceholderText('新标签名称'), '赛博朋克');
+  await fireEvent.press(screen.getByText('添加标签'));
+  await waitFor(() => expect(screen.getByText('赛博朋克')).toBeTruthy());
+  expect(tagRepo.create).not.toHaveBeenCalled();
+  screen.unmount();
+  expect(repo.update).not.toHaveBeenCalled();
+});
+
+test('custom tags are submitted atomically with the edited book', async () => {
+  const screen = await render(<EditBookPage />);
+  await waitFor(() => expect(screen.getByDisplayValue('长夜')).toBeTruthy());
+  await fireEvent.changeText(screen.getByPlaceholderText('新标签名称'), '赛博朋克');
+  await fireEvent.press(screen.getByText('添加标签'));
+  await waitFor(() => expect(screen.getByText('赛博朋克')).toBeTruthy());
+  await fireEvent.press(screen.getByText('保存修改'));
+  await waitFor(() => expect(repo.update).toHaveBeenCalledWith(book.id, expect.objectContaining({
+    tagIds: [expect.any(String)], newTags: [{ id: expect.any(String), name: '赛博朋克' }],
+  })));
+  expect(tagRepo.create).not.toHaveBeenCalled();
 });
 
 test('unknown novel ID shows a return path instead of crashing', async () => {

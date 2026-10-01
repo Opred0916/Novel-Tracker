@@ -117,6 +117,9 @@ export class SqliteBookRepository implements BookRepository {
         );
       }
       if (edited.tagIds !== undefined) {
+        for (const tag of edited.newTags ?? []) {
+          await txn.runAsync('INSERT INTO tags (id, name, is_system) VALUES (?, ?, 0)', tag.id, tag.name);
+        }
         await txn.runAsync('DELETE FROM book_tags WHERE book_id = ?', id);
         for (const [position, tagId] of edited.tagIds.entries()) {
           await txn.runAsync('INSERT INTO book_tags (book_id, tag_id, position) VALUES (?, ?, ?)', id, tagId, position);

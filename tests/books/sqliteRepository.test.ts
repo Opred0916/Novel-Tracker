@@ -38,6 +38,29 @@ test('persists book type and multiple tags through create and update', async () 
   }
 });
 
+test('creates a custom tag only within a successful book update', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    const repo = new SqliteBookRepository(db, randomUUID);
+    const book = await repo.create({ title: '长夜', status: 'want_to_read' });
+    const edit = {
+      title: '新长夜', author: null, status: 'want_to_read' as const, protagonists: [],
+      tagIds: ['custom-1'], newTags: [{ id: 'custom-1', name: '赛博朋克' }],
+    };
+    await db.execAsync(`CREATE TRIGGER fail_new_book_tag BEFORE INSERT ON book_tags
+      WHEN NEW.tag_id = 'custom-1' BEGIN SELECT RAISE(ABORT, 'injected failure'); END;`);
+    await expect(repo.update(book.id, edit)).rejects.toThrow('injected failure');
+    expect(await db.getFirstAsync('SELECT id FROM tags WHERE id = ?', 'custom-1')).toBeNull();
+    expect((await repo.get(book.id))?.title).toBe('长夜');
+    await db.execAsync('DROP TRIGGER fail_new_book_tag');
+    const updated = await repo.update(book.id, edit);
+    expect(updated.tags).toMatchObject([{ id: 'custom-1', name: '赛博朋克', isSystem: false }]);
+  } finally {
+    db.close();
+  }
+});
+
 test('creates a finished novel with trimmed details and a half-star rating', async () => {
   const db = createInMemoryDatabase();
   try {

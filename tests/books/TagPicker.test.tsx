@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { TagPicker } from '../../src/books/TagPicker';
 import type { Tag } from '../../src/books/types';
 
@@ -25,4 +25,29 @@ test('creates a custom tag and adds it to selection', async () => {
   await fireEvent.press(screen.getByText('添加标签'));
   await waitFor(() => expect(onCreateTag).toHaveBeenCalledWith('赛博朋克'));
   expect(onChange).toHaveBeenCalledWith(['three']);
+});
+
+test('keeps selections made while a new tag is being created', async () => {
+  let finishCreate: (tag: Tag) => void = () => {};
+  const onCreateTag = () => new Promise<Tag>(resolve => { finishCreate = resolve; });
+  const onChange = jest.fn();
+  const screen = await render(<TagPicker tags={tags} selectedIds={[]} onChange={onChange} onCreateTag={onCreateTag} />);
+  await fireEvent.changeText(screen.getByPlaceholderText('新标签名称'), '赛博朋克');
+  let creation: Promise<void> | undefined;
+  let fiber = screen.getByRole('button', { name: '添加标签' }).unstable_fiber;
+  let createPress: (() => Promise<void>) | undefined;
+  while (fiber && !createPress) {
+    createPress = fiber.memoizedProps?.onPress as (() => Promise<void>) | undefined;
+    fiber = fiber.return;
+  }
+  expect(createPress).toBeDefined();
+  act(() => { creation = createPress!(); });
+  await fireEvent.press(screen.getByText('古代'));
+  expect(onChange).toHaveBeenCalledWith(['one']);
+  await screen.rerender(<TagPicker tags={tags} selectedIds={['one']} onChange={onChange} onCreateTag={onCreateTag} />);
+  await act(async () => {
+    finishCreate({ id: 'three', name: '赛博朋克', isSystem: false });
+    await creation;
+  });
+  expect(onChange).toHaveBeenLastCalledWith(['one', 'three']);
 });
