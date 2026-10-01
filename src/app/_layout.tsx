@@ -7,5 +7,6 @@ export default function RootLayout() {
     <Stack.Screen name="book/new" options={{ title: '添加小说' }} />
     <Stack.Screen name="book/[id]" options={{ title: '小说详情' }} />
     <Stack.Screen name="book/[id]/edit" options={{ title: '编辑小说' }} />
+    <Stack.Screen name="settings/tags" options={{ title: '快捷标签设置' }} />
   </Stack></AppProvider>;
 }

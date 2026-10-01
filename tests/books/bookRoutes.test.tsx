@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useBooks, useTags } from '../../src/storage/AppProvider';
 import Bookshelf from '../../src/app/index';
 import NewBook from '../../src/app/book/new';
+import QuickTagsPage from '../../src/app/settings/tags';
 import BookPage from '../../src/app/book/[id]';
 import EditBookPage from '../../src/app/book/[id]/edit';
 import { BookCard } from '../../src/books/BookCard';
@@ -52,10 +53,42 @@ test('new book route loads quick tags and saves the selected tag', async () => {
   await waitFor(() => expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ tagIds: ['ancient'] })));
 });
 
-test('book card shows the real status and responds to a tap', async () => {
+test('new book remains usable when quick tags cannot be read', async () => {
+  tagRepo.listQuick.mockRejectedValueOnce(new Error('read failed'));
+  repo.create.mockResolvedValue(book);
+  const screen = await render(<NewBook />);
+  await waitFor(() => expect(screen.getByText('快捷标签读取失败')).toBeTruthy());
+  await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '长夜');
+  await fireEvent.press(screen.getByText('保存小说'));
+  await waitFor(() => expect(repo.create).toHaveBeenCalled());
+});
+
+test('quick tag settings save the chosen tags without deleting the library', async () => {
+  tagRepo.list.mockResolvedValue([
+    { id: 'ancient', name: '古代', isSystem: true },
+    { id: 'modern', name: '现代', isSystem: true },
+    { id: 'suspense', name: '悬疑', isSystem: true },
+  ]);
+  tagRepo.listQuick.mockResolvedValue([
+    { id: 'ancient', name: '古代', isSystem: true },
+    { id: 'modern', name: '现代', isSystem: true },
+  ]);
+  tagRepo.setQuick.mockResolvedValue(undefined);
+  const screen = await render(<QuickTagsPage />);
+  await waitFor(() => expect(screen.getByText('悬疑')).toBeTruthy());
+  await fireEvent.press(screen.getAllByText('现代')[0]);
+  await fireEvent.press(screen.getByText('悬疑'));
+  await fireEvent.press(screen.getByText('保存快捷标签'));
+  await waitFor(() => expect(tagRepo.setQuick).toHaveBeenCalledWith(['ancient', 'suspense']));
+  expect(tagRepo.list).toHaveBeenCalled();
+});
+
+test('book card shows author and rating without repeating the status filter', async () => {
   const onPress = jest.fn();
-  const screen = await render(<BookCard book={book} onPress={onPress} />);
-  expect(screen.getByText('在读')).toBeTruthy();
+  const screen = await render(<BookCard book={{ ...book, ratingHalfStars: 9 }} onPress={onPress} />);
+  expect(screen.getByText('某作者')).toBeTruthy();
+  expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
+  expect(screen.queryByText('在读')).toBeNull();
   await fireEvent.press(screen.getByText('长夜'));
   expect(onPress).toHaveBeenCalledTimes(1);
 });
@@ -65,6 +98,16 @@ test('bookshelf opens the tapped novel detail page', async () => {
   await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
   await fireEvent.press(screen.getByText('长夜'));
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: book.id } });
+});
+
+test('bookshelf filters by search and clears the filter', async () => {
+  repo.list.mockResolvedValue([book, { ...book, id: 'book-2', title: '归途', author: '另一作者' }]);
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('归途')).toBeTruthy());
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者或主角'), '长夜');
+  expect(screen.queryByText('归途')).toBeNull();
+  await fireEvent.press(screen.getByText('清除筛选'));
+  expect(screen.getByText('归途')).toBeTruthy();
 });
 
 test('detail page loads the novel and offers an edit entry', async () => {
