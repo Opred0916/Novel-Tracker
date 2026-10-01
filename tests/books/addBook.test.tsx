@@ -1,6 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { AddBookForm } from '../../src/books/AddBookForm';
+import { todayLocalDate } from '../../src/books/readingDates';
 
 test('adds work type and quick tags to a new novel', async () => {
   const onSave = jest.fn().mockResolvedValue(undefined);
@@ -51,6 +52,7 @@ test('adds a finished novel with author, ordered protagonists and 4.5 stars', as
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
     title: '长夜', author: '某作者', status: 'finished',
     protagonists: ['阿青', '李四'], ratingHalfStars: 9, bookType: null, tagIds: [],
+    readingDates: { startedOn: todayLocalDate(), endedOn: todayLocalDate() },
   }));
 });
 
@@ -94,6 +96,7 @@ test('submits all details after switching finished to reading and back', async (
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
     title: '长夜', author: '某作者', status: 'finished',
     protagonists: ['阿青', '李四'], ratingHalfStars: 9, bookType: null, tagIds: [],
+    readingDates: { startedOn: todayLocalDate(), endedOn: todayLocalDate() },
   }));
 });
 
@@ -104,6 +107,24 @@ test('rejects a blank title without submitting', async () => {
   await fireEvent.press(screen.getByText('保存小说'));
   expect(screen.getByText('请输入书名')).toBeTruthy();
   expect(onSave).not.toHaveBeenCalled();
+});
+
+test('allows editing both dates before creating a finished book and keeps invalid dates visible', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const screen = await render(<AddBookForm onSave={onSave} />);
+  await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '长夜');
+  await fireEvent.press(screen.getByText('读完'));
+  expect(screen.getAllByDisplayValue(todayLocalDate())).toHaveLength(2);
+  await fireEvent.changeText(screen.getByLabelText('开始日期'), '2026-02-30');
+  await fireEvent.changeText(screen.getByLabelText('结束日期'), '2026-03-01');
+  await fireEvent.press(screen.getByText('保存小说'));
+  expect(onSave).not.toHaveBeenCalled();
+  expect(screen.getByDisplayValue('2026-02-30')).toBeTruthy();
+  await fireEvent.changeText(screen.getByLabelText('开始日期'), '2026-02-28');
+  await fireEvent.press(screen.getByText('保存小说'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    readingDates: { startedOn: '2026-02-28', endedOn: '2026-03-01' },
+  })));
 });
 
 test('keeps all details after a save failure and allows retry', async () => {

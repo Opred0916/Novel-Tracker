@@ -2,6 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { BookEditForm } from '../../src/books/BookEditForm';
 import type { Book } from '../../src/books/types';
+import { todayLocalDate } from '../../src/books/readingDates';
 
 const baseBook: Book = {
   id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [],
@@ -57,6 +58,7 @@ test('adds another protagonist and sends trimmed, ordered names with the chosen 
 
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
     title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青', '王五'], ratingHalfStars: null, bookType: null, tagIds: [],
+    readingDates: { startedOn: todayLocalDate(), endedOn: null },
   }));
 });
 
@@ -99,6 +101,32 @@ test('can score a book after changing its status to finished', async () => {
   await fireEvent.press(screen.getByText('保存修改'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
     status: 'finished', ratingHalfStars: 9,
+  })));
+});
+
+test('previews the next reading number and uses its edited start date', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const screen = await render(<BookEditForm book={{ ...baseBook, status: 'finished', legacyReadCount: 1 }} onSave={onSave} sessions={[]} />);
+  await fireEvent.press(screen.getByText('在读'));
+  expect(screen.getByText(/第 2 次阅读/)).toBeTruthy();
+  await fireEvent.changeText(screen.getByLabelText('开始日期'), '2026-09-01');
+  await fireEvent.press(screen.getByText('保存修改'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    readingDates: { startedOn: '2026-09-01', endedOn: null },
+  })));
+});
+
+test('finishes an active record with its original start date and editable end date', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const screen = await render(<BookEditForm book={{ ...baseBook, status: 'reading' }} onSave={onSave} sessions={[
+    { id: 'first', bookId: baseBook.id, ordinal: 1, startedOn: '2026-09-01', endedOn: null, outcome: 'reading' },
+  ]} />);
+  await fireEvent.press(screen.getByText('弃读'));
+  expect(screen.getByDisplayValue('2026-09-01')).toBeTruthy();
+  await fireEvent.changeText(screen.getByLabelText('结束日期'), '2026-09-15');
+  await fireEvent.press(screen.getByText('保存修改'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    readingDates: { startedOn: '2026-09-01', endedOn: '2026-09-15' },
   })));
 });
 

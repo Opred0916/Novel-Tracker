@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RatingField } from './RatingField';
+import { ReadingDateFields } from './ReadingDateFields';
+import { todayLocalDate } from './readingDates';
 import { TagPicker } from './TagPicker';
 import { TypePicker } from './TypePicker';
 import { BOOK_STATUS_LABELS } from './status';
@@ -11,6 +13,8 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [status, setStatus] = useState<BookStatus>('want_to_read');
+  const [startedOn, setStartedOn] = useState(todayLocalDate);
+  const [endedOn, setEndedOn] = useState(todayLocalDate);
   const [protagonists, setProtagonists] = useState(['', '']);
   const [ratingHalfStars, setRatingHalfStars] = useState<number | null>(null);
   const [bookType, setBookType] = useState<BookType | null>(null);
@@ -30,6 +34,7 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
       input = normalizeBookCreate({
         title, author, status, protagonists, bookType, tagIds,
         ratingHalfStars: status === 'finished' ? ratingHalfStars : null,
+        ...(status !== 'want_to_read' ? { readingDates: { startedOn, endedOn: status === 'reading' ? null : endedOn } } : {}),
       });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '输入有误');
@@ -57,6 +62,8 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
         <Text style={[styles.statusText, status === choice && styles.statusSelectedText]}>{BOOK_STATUS_LABELS[choice]}</Text>
       </Pressable>)}
     </View>
+    {status !== 'want_to_read' ? <ReadingDateFields startedOn={startedOn} endedOn={endedOn}
+      showEnd={status !== 'reading'} onStartChange={setStartedOn} onEndChange={setEndedOn} /> : null}
     <Text style={styles.label}>作品类型</Text>
     <TypePicker value={bookType} onChange={setBookType} />
     <Text style={styles.label}>快捷标签</Text>

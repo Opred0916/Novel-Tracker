@@ -2,8 +2,8 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BookEditForm } from '../../../books/BookEditForm';
-import type { Book, Tag } from '../../../books/types';
-import { useBooks, useTags } from '../../../storage/AppProvider';
+import type { Book, ReadingSession, Tag } from '../../../books/types';
+import { useBooks, useReadingHistory, useTags } from '../../../storage/AppProvider';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -11,8 +11,10 @@ export default function EditBookPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const repo = useBooks();
   const tagRepo = useTags();
+  const historyRepo = useReadingHistory();
   const [book, setBook] = useState<Book | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [retry, setRetry] = useState(0);
 
@@ -23,16 +25,17 @@ export default function EditBookPage() {
       setLoadState('missing');
       return () => { active = false; };
     }
-    Promise.all([repo.get(id), tagRepo.list()]).then(([result, tags]) => {
+    Promise.all([repo.get(id), tagRepo.list(), historyRepo.list(id)]).then(([result, tags, records]) => {
       if (!active) return;
       setBook(result);
       setAllTags(tags);
+      setSessions(records);
       setLoadState(result ? 'ready' : 'missing');
     }).catch(() => { if (active) setLoadState('error'); });
     return () => { active = false; };
   // `retry` intentionally invalidates this focus callback to trigger a fresh read.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, repo, tagRepo, retry]));
+  }, [id, repo, tagRepo, historyRepo, retry]));
 
   if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator /></View>;
   if (loadState === 'missing') return <View style={styles.center}>
@@ -46,7 +49,7 @@ export default function EditBookPage() {
   </View>;
   if (!book) return null;
 
-  return <BookEditForm book={book} allTags={allTags} onSave={async input => {
+  return <BookEditForm book={book} allTags={allTags} sessions={sessions} onSave={async input => {
     await repo.update(id, input);
     router.back();
   }} />;

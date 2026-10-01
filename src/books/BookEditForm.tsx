@@ -1,20 +1,25 @@
 import React, { useRef, useState } from 'react';
 import { randomUUID } from 'expo-crypto';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BOOK_STATUS_LABELS } from './status';
 import { RatingField } from './RatingField';
+import { ReadingDateFields } from './ReadingDateFields';
+import { todayLocalDate } from './readingDates';
 import { TagPicker } from './TagPicker';
 import { TypePicker } from './TypePicker';
-import { BOOK_STATUSES, type Book, type BookEditInput, type BookStatus, type BookType, type Tag } from './types';
+import { BOOK_STATUSES, type Book, type BookEditInput, type BookStatus, type BookType, type ReadingSession, type Tag } from './types';
 import { normalizeBookEdit } from './validation';
 
-export function BookEditForm({ book, onSave, allTags = [] }: {
+export function BookEditForm({ book, onSave, allTags = [], sessions = [] }: {
   book: Book; onSave: (input: BookEditInput) => Promise<void>;
   allTags?: Tag[];
+  sessions?: ReadingSession[];
 }) {
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author ?? '');
   const [status, setStatus] = useState<BookStatus>(book.status);
+  const [startedOn, setStartedOn] = useState(todayLocalDate);
+  const [endedOn, setEndedOn] = useState(todayLocalDate);
   const [ratingHalfStars, setRatingHalfStars] = useState(book.ratingHalfStars);
   const [ratingCleared, setRatingCleared] = useState(false);
   const [bookType, setBookType] = useState<BookType | null>(book.bookType);
@@ -30,6 +35,19 @@ export function BookEditForm({ book, onSave, allTags = [] }: {
   const effectiveRatingHalfStars = status === 'finished'
     ? ratingHalfStars
     : ratingCleared ? null : book.ratingHalfStars;
+  const activeSession = sessions.find(session => session.outcome === 'reading');
+  const changingStatus = status !== book.status;
+  const nextOrdinal = Math.max(book.legacyReadCount, ...sessions.map(session => session.ordinal), 0) + 1;
+  const previewOrdinal = book.status === 'reading' && activeSession && status !== 'reading'
+    ? activeSession.ordinal : nextOrdinal;
+
+  function changeStatus(choice: BookStatus) {
+    setStatus(choice);
+    if (choice !== book.status) {
+      setStartedOn(book.status === 'reading' && choice !== 'reading' ? activeSession?.startedOn ?? todayLocalDate() : todayLocalDate());
+      setEndedOn(todayLocalDate());
+    }
+  }
 
   function changeProtagonist(index: number, value: string) {
     setProtagonists(current => current.map((name, nameIndex) => nameIndex === index ? value : name));
@@ -45,30 +63,38 @@ export function BookEditForm({ book, onSave, allTags = [] }: {
     return tag;
   }
 
-  async function save() {
+  async function performSave(input: BookEditInput) {
     if (savingRef.current) return;
-    let input: BookEditInput;
+    savingRef.current = true;
+    setSaving(true);
+    setError('');
+    try { await onSave(input); }
+    catch { setError('保存失败，请重试'); }
+    finally { savingRef.current = false; setSaving(false); }
+  }
+
+  function save() {
+    if (savingRef.current) return;
     try {
-      input = normalizeBookEdit({
+      const input = normalizeBookEdit({
         title, author, status, protagonists, ratingHalfStars: effectiveRatingHalfStars, bookType, tagIds,
+        ...(changingStatus && status !== 'want_to_read' ? {
+          readingDates: { startedOn, endedOn: status === 'reading' ? null : endedOn },
+        } : {}),
         ...(pendingTags.some(tag => tagIds.includes(tag.id)) ? {
           newTags: pendingTags.filter(tag => tagIds.includes(tag.id)).map(({ id, name }) => ({ id, name })),
         } : {}),
       });
+      if (book.status === 'reading' && status === 'want_to_read' && activeSession) {
+        Alert.alert('取消本次阅读？', '这会移除尚未结束的阅读记录，已结束的历史不受影响。', [
+          { text: '返回', style: 'cancel' },
+          { text: '确认取消', style: 'destructive', onPress: () => { void performSave(input); } },
+        ]);
+        return;
+      }
+      void performSave(input);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '输入有误');
-      return;
-    }
-    savingRef.current = true;
-    setSaving(true);
-    setError('');
-    try {
-      await onSave(input);
-    } catch {
-      setError('保存失败，请重试');
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
     }
   }
 
@@ -80,11 +106,18 @@ export function BookEditForm({ book, onSave, allTags = [] }: {
     <Text style={styles.label}>阅读状态</Text>
     <View style={styles.statusGroup}>
       {BOOK_STATUSES.map(choice => <Pressable key={choice} accessibilityRole="radio"
-        accessibilityState={{ checked: status === choice }} onPress={() => setStatus(choice)}
+        accessibilityState={{ checked: status === choice }} onPress={() => changeStatus(choice)}
         style={[styles.statusOption, status === choice && styles.statusSelected]}>
         <Text style={[styles.statusText, status === choice && styles.statusSelectedText]}>{BOOK_STATUS_LABELS[choice]}</Text>
       </Pressable>)}
     </View>
+    {changingStatus && status !== 'want_to_read' ? <View style={styles.dateSection}>
+      <Text style={styles.datePreview}>将记录第 {previewOrdinal} 次阅读{book.status === 'reading' && activeSession ? '的结束' : ''}</Text>
+      <ReadingDateFields startedOn={startedOn} endedOn={endedOn} showEnd={status !== 'reading'}
+        onStartChange={setStartedOn} onEndChange={setEndedOn} />
+    </View> : null}
+    {book.status === 'reading' && status === 'want_to_read' && activeSession
+      ? <Text style={styles.warning}>保存时会取消当前在读记录。</Text> : null}
     <Text style={styles.label}>作品类型</Text>
     <TypePicker value={bookType} onChange={setBookType} />
     <Text style={styles.label}>标签</Text>
@@ -119,6 +152,9 @@ const styles = StyleSheet.create({
   statusSelected: { backgroundColor: '#593f72', borderColor: '#593f72' },
   statusText: { color: '#302a25' },
   statusSelectedText: { color: '#fff', fontWeight: '700' },
+  dateSection: { gap: 8 },
+  datePreview: { color: '#593f72', fontWeight: '600' },
+  warning: { color: '#a33b26' },
   nameRow: { gap: 6 },
   nameLabel: { color: '#766f68' },
   addName: { padding: 12, alignSelf: 'flex-start' },
