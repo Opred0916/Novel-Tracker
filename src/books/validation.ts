@@ -1,4 +1,5 @@
 import { BOOK_STATUSES, BOOK_TYPES, type Book, type BookEditInput, type BookInput, type BookType } from './types';
+import { normalizeReadingDates } from './readingDates';
 
 function normalizeType(value: unknown): BookType | null {
   if (value == null) return null;
@@ -38,6 +39,10 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
     edited.ratingHalfStars = normalizeRatingHalfStars(input.ratingHalfStars);
   }
   if (input.bookType !== undefined) edited.bookType = normalizeType(input.bookType);
+  if (input.readingDates !== undefined) {
+    if (!input.readingDates || typeof input.readingDates !== 'object') throw new Error('阅读日期无效');
+    edited.readingDates = normalizeReadingDates(input.status, input.readingDates.startedOn, input.readingDates.endedOn);
+  }
   if (input.tagIds !== undefined) edited.tagIds = normalizeTagIds(input.tagIds);
   if (input.newTags !== undefined) {
     if (!Array.isArray(input.newTags) || input.newTags.some(tag =>
@@ -55,7 +60,7 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
 
 export function normalizeBookCreate(
   input: BookInput,
-): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars' | 'bookType'> & { tagIds: string[] } {
+): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars' | 'bookType'> & { tagIds: string[]; readingDates?: BookInput['readingDates'] } {
   const normalized = normalizeBookEdit({
     title: input.title,
     author: input.author ?? null,
@@ -64,6 +69,7 @@ export function normalizeBookCreate(
     ratingHalfStars: input.ratingHalfStars ?? null,
     bookType: input.bookType ?? null,
     tagIds: input.tagIds ?? [],
+    readingDates: input.readingDates,
   });
   const ratingHalfStars = normalized.ratingHalfStars ?? null;
   if (normalized.status !== 'finished' && ratingHalfStars !== null) {

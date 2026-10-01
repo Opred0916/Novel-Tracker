@@ -5,7 +5,7 @@ import type { Book } from '../../src/books/types';
 
 const baseBook: Book = {
   id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [],
-  createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
+  legacyReadCount: 0, createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
 };
 
 test('shows selected work type and custom tags', async () => {

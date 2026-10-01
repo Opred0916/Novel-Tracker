@@ -3,6 +3,7 @@ import type { Database } from '../storage/database';
 import type { BookRepository } from './repository';
 import type { Book, BookEditInput, BookInput, BookStatus, BookType, Tag } from './types';
 import { normalizeBookCreate, normalizeBookEdit } from './validation';
+import { normalizeReadingDates, todayLocalDate } from './readingDates';
 
 type BookRow = {
   id: string;
@@ -13,10 +14,14 @@ type BookRow = {
   type: BookType | null;
   created_at: string;
   updated_at: string;
+  legacy_read_count: number;
 };
 
 type ProtagonistRow = { book_id: string; position: number; name: string };
 type BookTagRow = { book_id: string; id: string; name: string; is_system: number };
+type ActiveSessionRow = { id: string; started_on: string };
+type NextOrdinalRow = { next_ordinal: number };
+type ReadingTransaction = Pick<Database, 'getFirstAsync' | 'runAsync'>;
 
 function fromRow(row: BookRow, protagonists: string[] = [], tags: Tag[] = []): Book {
   return {
@@ -28,13 +33,70 @@ function fromRow(row: BookRow, protagonists: string[] = [], tags: Tag[] = []): B
     ratingHalfStars: row.rating_half_stars,
     bookType: row.type,
     tags,
+    legacyReadCount: row.legacy_read_count,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
 }
 
 export class SqliteBookRepository implements BookRepository {
-  constructor(private readonly db: Database, private readonly idFactory: () => string = randomUUID) {}
+  constructor(
+    private readonly db: Database,
+    private readonly idFactory: () => string = randomUUID,
+    private readonly todayFactory: () => string = todayLocalDate,
+  ) {}
+
+  private async addSession(
+    txn: ReadingTransaction,
+    bookId: string,
+    legacyReadCount: number,
+    status: Exclude<BookStatus, 'want_to_read'>,
+    dates?: BookInput['readingDates'],
+  ): Promise<void> {
+    const today = this.todayFactory();
+    const normalized = normalizeReadingDates(status, dates?.startedOn ?? today, dates?.endedOn ?? (status === 'reading' ? null : today));
+    const next = await txn.getFirstAsync<NextOrdinalRow>(
+      'SELECT MAX(ordinal) + 1 AS next_ordinal FROM reading_sessions WHERE book_id = ?', bookId,
+    );
+    const ordinal = Math.max(legacyReadCount + 1, next?.next_ordinal ?? 1);
+    await txn.runAsync(
+      'INSERT INTO reading_sessions (id, book_id, ordinal, started_on, ended_on, outcome) VALUES (?, ?, ?, ?, ?, ?)',
+      this.idFactory(), bookId, ordinal, normalized.startedOn, normalized.endedOn, status,
+    );
+  }
+
+  private async applyStatusTransition(
+    txn: ReadingTransaction,
+    bookId: string,
+    previous: BookRow,
+    status: BookStatus,
+    dates?: BookEditInput['readingDates'],
+  ): Promise<void> {
+    if (status === previous.status) {
+      if (dates) throw new Error('阅读状态未改变，请在阅读历史中修改日期');
+      return;
+    }
+    const active = previous.status === 'reading'
+      ? await txn.getFirstAsync<ActiveSessionRow>(
+        "SELECT id, started_on FROM reading_sessions WHERE book_id = ? AND outcome = 'reading'", bookId,
+      )
+      : null;
+    if (status === 'want_to_read') {
+      if (active) await txn.runAsync('DELETE FROM reading_sessions WHERE id = ?', active.id);
+      return;
+    }
+    if (active && status !== 'reading') {
+      const normalized = normalizeReadingDates(
+        status, dates?.startedOn ?? active.started_on, dates?.endedOn ?? this.todayFactory(),
+      );
+      await txn.runAsync(
+        'UPDATE reading_sessions SET started_on = ?, ended_on = ?, outcome = ? WHERE id = ?',
+        normalized.startedOn, normalized.endedOn, status, active.id,
+      );
+      return;
+    }
+    await this.addSession(txn, bookId, previous.legacy_read_count, status, dates);
+  }
 
   async create(input: BookInput): Promise<Book> {
     const normalized = normalizeBookCreate(input);
@@ -52,6 +114,9 @@ export class SqliteBookRepository implements BookRepository {
       }
       for (const [position, tagId] of normalized.tagIds.entries()) {
         await txn.runAsync('INSERT INTO book_tags (book_id, tag_id, position) VALUES (?, ?, ?)', id, tagId, position);
+      }
+      if (normalized.status !== 'want_to_read') {
+        await this.addSession(txn, id, 0, normalized.status, normalized.readingDates);
       }
     });
     const result = await this.get(id);
@@ -106,6 +171,7 @@ export class SqliteBookRepository implements BookRepository {
         throw new Error('只有读完的小说才能新增或修改评分');
       }
       const now = new Date().toISOString();
+      await this.applyStatusTransition(txn, id, existing, edited.status, edited.readingDates);
       await txn.runAsync(
         'UPDATE books SET title = ?, author = ?, status = ?, rating_half_stars = ?, type = ?, updated_at = ? WHERE id = ?',
         edited.title, edited.author, edited.status, ratingHalfStars, edited.bookType === undefined ? existing.type : edited.bookType, now, id,

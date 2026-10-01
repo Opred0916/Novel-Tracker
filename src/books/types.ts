@@ -5,6 +5,15 @@ export type BookStatus = (typeof BOOK_STATUSES)[number];
 export const BOOK_TYPES = ['romance_male_male', 'romance_female_male', 'romance_female_female', 'no_romance', 'other'] as const;
 export type BookType = (typeof BOOK_TYPES)[number];
 export type Tag = { id: string; name: string; isSystem: boolean };
+export type ReadingDatesInput = { startedOn: string; endedOn?: string | null };
+export type ReadingSession = {
+  id: string;
+  bookId: string;
+  ordinal: number;
+  startedOn: string;
+  endedOn: string | null;
+  outcome: Exclude<BookStatus, 'want_to_read'>;
+};
 
 export type Book = {
   id: string;
@@ -15,15 +24,17 @@ export type Book = {
   ratingHalfStars: number | null;
   bookType: BookType | null;
   tags: Tag[];
+  legacyReadCount: number;
   createdAt: string;
   updatedAt: string;
 };
 
 export type BookInput = Pick<Book, 'title' | 'status'> &
-  Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars' | 'bookType'>> & { tagIds?: string[] };
+  Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars' | 'bookType'>> & { tagIds?: string[]; readingDates?: ReadingDatesInput };
 
 export type BookEditInput = Pick<Book, 'title' | 'author' | 'status' | 'protagonists'> &
   Partial<Pick<Book, 'ratingHalfStars' | 'bookType'>> & {
     tagIds?: string[];
     newTags?: Pick<Tag, 'id' | 'name'>[];
+    readingDates?: ReadingDatesInput;
   };
