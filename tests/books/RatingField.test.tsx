@@ -8,12 +8,15 @@ test('selects and clears a half-star rating', async () => {
     return <RatingField value={value} onChange={setValue} allowNewValue />;
   }
   const screen = await render(<Harness />);
+  expect(screen.getByTestId('rating-slider').props.accessibilityValue?.text).toBe('未评分');
   await fireEvent(screen.getByTestId('rating-slider'), 'valueChange', 4.5);
   expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
+  expect(screen.getByTestId('rating-slider').props.accessibilityValue?.text).toBe('4.5 星');
   expect(screen.getByLabelText('第 1 颗星：实心')).toBeTruthy();
   expect(screen.getByLabelText('第 5 颗星：半星')).toBeTruthy();
   await fireEvent.press(screen.getByText('清除评分'));
   expect(screen.getByText('未评分')).toBeTruthy();
+  expect(screen.getByTestId('rating-slider').props.accessibilityValue?.text).toBe('未评分');
   expect(screen.getByLabelText('第 1 颗星：空心')).toBeTruthy();
 });
 

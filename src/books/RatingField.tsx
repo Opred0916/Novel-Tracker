@@ -24,6 +24,8 @@ export function RatingField({ value, onChange, allowNewValue }: RatingFieldProps
       })}
     </View>
     {allowNewValue ? <Slider testID="rating-slider" accessibilityLabel="总体评分"
+      accessibilityValue={{ min: 0, max: 5, now: value === null ? 0 : value / 2,
+        text: value === null ? '未评分' : `${value / 2} 星` }}
       minimumValue={0} maximumValue={5} step={0.5} value={value === null ? 0 : value / 2}
       minimumTrackTintColor="#593f72" maximumTrackTintColor="#d6cec4" thumbTintColor="#593f72"
       onValueChange={stars => onChange(stars === 0 ? null : Math.round(stars * 2))}
