@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BOOK_STATUS_LABELS } from './status';
+import { RatingField } from './RatingField';
 import { BOOK_STATUSES, type Book, type BookEditInput, type BookStatus } from './types';
 import { normalizeBookEdit } from './validation';
 
@@ -8,26 +9,33 @@ export function BookEditForm({ book, onSave }: { book: Book; onSave: (input: Boo
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author ?? '');
   const [status, setStatus] = useState<BookStatus>(book.status);
+  const [ratingHalfStars, setRatingHalfStars] = useState(book.ratingHalfStars);
+  const [ratingCleared, setRatingCleared] = useState(false);
   const [protagonists, setProtagonists] = useState<string[]>([
     ...book.protagonists,
     ...Array(Math.max(0, 2 - book.protagonists.length)).fill(''),
   ]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
+  const effectiveRatingHalfStars = status === 'finished'
+    ? ratingHalfStars
+    : ratingCleared ? null : book.ratingHalfStars;
 
   function changeProtagonist(index: number, value: string) {
     setProtagonists(current => current.map((name, nameIndex) => nameIndex === index ? value : name));
   }
 
   async function save() {
-    if (saving) return;
+    if (savingRef.current) return;
     let input: BookEditInput;
     try {
-      input = normalizeBookEdit({ title, author, status, protagonists });
+      input = normalizeBookEdit({ title, author, status, protagonists, ratingHalfStars: effectiveRatingHalfStars });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '输入有误');
       return;
     }
+    savingRef.current = true;
     setSaving(true);
     setError('');
     try {
@@ -35,11 +43,12 @@ export function BookEditForm({ book, onSave }: { book: Book; onSave: (input: Boo
     } catch {
       setError('保存失败，请重试');
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }
 
-  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={styles.label}>书名 *</Text>
     <TextInput placeholder="输入小说书名" value={title} onChangeText={setTitle} style={styles.input} />
     <Text style={styles.label}>作者</Text>
@@ -52,6 +61,11 @@ export function BookEditForm({ book, onSave }: { book: Book; onSave: (input: Boo
         <Text style={[styles.statusText, status === choice && styles.statusSelectedText]}>{BOOK_STATUS_LABELS[choice]}</Text>
       </Pressable>)}
     </View>
+    {(status === 'finished' || book.ratingHalfStars !== null) ? <RatingField
+      value={effectiveRatingHalfStars}
+      allowNewValue={status === 'finished'}
+      onChange={value => { setRatingHalfStars(value); setRatingCleared(value === null); }}
+    /> : null}
     <Text style={styles.label}>主角名字</Text>
     {protagonists.map((name, index) => <View key={index} style={styles.nameRow}>
       <Text style={styles.nameLabel}>主角 {index + 1}</Text>

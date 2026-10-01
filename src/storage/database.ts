@@ -19,13 +19,23 @@ export async function migrateDatabase(db: Database): Promise<void> {
         status TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        author TEXT
+        author TEXT,
+        rating_half_stars INTEGER CHECK (
+          rating_half_stars IS NULL OR
+          (typeof(rating_half_stars) = 'integer' AND rating_half_stars BETWEEN 1 AND 10)
+        )
       );
     `);
   } else {
     const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(books)');
     if (!columns.some(column => column.name === 'author')) {
       await db.execAsync('ALTER TABLE books ADD COLUMN author TEXT');
+    }
+    if (!columns.some(column => column.name === 'rating_half_stars')) {
+      await db.execAsync(`ALTER TABLE books ADD COLUMN rating_half_stars INTEGER CHECK (
+        rating_half_stars IS NULL OR
+        (typeof(rating_half_stars) = 'integer' AND rating_half_stars BETWEEN 1 AND 10)
+      )`);
     }
   }
 
@@ -37,7 +47,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
       PRIMARY KEY (book_id, position),
       FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
     );
-    PRAGMA user_version = 2;
+    PRAGMA user_version = 3;
   `);
 }
 

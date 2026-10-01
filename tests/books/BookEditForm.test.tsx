@@ -1,10 +1,10 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { BookEditForm } from '../../src/books/BookEditForm';
 import type { Book } from '../../src/books/types';
 
 const baseBook: Book = {
-  id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [],
+  id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null,
   createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
 };
 
@@ -12,6 +12,13 @@ test('starts with two blank protagonist inputs when the book has none', async ()
   const screen = await render(<BookEditForm book={baseBook} onSave={async () => {}} />);
   expect(screen.getAllByPlaceholderText('主角名字')).toHaveLength(2);
   expect(screen.getByDisplayValue('长夜')).toBeTruthy();
+});
+
+test('allows editing lower protagonist fields above the iPhone keyboard', async () => {
+  const screen = await render(<BookEditForm book={baseBook} onSave={async () => {}} />);
+  const scroll = screen.root;
+  expect(scroll).not.toBeNull();
+  expect(scroll?.props.automaticallyAdjustKeyboardInsets).toBe(true);
 });
 
 test('shows every existing protagonist when there are more than two', async () => {
@@ -33,8 +40,50 @@ test('adds another protagonist and sends trimmed, ordered names with the chosen 
   await fireEvent.press(screen.getByText('保存修改'));
 
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
-    title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青', '王五'],
+    title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青', '王五'], ratingHalfStars: null,
   }));
+});
+
+test('keeps an existing rating when a finished book becomes reading', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const screen = await render(<BookEditForm book={{ ...baseBook, status: 'finished', ratingHalfStars: 9 }} onSave={onSave} />);
+  await fireEvent.press(screen.getByText('在读'));
+  expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
+  expect(screen.queryByTestId('rating-slider')).toBeNull();
+  await fireEvent.press(screen.getByText('保存修改'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    status: 'reading', ratingHalfStars: 9,
+  })));
+});
+
+test('does not submit an uncommitted new rating after leaving finished status', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const screen = await render(<BookEditForm book={{ ...baseBook, status: 'finished', ratingHalfStars: 9 }} onSave={onSave} />);
+  await fireEvent(screen.getByTestId('rating-slider'), 'valueChange', 5);
+  await fireEvent.press(screen.getByText('在读'));
+  await fireEvent.press(screen.getByText('保存修改'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    status: 'reading', ratingHalfStars: 9,
+  })));
+});
+
+test('can clear an existing rating while rereading', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const screen = await render(<BookEditForm book={{ ...baseBook, status: 'reading', ratingHalfStars: 9 }} onSave={onSave} />);
+  await fireEvent.press(screen.getByText('清除评分'));
+  await fireEvent.press(screen.getByText('保存修改'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ ratingHalfStars: null })));
+});
+
+test('can score a book after changing its status to finished', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const screen = await render(<BookEditForm book={baseBook} onSave={onSave} />);
+  await fireEvent.press(screen.getByText('读完'));
+  await fireEvent(screen.getByTestId('rating-slider'), 'valueChange', 4.5);
+  await fireEvent.press(screen.getByText('保存修改'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    status: 'finished', ratingHalfStars: 9,
+  })));
 });
 
 test('keeps the form open and shows an error for a blank title', async () => {
@@ -58,4 +107,24 @@ test('retains entered values after save failure and allows retry', async () => {
 
   await fireEvent.press(screen.getByText('保存修改'));
   await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+});
+
+test('does not submit twice while an edit is being saved', async () => {
+  let finishSave: () => void = () => {};
+  const onSave = jest.fn(() => new Promise<void>(resolve => { finishSave = resolve; }));
+  const screen = await render(<BookEditForm book={baseBook} onSave={onSave} />);
+  let fiber = screen.getByRole('button', { name: '保存修改' }).unstable_fiber;
+  let save: (() => Promise<void>) | undefined;
+  while (fiber && !save) {
+    save = fiber.memoizedProps?.onPress as (() => Promise<void>) | undefined;
+    fiber = fiber.return;
+  }
+  expect(save).toBeDefined();
+  await act(async () => {
+    const firstPress = save!();
+    const secondPress = save!();
+    expect(onSave).toHaveBeenCalledTimes(1);
+    finishSave();
+    await Promise.all([firstPress, secondPress]);
+  });
 });

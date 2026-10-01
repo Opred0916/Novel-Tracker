@@ -17,18 +17,61 @@ test('upgrades a first-version database without replacing its book', async () =>
 
     await migrateDatabase(db);
 
-    expect(await db.getFirstAsync('SELECT id, title, status, created_at, updated_at, author FROM books')).toEqual({
+    expect(await db.getFirstAsync('SELECT id, title, status, created_at, updated_at, author, rating_half_stars FROM books')).toEqual({
       id: 'old-id',
       title: '长夜',
       status: 'reading',
       created_at: '2026-09-29T10:00:00.000Z',
       updated_at: '2026-09-29T11:00:00.000Z',
       author: null,
+      rating_half_stars: null,
     });
     expect(await db.getAllAsync('SELECT * FROM book_protagonists')).toEqual([]);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 2 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 3 });
 
     await migrateDatabase(db);
+    expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM books')).toEqual({ count: 1 });
+  } finally {
+    db.close();
+  }
+});
+
+test('upgrades a second-version database without changing details or protagonists', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await db.execAsync(`
+      CREATE TABLE books (
+        id TEXT PRIMARY KEY NOT NULL,
+        title TEXT NOT NULL,
+        status TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        author TEXT
+      );
+      CREATE TABLE book_protagonists (
+        book_id TEXT NOT NULL,
+        position INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        PRIMARY KEY (book_id, position),
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+      );
+      INSERT INTO books VALUES ('old-id', '长夜', 'finished', '2026-09-29T10:00:00.000Z', '2026-09-29T11:00:00.000Z', '某作者');
+      INSERT INTO book_protagonists VALUES ('old-id', 0, '阿青');
+      INSERT INTO book_protagonists VALUES ('old-id', 1, '王五');
+      PRAGMA user_version = 2;
+    `);
+
+    await migrateDatabase(db);
+    await migrateDatabase(db);
+
+    expect(await db.getFirstAsync('SELECT * FROM books')).toEqual({
+      id: 'old-id', title: '长夜', status: 'finished', author: '某作者', rating_half_stars: null,
+      created_at: '2026-09-29T10:00:00.000Z', updated_at: '2026-09-29T11:00:00.000Z',
+    });
+    expect(await db.getAllAsync('SELECT position, name FROM book_protagonists ORDER BY position')).toEqual([
+      { position: 0, name: '阿青' }, { position: 1, name: '王五' },
+    ]);
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 3 });
     expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM books')).toEqual({ count: 1 });
   } finally {
     db.close();
@@ -41,10 +84,15 @@ test('creates author and protagonist storage for a new database', async () => {
     await migrateDatabase(db);
 
     expect((await db.getAllAsync<{ name: string }>('PRAGMA table_info(books)')).map(column => column.name)).toContain('author');
+    expect((await db.getAllAsync<{ name: string }>('PRAGMA table_info(books)')).map(column => column.name)).toContain('rating_half_stars');
     expect(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'book_protagonists'")).toEqual({
       name: 'book_protagonists',
     });
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 2 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 3 });
+    await expect(db.runAsync(
+      "INSERT INTO books (id, title, status, created_at, updated_at, rating_half_stars) VALUES ('bad', '长夜', 'finished', 'a', 'b', ?)",
+      1.5,
+    )).rejects.toThrow();
   } finally {
     db.close();
   }

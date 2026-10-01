@@ -1,4 +1,12 @@
-import { BOOK_STATUSES, type BookEditInput } from './types';
+import { BOOK_STATUSES, type Book, type BookEditInput, type BookInput } from './types';
+
+function normalizeRatingHalfStars(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 10) {
+    throw new Error('评分必须是 0.5 到 5 星，并以半星递增');
+  }
+  return value;
+}
 
 export function normalizeBookEdit(input: BookEditInput): BookEditInput {
   const title = typeof input.title === 'string' ? input.title.trim() : '';
@@ -9,10 +17,31 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
   }
 
   const author = typeof input.author === 'string' ? input.author.trim() : '';
-  return {
+  const edited: BookEditInput = {
     title,
     author: author || null,
     status: input.status,
     protagonists: input.protagonists.map(name => name.trim()).filter(Boolean),
   };
+  if (input.ratingHalfStars !== undefined) {
+    edited.ratingHalfStars = normalizeRatingHalfStars(input.ratingHalfStars);
+  }
+  return edited;
+}
+
+export function normalizeBookCreate(
+  input: BookInput,
+): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars'> {
+  const normalized = normalizeBookEdit({
+    title: input.title,
+    author: input.author ?? null,
+    status: input.status,
+    protagonists: input.protagonists ?? [],
+    ratingHalfStars: input.ratingHalfStars ?? null,
+  });
+  const ratingHalfStars = normalized.ratingHalfStars ?? null;
+  if (normalized.status !== 'finished' && ratingHalfStars !== null) {
+    throw new Error('只有读完的小说才能新增评分');
+  }
+  return { ...normalized, ratingHalfStars };
 }

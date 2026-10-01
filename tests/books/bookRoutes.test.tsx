@@ -17,7 +17,7 @@ jest.mock('expo-router', () => ({
 jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn() }));
 
 const book: Book = {
-  id: 'book-1', title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青'],
+  id: 'book-1', title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青'], ratingHalfStars: null,
   createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T11:00:00.000Z',
 };
 
@@ -75,7 +75,7 @@ test('edit page preloads details and returns only after a successful update', as
   await fireEvent.changeText(screen.getByPlaceholderText('作者名字'), '新作者');
   await fireEvent.press(screen.getByText('保存修改'));
   await waitFor(() => expect(repo.update).toHaveBeenCalledWith(book.id, {
-    title: '长夜', author: '新作者', status: 'reading', protagonists: ['阿青'],
+    title: '长夜', author: '新作者', status: 'reading', protagonists: ['阿青'], ratingHalfStars: null,
   }));
   await waitFor(() => expect(router.back).toHaveBeenCalledTimes(1));
 });
