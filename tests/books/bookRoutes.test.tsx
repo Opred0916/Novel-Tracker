@@ -1,5 +1,6 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBooks, useReadingHistory, useTags } from '../../src/storage/AppProvider';
 import Bookshelf from '../../src/app/index';
@@ -7,6 +8,7 @@ import NewBook from '../../src/app/book/new';
 import QuickTagsPage from '../../src/app/settings/tags';
 import BookPage from '../../src/app/book/[id]';
 import EditBookPage from '../../src/app/book/[id]/edit';
+import ReadingHistoryPage from '../../src/app/book/[id]/reading/[sessionId]';
 import { BookCard } from '../../src/books/BookCard';
 import type { Book } from '../../src/books/types';
 
@@ -181,4 +183,55 @@ test('a read error can be retried without a false success state', async () => {
   await fireEvent.press(screen.getByText('重试'));
   await waitFor(() => expect(screen.getByText('某作者')).toBeTruthy());
   expect(repo.get).toHaveBeenCalledTimes(2);
+});
+
+test('reading correction route saves edited dates and returns on success', async () => {
+  historyRepo.list.mockResolvedValue([{ id: 'session-1', bookId: book.id, ordinal: 1, startedOn: '2026-09-01', endedOn: '2026-09-10', outcome: 'finished' }]);
+  jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id, sessionId: 'session-1' });
+  historyRepo.updateDates.mockResolvedValue(undefined);
+  const screen = await render(<ReadingHistoryPage />);
+  await waitFor(() => expect(screen.getByDisplayValue('2026-09-01')).toBeTruthy());
+  await fireEvent.changeText(screen.getByLabelText('结束日期'), '2026-09-15');
+  await fireEvent.press(screen.getByText('保存日期'));
+  await waitFor(() => expect(historyRepo.updateDates).toHaveBeenCalledWith(book.id, 'session-1', '2026-09-01', '2026-09-15'));
+  expect(router.back).toHaveBeenCalledTimes(1);
+});
+
+test('old finished book can backfill its first read from the correction route', async () => {
+  repo.get.mockResolvedValue({ ...book, status: 'finished', legacyReadCount: 1 });
+  jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id, sessionId: 'first' });
+  historyRepo.backfillFirst.mockResolvedValue(undefined);
+  const screen = await render(<ReadingHistoryPage />);
+  await waitFor(() => expect(screen.getByText('补记首刷日期')).toBeTruthy());
+  await fireEvent.changeText(screen.getByLabelText('开始日期'), '2026-08-01');
+  await fireEvent.changeText(screen.getByLabelText('结束日期'), '2026-08-10');
+  await fireEvent.press(screen.getByText('保存日期'));
+  await waitFor(() => expect(historyRepo.backfillFirst).toHaveBeenCalledWith(book.id, '2026-08-01', '2026-08-10'));
+  expect(router.back).toHaveBeenCalledTimes(1);
+});
+
+test('deleting a reading record requires confirmation and does not return after a failure', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  historyRepo.list.mockResolvedValue([{ id: 'session-1', bookId: book.id, ordinal: 1, startedOn: '2026-09-01', endedOn: null, outcome: 'reading' }]);
+  jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id, sessionId: 'session-1' });
+  historyRepo.delete.mockRejectedValueOnce(new Error('disk full')).mockResolvedValueOnce(undefined);
+  try {
+    const screen = await render(<ReadingHistoryPage />);
+    await waitFor(() => expect(screen.getByText('删除本次阅读')).toBeTruthy());
+    await fireEvent.press(screen.getByText('删除本次阅读'));
+    expect(historyRepo.delete).not.toHaveBeenCalled();
+    let buttons = alert.mock.calls.at(-1)?.[2];
+    await act(async () => { buttons?.[0]?.onPress?.(); });
+    expect(historyRepo.delete).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByText('删除本次阅读'));
+    buttons = alert.mock.calls.at(-1)?.[2];
+    await act(async () => { buttons?.[1]?.onPress?.(); });
+    await waitFor(() => expect(screen.getByText('删除失败，请重试')).toBeTruthy());
+    expect(router.back).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByText('删除本次阅读'));
+    buttons = alert.mock.calls.at(-1)?.[2];
+    await act(async () => { buttons?.[1]?.onPress?.(); });
+    await waitFor(() => expect(historyRepo.delete).toHaveBeenCalledTimes(2));
+    expect(router.back).toHaveBeenCalledTimes(1);
+  } finally { alert.mockRestore(); }
 });

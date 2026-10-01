@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { BookDetail } from '../../src/books/BookDetail';
 import type { Book } from '../../src/books/types';
 
@@ -35,4 +35,18 @@ test('explains when optional details have not been entered', async () => {
 test('shows the overall rating even when the book is now being reread', async () => {
   const screen = await render(<BookDetail book={{ ...baseBook, status: 'reading', ratingHalfStars: 9 }} />);
   expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
+});
+
+test('shows all reading attempts and an editable undated first read', async () => {
+  const onEditReading = jest.fn();
+  const screen = await render(<BookDetail book={{ ...baseBook, status: 'dropped', legacyReadCount: 1 }} sessions={[
+    { id: 'second', bookId: baseBook.id, ordinal: 2, startedOn: '2026-09-01', endedOn: '2026-09-20', outcome: 'dropped' },
+  ]} onEditReading={onEditReading} />);
+  expect(screen.getByText('阅读历史')).toBeTruthy();
+  expect(screen.getByText(/第 1 次阅读.*日期未记录/)).toBeTruthy();
+  expect(screen.getByText(/第 2 次阅读.*弃读/)).toBeTruthy();
+  await fireEvent.press(screen.getByText('补记首刷日期'));
+  expect(onEditReading).toHaveBeenCalledWith('first');
+  await fireEvent.press(screen.getByText('编辑第 2 次阅读'));
+  expect(onEditReading).toHaveBeenCalledWith('second');
 });

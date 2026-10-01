@@ -2,15 +2,17 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookDetail } from '../../books/BookDetail';
-import type { Book } from '../../books/types';
-import { useBooks } from '../../storage/AppProvider';
+import type { Book, ReadingSession } from '../../books/types';
+import { useBooks, useReadingHistory } from '../../storage/AppProvider';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
 export default function BookPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const repo = useBooks();
+  const historyRepo = useReadingHistory();
   const [book, setBook] = useState<Book | null>(null);
+  const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [retry, setRetry] = useState(0);
 
@@ -21,15 +23,16 @@ export default function BookPage() {
       setLoadState('missing');
       return () => { active = false; };
     }
-    repo.get(id).then(result => {
+    Promise.all([repo.get(id), historyRepo.list(id)]).then(([result, records]) => {
       if (!active) return;
       setBook(result);
+      setSessions(records);
       setLoadState(result ? 'ready' : 'missing');
     }).catch(() => { if (active) setLoadState('error'); });
     return () => { active = false; };
   // `retry` intentionally invalidates this focus callback to trigger a fresh read.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, repo, retry]));
+  }, [id, repo, historyRepo, retry]));
 
   if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator /></View>;
   if (loadState === 'missing') return <View style={styles.center}>
@@ -44,7 +47,9 @@ export default function BookPage() {
   if (!book) return null;
 
   return <ScrollView testID="book-detail-scroll" style={styles.page} contentContainerStyle={styles.content}>
-    <BookDetail book={book} />
+    <BookDetail book={book} sessions={sessions} onEditReading={sessionId => router.push({
+      pathname: '/book/[id]/reading/[sessionId]', params: { id, sessionId },
+    })} />
     <Pressable accessibilityRole="button" style={styles.edit} onPress={() => router.push({ pathname: '/book/[id]/edit', params: { id } })}>
       <Text style={styles.editText}>编辑资料</Text>
     </Pressable>

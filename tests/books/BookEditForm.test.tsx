@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import { BookEditForm } from '../../src/books/BookEditForm';
 import type { Book } from '../../src/books/types';
 import { todayLocalDate } from '../../src/books/readingDates';
@@ -128,6 +129,26 @@ test('finishes an active record with its original start date and editable end da
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
     readingDates: { startedOn: '2026-09-01', endedOn: '2026-09-15' },
   })));
+});
+
+test('asks before cancelling an active reading and only saves after confirmation', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  try {
+    const screen = await render(<BookEditForm book={{ ...baseBook, status: 'reading' }} onSave={onSave} sessions={[
+      { id: 'first', bookId: baseBook.id, ordinal: 1, startedOn: '2026-09-01', endedOn: null, outcome: 'reading' },
+    ]} />);
+    await fireEvent.press(screen.getByText('想读'));
+    await fireEvent.press(screen.getByText('保存修改'));
+    expect(onSave).not.toHaveBeenCalled();
+    expect(alert).toHaveBeenCalled();
+    const buttons = alert.mock.calls[0][2];
+    await act(async () => { buttons?.[0]?.onPress?.(); });
+    expect(onSave).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByText('保存修改'));
+    await act(async () => { buttons?.[1]?.onPress?.(); });
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+  } finally { alert.mockRestore(); }
 });
 
 test('keeps the form open and shows an error for a blank title', async () => {

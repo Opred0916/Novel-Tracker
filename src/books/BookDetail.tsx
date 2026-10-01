@@ -1,10 +1,15 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BOOK_STATUS_LABELS } from './status';
-import type { Book } from './types';
+import type { Book, ReadingSession } from './types';
 import { BOOK_TYPE_LABELS } from './TypePicker';
 
-export function BookDetail({ book }: { book: Book }) {
+export function BookDetail({ book, sessions = [], onEditReading }: {
+  book: Book;
+  sessions?: ReadingSession[];
+  onEditReading?: (sessionId: string) => void;
+}) {
+  const ordered = [...sessions].sort((a, b) => a.ordinal - b.ordinal);
   return <View style={styles.container}>
     <Text style={styles.title}>{book.title}</Text>
     <Text style={styles.status}>{BOOK_STATUS_LABELS[book.status]}</Text>
@@ -23,6 +28,23 @@ export function BookDetail({ book }: { book: Book }) {
       <Text style={styles.value}>{book.ratingHalfStars === null ? '未评分' : `${book.ratingHalfStars / 2} / 5 星`}</Text>
     </View>
     <View style={styles.section}>
+      <Text style={styles.label}>阅读历史</Text>
+      {book.legacyReadCount === 1 ? <View style={styles.historyItem}>
+        <Text style={styles.value}>第 1 次阅读 · 读完 · 日期未记录</Text>
+        {onEditReading ? <Pressable accessibilityRole="button" onPress={() => onEditReading('first')}>
+          <Text style={styles.link}>补记首刷日期</Text>
+        </Pressable> : null}
+      </View> : null}
+      {ordered.map(session => <View key={session.id} style={styles.historyItem}>
+        <Text style={styles.value}>第 {session.ordinal} 次阅读 · {BOOK_STATUS_LABELS[session.outcome]}</Text>
+        <Text style={styles.date}>{session.startedOn} — {session.endedOn ?? '在读中'}</Text>
+        {onEditReading ? <Pressable accessibilityRole="button" onPress={() => onEditReading(session.id)}>
+          <Text style={styles.link}>编辑第 {session.ordinal} 次阅读</Text>
+        </Pressable> : null}
+      </View>)}
+      {!book.legacyReadCount && ordered.length === 0 ? <Text style={styles.value}>暂无阅读记录</Text> : null}
+    </View>
+    <View style={styles.section}>
       <Text style={styles.label}>主角</Text>
       {book.protagonists.length
         ? book.protagonists.map((name, index) => <Text key={`${index}-${name}`} style={styles.value}>{name}</Text>)
@@ -38,4 +60,7 @@ const styles = StyleSheet.create({
   section: { backgroundColor: '#fff', padding: 18, borderRadius: 14, gap: 8 },
   label: { fontSize: 14, fontWeight: '600', color: '#766f68' },
   value: { fontSize: 17, color: '#302a25' },
+  historyItem: { gap: 5, paddingVertical: 6 },
+  date: { fontSize: 14, color: '#766f68' },
+  link: { fontSize: 14, color: '#593f72', fontWeight: '600', paddingVertical: 4 },
 });
