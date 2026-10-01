@@ -8,6 +8,13 @@ const baseBook: Book = {
   createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
 };
 
+test('shows selected work type and custom tags', async () => {
+  const book: Book = { ...baseBook, bookType: 'other', tags: [{ id: 'custom', name: '赛博朋克', isSystem: false }] };
+  const screen = await render(<BookDetail book={book} />);
+  expect(screen.getByText('其他')).toBeTruthy();
+  expect(screen.getByText('赛博朋克')).toBeTruthy();
+});
+
 test('shows author, actual status and every protagonist', async () => {
   const book: Book = { ...baseBook, author: '某作者', status: 'reading', protagonists: ['阿青', '王五'] };
   const screen = await render(<BookDetail book={book} />);

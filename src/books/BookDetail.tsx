@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { BOOK_STATUS_LABELS } from './status';
 import type { Book } from './types';
+import { BOOK_TYPE_LABELS } from './TypePicker';
 
 export function BookDetail({ book }: { book: Book }) {
   return <View style={styles.container}>
@@ -10,6 +11,12 @@ export function BookDetail({ book }: { book: Book }) {
     <View style={styles.section}>
       <Text style={styles.label}>作者</Text>
       <Text style={styles.value}>{book.author ?? '未填写作者'}</Text>
+    </View>
+    <View style={styles.section}>
+      <Text style={styles.label}>作品类型</Text>
+      <Text style={styles.value}>{book.bookType ? BOOK_TYPE_LABELS[book.bookType] : '未分类'}</Text>
+      <Text style={styles.label}>标签</Text>
+      <Text style={styles.value}>{book.tags.length ? book.tags.map(tag => tag.name).join(' · ') : '暂无标签'}</Text>
     </View>
     <View style={styles.section}>
       <Text style={styles.label}>总体评分</Text>

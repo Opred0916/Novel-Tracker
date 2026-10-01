@@ -2,15 +2,17 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BookEditForm } from '../../../books/BookEditForm';
-import type { Book } from '../../../books/types';
-import { useBooks } from '../../../storage/AppProvider';
+import type { Book, Tag } from '../../../books/types';
+import { useBooks, useTags } from '../../../storage/AppProvider';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
 export default function EditBookPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const repo = useBooks();
+  const tagRepo = useTags();
   const [book, setBook] = useState<Book | null>(null);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [retry, setRetry] = useState(0);
 
@@ -21,15 +23,16 @@ export default function EditBookPage() {
       setLoadState('missing');
       return () => { active = false; };
     }
-    repo.get(id).then(result => {
+    Promise.all([repo.get(id), tagRepo.list()]).then(([result, tags]) => {
       if (!active) return;
       setBook(result);
+      setAllTags(tags);
       setLoadState(result ? 'ready' : 'missing');
     }).catch(() => { if (active) setLoadState('error'); });
     return () => { active = false; };
   // `retry` intentionally invalidates this focus callback to trigger a fresh read.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, repo, retry]));
+  }, [id, repo, tagRepo, retry]));
 
   if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator /></View>;
   if (loadState === 'missing') return <View style={styles.center}>
@@ -43,7 +46,11 @@ export default function EditBookPage() {
   </View>;
   if (!book) return null;
 
-  return <BookEditForm book={book} onSave={async input => {
+  return <BookEditForm book={book} allTags={allTags} onCreateTag={async name => {
+    const tag = await tagRepo.create(name);
+    setAllTags(current => [...current, tag]);
+    return tag;
+  }} onSave={async input => {
     await repo.update(id, input);
     router.back();
   }} />;

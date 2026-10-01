@@ -2,15 +2,22 @@ import React, { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { BOOK_STATUS_LABELS } from './status';
 import { RatingField } from './RatingField';
-import { BOOK_STATUSES, type Book, type BookEditInput, type BookStatus } from './types';
+import { TagPicker } from './TagPicker';
+import { TypePicker } from './TypePicker';
+import { BOOK_STATUSES, type Book, type BookEditInput, type BookStatus, type BookType, type Tag } from './types';
 import { normalizeBookEdit } from './validation';
 
-export function BookEditForm({ book, onSave }: { book: Book; onSave: (input: BookEditInput) => Promise<void> }) {
+export function BookEditForm({ book, onSave, allTags = [], onCreateTag }: {
+  book: Book; onSave: (input: BookEditInput) => Promise<void>;
+  allTags?: Tag[]; onCreateTag?: (name: string) => Promise<Tag>;
+}) {
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author ?? '');
   const [status, setStatus] = useState<BookStatus>(book.status);
   const [ratingHalfStars, setRatingHalfStars] = useState(book.ratingHalfStars);
   const [ratingCleared, setRatingCleared] = useState(false);
+  const [bookType, setBookType] = useState<BookType | null>(book.bookType);
+  const [tagIds, setTagIds] = useState<string[]>(book.tags.map(tag => tag.id));
   const [protagonists, setProtagonists] = useState<string[]>([
     ...book.protagonists,
     ...Array(Math.max(0, 2 - book.protagonists.length)).fill(''),
@@ -30,7 +37,7 @@ export function BookEditForm({ book, onSave }: { book: Book; onSave: (input: Boo
     if (savingRef.current) return;
     let input: BookEditInput;
     try {
-      input = normalizeBookEdit({ title, author, status, protagonists, ratingHalfStars: effectiveRatingHalfStars });
+      input = normalizeBookEdit({ title, author, status, protagonists, ratingHalfStars: effectiveRatingHalfStars, bookType, tagIds });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '输入有误');
       return;
@@ -61,6 +68,10 @@ export function BookEditForm({ book, onSave }: { book: Book; onSave: (input: Boo
         <Text style={[styles.statusText, status === choice && styles.statusSelectedText]}>{BOOK_STATUS_LABELS[choice]}</Text>
       </Pressable>)}
     </View>
+    <Text style={styles.label}>作品类型</Text>
+    <TypePicker value={bookType} onChange={setBookType} />
+    <Text style={styles.label}>标签</Text>
+    <TagPicker tags={allTags} selectedIds={tagIds} onChange={setTagIds} searchable onCreateTag={onCreateTag} />
     {(status === 'finished' || book.ratingHalfStars !== null) ? <RatingField
       value={effectiveRatingHalfStars}
       allowNewValue={status === 'finished'}

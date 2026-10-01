@@ -1,16 +1,20 @@
 import React, { useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RatingField } from './RatingField';
+import { TagPicker } from './TagPicker';
+import { TypePicker } from './TypePicker';
 import { BOOK_STATUS_LABELS } from './status';
-import { BOOK_STATUSES, type BookInput, type BookStatus } from './types';
+import { BOOK_STATUSES, type BookInput, type BookStatus, type BookType, type Tag } from './types';
 import { normalizeBookCreate } from './validation';
 
-export function AddBookForm({ onSave }: { onSave: (input: BookInput) => Promise<void> }) {
+export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookInput) => Promise<void>; quickTags?: Tag[] }) {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [status, setStatus] = useState<BookStatus>('want_to_read');
   const [protagonists, setProtagonists] = useState(['', '']);
   const [ratingHalfStars, setRatingHalfStars] = useState<number | null>(null);
+  const [bookType, setBookType] = useState<BookType | null>(null);
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -24,7 +28,7 @@ export function AddBookForm({ onSave }: { onSave: (input: BookInput) => Promise<
     let input: BookInput;
     try {
       input = normalizeBookCreate({
-        title, author, status, protagonists,
+        title, author, status, protagonists, bookType, tagIds,
         ratingHalfStars: status === 'finished' ? ratingHalfStars : null,
       });
     } catch (cause) {
@@ -53,6 +57,10 @@ export function AddBookForm({ onSave }: { onSave: (input: BookInput) => Promise<
         <Text style={[styles.statusText, status === choice && styles.statusSelectedText]}>{BOOK_STATUS_LABELS[choice]}</Text>
       </Pressable>)}
     </View>
+    <Text style={styles.label}>作品类型</Text>
+    <TypePicker value={bookType} onChange={setBookType} />
+    <Text style={styles.label}>快捷标签</Text>
+    <TagPicker tags={quickTags} selectedIds={tagIds} onChange={setTagIds} />
     <Text style={styles.label}>主角名字</Text>
     {protagonists.map((name, index) => <View key={index} style={styles.nameRow}>
       <Text style={styles.nameLabel}>主角 {index + 1}</Text>

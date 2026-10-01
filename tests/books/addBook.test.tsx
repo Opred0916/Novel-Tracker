@@ -2,6 +2,23 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { AddBookForm } from '../../src/books/AddBookForm';
 
+test('adds work type and quick tags to a new novel', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const quickTags = [
+    { id: 'ancient', name: '古代', isSystem: true },
+    { id: 'suspense', name: '悬疑', isSystem: true },
+  ];
+  const screen = await render(<AddBookForm onSave={onSave} quickTags={quickTags} />);
+  await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '长夜');
+  await fireEvent.press(screen.getByText('耽美'));
+  await fireEvent.press(screen.getByText('古代'));
+  await fireEvent.press(screen.getByText('悬疑'));
+  await fireEvent.press(screen.getByText('保存小说'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    bookType: 'romance_male_male', tagIds: ['ancient', 'suspense'],
+  })));
+});
+
 test('adds a novel with only its title', async () => {
   const onSave = jest.fn().mockResolvedValue(undefined);
   const screen = await render(<AddBookForm onSave={onSave} />);

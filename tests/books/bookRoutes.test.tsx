@@ -1,8 +1,9 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useBooks } from '../../src/storage/AppProvider';
+import { useBooks, useTags } from '../../src/storage/AppProvider';
 import Bookshelf from '../../src/app/index';
+import NewBook from '../../src/app/book/new';
 import BookPage from '../../src/app/book/[id]';
 import EditBookPage from '../../src/app/book/[id]/edit';
 import { BookCard } from '../../src/books/BookCard';
@@ -14,7 +15,7 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn() }));
+jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useTags: jest.fn() }));
 
 const book: Book = {
   id: 'book-1', title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青'], ratingHalfStars: null, bookType: null, tags: [],
@@ -27,14 +28,28 @@ const repo = {
   get: jest.fn(),
   update: jest.fn(),
 };
+const tagRepo = { list: jest.fn(), listQuick: jest.fn(), create: jest.fn(), setQuick: jest.fn() };
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useBooks).mockReturnValue(repo as unknown as ReturnType<typeof useBooks>);
+  jest.mocked(useTags).mockReturnValue(tagRepo as unknown as ReturnType<typeof useTags>);
   jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id });
   repo.get.mockResolvedValue(book);
   repo.list.mockResolvedValue([book]);
   repo.update.mockResolvedValue(book);
+  tagRepo.list.mockResolvedValue([{ id: 'ancient', name: '古代', isSystem: true }]);
+  tagRepo.listQuick.mockResolvedValue([{ id: 'ancient', name: '古代', isSystem: true }]);
+});
+
+test('new book route loads quick tags and saves the selected tag', async () => {
+  repo.create.mockResolvedValue({ ...book, tags: [{ id: 'ancient', name: '古代', isSystem: true }] });
+  const screen = await render(<NewBook />);
+  await waitFor(() => expect(screen.getByText('古代')).toBeTruthy());
+  await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '长夜');
+  await fireEvent.press(screen.getByText('古代'));
+  await fireEvent.press(screen.getByText('保存小说'));
+  await waitFor(() => expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ tagIds: ['ancient'] })));
 });
 
 test('book card shows the real status and responds to a tap', async () => {
@@ -75,7 +90,7 @@ test('edit page preloads details and returns only after a successful update', as
   await fireEvent.changeText(screen.getByPlaceholderText('作者名字'), '新作者');
   await fireEvent.press(screen.getByText('保存修改'));
   await waitFor(() => expect(repo.update).toHaveBeenCalledWith(book.id, {
-    title: '长夜', author: '新作者', status: 'reading', protagonists: ['阿青'], ratingHalfStars: null,
+    title: '长夜', author: '新作者', status: 'reading', protagonists: ['阿青'], ratingHalfStars: null, bookType: null, tagIds: [],
   }));
   await waitFor(() => expect(router.back).toHaveBeenCalledTimes(1));
 });

@@ -1,0 +1,69 @@
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import type { Tag } from './types';
+
+type Props = {
+  tags: Tag[];
+  selectedIds: string[];
+  onChange: (ids: string[]) => void;
+  searchable?: boolean;
+  onCreateTag?: (name: string) => Promise<Tag>;
+};
+
+export function TagPicker({ tags, selectedIds, onChange, searchable = false, onCreateTag }: Props) {
+  const [query, setQuery] = useState('');
+  const [newName, setNewName] = useState('');
+  const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
+  const visible = tags.filter(tag => tag.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+
+  async function createTag() {
+    const name = newName.trim();
+    if (!name) { setError('请输入标签名称'); return; }
+    if (!onCreateTag || creating) return;
+    setCreating(true);
+    setError('');
+    try {
+      const tag = await onCreateTag(name);
+      onChange([...selectedIds, tag.id]);
+      setNewName('');
+      setQuery('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '添加标签失败');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return <View style={styles.container}>
+    {searchable ? <TextInput placeholder="搜索标签" value={query} onChangeText={setQuery} style={styles.input} /> : null}
+    <View style={styles.group}>
+      {visible.map(tag => {
+        const selected = selectedIds.includes(tag.id);
+        return <Pressable key={tag.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}
+          onPress={() => onChange(selected ? selectedIds.filter(id => id !== tag.id) : [...selectedIds, tag.id])}
+          style={[styles.option, selected && styles.selected]}>
+          <Text style={[styles.text, selected && styles.selectedText]}>{tag.name}</Text>
+        </Pressable>;
+      })}
+      {visible.length === 0 ? <Text style={styles.empty}>没有匹配的标签</Text> : null}
+    </View>
+    {onCreateTag ? <View style={styles.createRow}>
+      <TextInput placeholder="新标签名称" value={newName} onChangeText={setNewName} style={[styles.input, styles.createInput]} />
+      <Pressable accessibilityRole="button" disabled={creating} onPress={createTag} style={styles.add}>
+        <Text style={styles.addText}>添加标签</Text>
+      </Pressable>
+    </View> : null}
+    {error ? <Text style={styles.error}>{error}</Text> : null}
+  </View>;
+}
+
+const styles = StyleSheet.create({
+  container: { gap: 10 }, group: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  option: { borderWidth: 1, borderColor: '#d6cec4', backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
+  selected: { backgroundColor: '#593f72', borderColor: '#593f72' }, text: { color: '#302a25' }, selectedText: { color: '#fff', fontWeight: '700' },
+  input: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, padding: 12, fontSize: 16, backgroundColor: '#fff' },
+  createRow: { flexDirection: 'row', gap: 8 }, createInput: { flex: 1 },
+  add: { backgroundColor: '#593f72', borderRadius: 12, justifyContent: 'center', paddingHorizontal: 12 }, addText: { color: '#fff', fontWeight: '600' },
+  empty: { color: '#766f68' }, error: { color: '#b52626' },
+});

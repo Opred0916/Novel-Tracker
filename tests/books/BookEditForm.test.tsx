@@ -8,6 +8,22 @@ const baseBook: Book = {
   createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
 };
 
+test('edits a work type and tags from the full library', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const tags = [
+    { id: 'ancient', name: '古代', isSystem: true },
+    { id: 'suspense', name: '悬疑', isSystem: true },
+  ];
+  const screen = await render(<BookEditForm book={{ ...baseBook, tags: [tags[0]] }} onSave={onSave} allTags={tags} />);
+  await fireEvent.press(screen.getByText('GL'));
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索标签'), '悬疑');
+  await fireEvent.press(screen.getByText('悬疑'));
+  await fireEvent.press(screen.getByText('保存修改'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    bookType: 'romance_female_female', tagIds: ['ancient', 'suspense'],
+  })));
+});
+
 test('starts with two blank protagonist inputs when the book has none', async () => {
   const screen = await render(<BookEditForm book={baseBook} onSave={async () => {}} />);
   expect(screen.getAllByPlaceholderText('主角名字')).toHaveLength(2);
@@ -40,7 +56,7 @@ test('adds another protagonist and sends trimmed, ordered names with the chosen 
   await fireEvent.press(screen.getByText('保存修改'));
 
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
-    title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青', '王五'], ratingHalfStars: null,
+    title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青', '王五'], ratingHalfStars: null, bookType: null, tagIds: [],
   }));
 });
 
