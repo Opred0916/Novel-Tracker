@@ -55,6 +55,24 @@ test('hides a draft rating outside finished status and restores it when finished
   expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
 });
 
+test('submits all details after switching finished to reading and back', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const screen = await render(<AddBookForm onSave={onSave} />);
+  await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), ' 长夜 ');
+  await fireEvent.changeText(screen.getByPlaceholderText('作者名字'), ' 某作者 ');
+  await fireEvent.changeText(screen.getAllByPlaceholderText('主角名字')[0], ' 阿青 ');
+  await fireEvent.changeText(screen.getAllByPlaceholderText('主角名字')[1], ' 李四 ');
+  await fireEvent.press(screen.getByText('读完'));
+  await fireEvent.press(screen.getByLabelText('4.5 星'));
+  await fireEvent.press(screen.getByText('在读'));
+  await fireEvent.press(screen.getByText('读完'));
+  await fireEvent.press(screen.getByText('保存小说'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith({
+    title: '长夜', author: '某作者', status: 'finished',
+    protagonists: ['阿青', '李四'], ratingHalfStars: 9,
+  }));
+});
+
 test('rejects a blank title without submitting', async () => {
   const onSave = jest.fn().mockResolvedValue(undefined);
   const screen = await render(<AddBookForm onSave={onSave} />);
