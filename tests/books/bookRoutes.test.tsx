@@ -134,6 +134,13 @@ test('bookshelf filters by search and clears the filter', async () => {
   await waitFor(() => expect(screen.getByText('归途')).toBeTruthy());
 });
 
+test('bookshelf opens backup and restore settings', async () => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('备份与恢复')).toBeTruthy());
+  await fireEvent.press(screen.getByText('备份与恢复'));
+  expect(router.push).toHaveBeenCalledWith('/settings/backup');
+});
+
 test('bookshelf submits status, type, and every selected tag then clears them together', async () => {
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
