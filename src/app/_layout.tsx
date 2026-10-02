@@ -9,5 +9,6 @@ export default function RootLayout() {
     <Stack.Screen name="book/[id]/edit" options={{ title: '编辑小说' }} />
     <Stack.Screen name="book/[id]/reading/[sessionId]" options={{ title: '阅读日期' }} />
     <Stack.Screen name="settings/tags" options={{ title: '快捷标签设置' }} />
+    <Stack.Screen name="settings/backup" options={{ title: '备份与恢复' }} />
   </Stack></AppProvider>;
 }

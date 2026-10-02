@@ -12,10 +12,11 @@ function snapshot(): BackupSnapshot {
 
 class FakeRepository {
   replaced = false;
+  replacedManifest: ReturnType<typeof makeValidManifest> | null = null;
   failReplace = false;
   async getOverview() { return makeValidManifest().counts; }
   async createSnapshot() { return snapshot(); }
-  async replaceAll() { if (this.failReplace) throw new Error('db failed'); this.replaced = true; return ['old.jpg']; }
+  async replaceAll(manifest: ReturnType<typeof makeValidManifest>) { if (this.failReplace) throw new Error('db failed'); this.replaced = true; this.replacedManifest = manifest; return ['old.jpg']; }
 }
 
 class FakeArchive {
@@ -82,6 +83,17 @@ describe('BackupService', () => {
     expect(inspection.counts.books).toBe(1);
     await service.restore(inspection.token);
     expect(repository.replaced).toBe(true);
+  });
+
+  test('mutating the preview object cannot change the validated data used for restore', async () => {
+    const { service, repository } = makeService();
+    const inspection = await service.inspectBackup('picked.noveltracker');
+    inspection.manifest.books[0].title = '被篡改';
+    inspection.counts.books = 999;
+
+    await service.restore(inspection.token);
+
+    expect(repository.replacedManifest?.books[0].title).toBe('长夜');
   });
 
   test('cancelling inspection removes staging without replacing data', async () => {
