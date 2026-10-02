@@ -21,9 +21,9 @@ export function useBookSearch(repository: SearchRepository, filters: BookSearchF
   useEffect(() => {
     let active = true;
     const currentRequest = ++requestId.current;
-    setLoading(true);
-    setError('');
     const timer = setTimeout(() => {
+      setLoading(true);
+      setError('');
       repository.search(stableFilters).then(next => {
         if (active && currentRequest === requestId.current) setResults(next);
       }).catch(() => {
