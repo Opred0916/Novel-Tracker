@@ -4,6 +4,17 @@ import { Platform } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { ReadingDateFields } from '../../src/books/ReadingDateFields';
 
+test('requests a Chinese year-month-day layout for the iPhone date wheel', async () => {
+  Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
+  const screen = await render(<ReadingDateFields startedOn="2026-10-02" endedOn="2026-10-02" showEnd
+    onStartChange={jest.fn()} onEndChange={jest.fn()} />);
+  await fireEvent.press(screen.getByLabelText('开始日期'));
+  const picker = screen.getByTestId('reading-date-picker');
+  expect(picker.props.mode).toBe('date');
+  expect(picker.props.display).toBe('spinner');
+  expect(picker.props.locale).toBe('zh-CN');
+});
+
 test('keeps the date when the iPhone wheel is cancelled and commits only on completion', async () => {
   Object.defineProperty(Platform, 'OS', { value: 'ios', configurable: true });
   const onStartChange = jest.fn();

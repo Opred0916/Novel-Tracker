@@ -77,7 +77,7 @@ export function ReadingDateFields({ startedOn, endedOn, showEnd, onStartChange, 
             <Text style={styles.sheetTitle}>选择{activeField === 'start' ? '开始' : '结束'}日期</Text>
             <Pressable accessibilityRole="button" onPress={finish}><Text style={styles.action}>完成</Text></Pressable>
           </View>
-          {activeField ? <DateTimePicker value={draftDate} mode="date" display="spinner" themeVariant="light"
+          {activeField ? <DateTimePicker value={draftDate} mode="date" display="spinner" locale="zh-CN" themeVariant="light"
             onValueChange={(_event, selected) => setDraftDate(selected)} /> : null}
         </View>
       </View>
