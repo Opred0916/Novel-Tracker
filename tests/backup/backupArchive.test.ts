@@ -15,7 +15,7 @@ const concat = (chunks: Uint8Array[]): Uint8Array => {
 
 class MemoryFilePort implements BackupFilePort {
   readonly files = new Map<string, Uint8Array>();
-  diskSpace = 1_000_000;
+  diskSpace = 10_000_000;
 
   put(uri: string, data: Uint8Array): void { this.files.set(uri, data.slice()); }
 
@@ -158,5 +158,17 @@ describe('BackupArchive', () => {
       { name: 'images/image-1.jpg', data: new Uint8Array([1, 2, 3, 4]), compressed: false },
     ]));
     await expectCode(new BackupArchive(port).inspect('memory://bad.zip', 'memory://restore'), 'invalid_file');
+  });
+
+  test('reserves room for both extracted images and the replacement image generation', async () => {
+    const port = new MemoryFilePort();
+    const manifestBytes = strToU8(JSON.stringify(makeValidManifest()));
+    port.diskSpace = manifestBytes.length + 7;
+    port.put('memory://backup.zip', await makeZip([
+      { name: 'manifest.json', data: manifestBytes },
+      { name: 'images/image-1.jpg', data: new Uint8Array([1, 2, 3, 4]), compressed: false },
+    ]));
+
+    await expectCode(new BackupArchive(port).inspect('memory://backup.zip', 'memory://restore'), 'storage_insufficient');
   });
 });

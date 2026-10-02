@@ -16,6 +16,10 @@ export type BackupInspection = {
 
 type InspectionState = { publicValue: BackupInspection; archive: ValidatedBackupArchive };
 
+function cloneManifest(manifest: BackupManifestV1): BackupManifestV1 {
+  return JSON.parse(JSON.stringify(manifest)) as BackupManifestV1;
+}
+
 export class BackupService {
   private busy = false;
   private readonly inspections = new Map<string, InspectionState>();
@@ -70,10 +74,14 @@ export class BackupService {
         onProgress?.({ stage: 'validating' });
         const archive = await this.archive.inspect(sourceUri, `${operation.directoryUri}/extracted`, progress => onProgress?.(this.archiveProgress(progress)));
         const token = this.idFactory();
-        const publicValue: BackupInspection = {
-          token, sourceUri, manifest: archive.manifest, counts: archive.manifest.counts, stagingOperationId: operationId,
+        const protectedArchive: ValidatedBackupArchive = {
+          manifest: cloneManifest(archive.manifest),
+          imagePaths: new Map(archive.imagePaths),
         };
-        this.inspections.set(token, { publicValue, archive });
+        const publicValue: BackupInspection = {
+          token, sourceUri, manifest: cloneManifest(archive.manifest), counts: { ...archive.manifest.counts }, stagingOperationId: operationId,
+        };
+        this.inspections.set(token, { publicValue, archive: protectedArchive });
         return publicValue;
       } catch (error) {
         await this.storage.removeOperation(operationId).catch(() => undefined);
@@ -93,7 +101,7 @@ export class BackupService {
         onProgress?.({ stage: 'staging' });
         const restoredPaths = await this.storage.copyValidatedImages(state.archive, generation);
         onProgress?.({ stage: 'restoring' });
-        const oldPaths = await this.repository.replaceAll(state.publicValue.manifest, restoredPaths);
+        const oldPaths = await this.repository.replaceAll(state.archive.manifest, restoredPaths);
         committed = true;
         this.inspections.delete(token);
         onProgress?.({ stage: 'cleaning' });

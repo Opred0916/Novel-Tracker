@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { pickBackupFile, shareBackup } from '../../backup/backupPlatform';
 import type { BackupInspection, BackupProgress } from '../../backup/backupService';
@@ -35,14 +35,21 @@ export default function BackupPage() {
     try { setOverview(await service.getOverview()); } catch { setError('读取备份信息失败，请重试。'); }
   }
 
-  useEffect(() => {
-    void refresh();
-  }, [service]);
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    service.getOverview().then(value => {
+      if (active) setOverview(value);
+    }).catch(() => {
+      if (active) setError('读取备份信息失败，请重试。');
+    });
+    return () => { active = false; };
+  }, [service]));
 
+  const inspectionToken = inspection?.token;
   useEffect(() => {
-    if (!inspection) return undefined;
-    return () => { void service.cancelInspection(inspection.token); };
-  }, [inspection?.token, service]);
+    if (!inspectionToken) return undefined;
+    return () => { void service.cancelInspection(inspectionToken); };
+  }, [inspectionToken, service]);
 
   const reportProgress = (next: BackupProgress) => setProgress(next);
 

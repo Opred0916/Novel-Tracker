@@ -209,6 +209,9 @@ export class BackupArchive {
       try { parsed = JSON.parse(strFromU8(concat(manifestChunks))); } catch { throw new BackupValidationError('invalid_manifest', 'manifest.json 不是有效 JSON'); }
       const manifest = validateBackupManifest(parsed);
       if (entryNames.size !== manifest.images.length + 1) throw new BackupValidationError('invalid_file', '归档包含未声明文件或缺少图片');
+      const replacementImageBytes = manifest.images.reduce((sum, image) => sum + image.byteLength, 0);
+      const requiredSpace = actualTotal + replacementImageBytes + 1024 * 1024;
+      if (requiredSpace > freeSpace) throw new BackupValidationError('storage_insufficient', '设备空间不足，无法安全暂存并恢复图片');
       const imagePaths = new Map<string, string>();
       for (const image of manifest.images) {
         const uri = extracted.get(image.archivePath);

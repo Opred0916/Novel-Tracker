@@ -8,7 +8,10 @@ import { pickBackupFile, shareBackup } from '../../src/backup/backupPlatform';
 import { useBackupService } from '../../src/storage/AppProvider';
 import { makeValidManifest } from './backupFixtures';
 
-jest.mock('expo-router', () => ({ router: { back: jest.fn(), replace: jest.fn(), push: jest.fn() } }));
+jest.mock('expo-router', () => ({
+  router: { back: jest.fn(), replace: jest.fn(), push: jest.fn() },
+  useFocusEffect: (callback: () => void | (() => void)) => require('react').useEffect(callback, [callback]),
+}));
 jest.mock('../../src/backup/backupPlatform', () => ({ pickBackupFile: jest.fn(), shareBackup: jest.fn() }));
 jest.mock('../../src/storage/AppProvider', () => ({ useBackupService: jest.fn() }));
 
