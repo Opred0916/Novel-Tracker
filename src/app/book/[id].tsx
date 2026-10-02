@@ -2,8 +2,10 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookDetail } from '../../books/BookDetail';
-import type { Book, ReadingSession } from '../../books/types';
-import { useBooks, useReadingHistory } from '../../storage/AppProvider';
+import type { Book, ImageAsset, ReadingSession } from '../../books/types';
+import { useBooks, useNotes, useReadingHistory } from '../../storage/AppProvider';
+import { NotesSection } from '../../books/NotesSection';
+import { HighlightsSection } from '../../books/HighlightsSection';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -11,8 +13,10 @@ export default function BookPage() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const repo = useBooks();
   const historyRepo = useReadingHistory();
+  const notesRepo = useNotes();
   const [book, setBook] = useState<Book | null>(null);
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
+  const [highlights, setHighlights] = useState<ImageAsset[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [retry, setRetry] = useState(0);
 
@@ -23,16 +27,17 @@ export default function BookPage() {
       setLoadState('missing');
       return () => { active = false; };
     }
-    Promise.all([repo.get(id), historyRepo.list(id)]).then(([result, records]) => {
+    Promise.all([repo.get(id), historyRepo.list(id), notesRepo.listHighlights(id)]).then(([result, records, images]) => {
       if (!active) return;
       setBook(result);
       setSessions(records);
+      setHighlights(images);
       setLoadState(result ? 'ready' : 'missing');
     }).catch(() => { if (active) setLoadState('error'); });
     return () => { active = false; };
   // `retry` intentionally invalidates this focus callback to trigger a fresh read.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, repo, historyRepo, retry]));
+  }, [id, repo, historyRepo, notesRepo, retry]));
 
   if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator /></View>;
   if (loadState === 'missing') return <View style={styles.center}>
@@ -50,6 +55,8 @@ export default function BookPage() {
     <BookDetail book={book} sessions={sessions} onEditReading={sessionId => router.push({
       pathname: '/book/[id]/reading/[sessionId]', params: { id, sessionId },
     })} />
+    <NotesSection bookId={id} repository={notesRepo} highlights={highlights} onChanged={() => setRetry(value => value + 1)} />
+    <HighlightsSection bookId={id} repository={notesRepo} onChanged={() => setRetry(value => value + 1)} />
     <Pressable accessibilityRole="button" style={styles.edit} onPress={() => router.push({ pathname: '/book/[id]/edit', params: { id } })}>
       <Text style={styles.editText}>编辑资料</Text>
     </Pressable>
