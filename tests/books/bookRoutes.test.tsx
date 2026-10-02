@@ -13,8 +13,12 @@ import { BookCard } from '../../src/books/BookCard';
 import type { Book } from '../../src/books/types';
 import { chooseReadingDate } from './chooseReadingDate';
 
+let mockFocusCallback: (() => void | (() => void)) | undefined;
 jest.mock('expo-router', () => ({
-  useFocusEffect: (callback: () => void | (() => void)) => require('react').useEffect(callback, [callback]),
+  useFocusEffect: (callback: () => void | (() => void)) => {
+    mockFocusCallback = callback;
+    return require('react').useEffect(callback, [callback]);
+  },
   useLocalSearchParams: jest.fn(),
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   Link: ({ children }: { children: React.ReactNode }) => children,
@@ -152,9 +156,32 @@ test('bookshelf offers retry after a search failure', async () => {
   searchRepo.search.mockRejectedValueOnce(new Error('read failed')).mockResolvedValueOnce([{ book, matchedNoteSnippet: null }]);
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getByText('搜索失败，请重试')).toBeTruthy());
+  expect(screen.queryByText('书架还是空的')).toBeNull();
+  expect(screen.queryByText('没有符合条件的小说')).toBeNull();
   await fireEvent.press(screen.getByText('重试'));
   await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
   expect(searchRepo.search).toHaveBeenCalledTimes(2);
+});
+
+test('bookshelf keeps old results visible while a new search is loading', async () => {
+  let resolveSearch!: (value: { book: Book; matchedNoteSnippet: null }[]) => void;
+  const pending = new Promise<{ book: Book; matchedNoteSnippet: null }[]>(resolve => { resolveSearch = resolve; });
+  searchRepo.search.mockResolvedValueOnce([{ book, matchedNoteSnippet: null }]).mockReturnValueOnce(pending);
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角或摘记'), '新条件');
+  await waitFor(() => expect(screen.getByLabelText('正在搜索')).toBeTruthy());
+  expect(screen.getByText('长夜')).toBeTruthy();
+  await act(async () => { resolveSearch([{ book, matchedNoteSnippet: null }]); });
+});
+
+test('bookshelf refreshes results on returning to focus without clearing conditions', async () => {
+  const updatedBook = { ...book, title: '长夜·修订版' };
+  searchRepo.search.mockResolvedValueOnce([{ book, matchedNoteSnippet: null }]).mockResolvedValueOnce([{ book: updatedBook, matchedNoteSnippet: null }]);
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
+  await act(async () => { mockFocusCallback?.(); });
+  await waitFor(() => expect(screen.getByText('长夜·修订版')).toBeTruthy());
 });
 
 test('detail page loads the novel and offers an edit entry', async () => {

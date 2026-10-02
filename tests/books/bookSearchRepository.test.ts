@@ -48,6 +48,8 @@ test('does not keyword-search work types or tags', async () => {
 test('combines terms across author and note and returns a note snippet once', async () => {
   const { db, repo } = await setup();
   try {
+    await db.runAsync("INSERT INTO notes (id, book_id, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      'note-newer', 'one', 'Priest 的故事值得收藏。', '2026-10-03T10:00:00Z', '2026-10-03T10:00:00Z');
     const results = await repo.search({ ...all, query: 'Priest 重读' });
     expect(results).toHaveLength(1);
     expect(results[0].book.id).toBe('one');

@@ -23,9 +23,11 @@ export function escapeLikeTerm(term: string): string {
 
 export function buildNoteSnippet(body: string, matchedTerm: string, maxLength = 60): string {
   if (body.length <= maxLength) return body;
+  if (maxLength <= 2) return body.slice(0, maxLength);
   const index = body.toLocaleLowerCase().indexOf(matchedTerm.toLocaleLowerCase());
   const center = index >= 0 ? index + Math.floor(matchedTerm.length / 2) : 0;
-  const start = Math.max(0, Math.min(body.length - maxLength, center - Math.floor(maxLength / 2)));
-  const end = Math.min(body.length, start + maxLength);
+  const contentLength = maxLength - 2;
+  const start = Math.max(0, Math.min(body.length - contentLength, center - Math.floor(contentLength / 2)));
+  const end = Math.min(body.length, start + contentLength);
   return `${start > 0 ? '…' : ''}${body.slice(start, end)}${end < body.length ? '…' : ''}`;
 }

@@ -12,7 +12,7 @@ test('escapes sqlite LIKE control characters as literal text', () => {
 test('builds a short note snippet around the matched term', () => {
   const body = '开头内容很长很长，继续补充一些文字，终于出现重读这个关键词，后面还有很多很多的阅读想法和结尾。';
   const snippet = buildNoteSnippet(body, '重读', 24);
-  expect(snippet.length).toBeLessThanOrEqual(26);
+  expect(snippet.length).toBeLessThanOrEqual(24);
   expect(snippet).toContain('重读');
   expect(snippet.startsWith('…')).toBe(true);
   expect(snippet.endsWith('…')).toBe(true);

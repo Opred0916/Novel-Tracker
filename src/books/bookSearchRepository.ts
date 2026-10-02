@@ -11,6 +11,11 @@ function metadataMatchesAll(book: Book, terms: string[]): boolean {
   return terms.every(term => values.some(value => value.includes(term)));
 }
 
+function termsMissingFromMetadata(book: Book, terms: string[]): string[] {
+  const values = [book.title, book.author ?? '', ...book.protagonists].map(value => value.toLocaleLowerCase());
+  return terms.filter(term => !values.some(value => value.includes(term)));
+}
+
 export class SqliteBookSearchRepository {
   constructor(private readonly db: Database, private readonly books: Pick<BookRepository, 'get'>) {}
 
@@ -47,10 +52,11 @@ export class SqliteBookSearchRepository {
       if (!book) continue;
       let matchedNoteSnippet: string | null = null;
       if (terms.length && !metadataMatchesAll(book, terms)) {
+        const noteTerms = termsMissingFromMetadata(book, terms);
         const notes = await this.db.getAllAsync<NoteRow>('SELECT body FROM notes WHERE book_id = ? ORDER BY created_at DESC, id ASC', book.id);
-        const note = notes.find(item => terms.some(term => item.body.toLocaleLowerCase().includes(term)));
+        const note = notes.find(item => noteTerms.some(term => item.body.toLocaleLowerCase().includes(term)));
         if (note) {
-          const matchedTerm = terms.find(term => note.body.toLocaleLowerCase().includes(term));
+          const matchedTerm = noteTerms.find(term => note.body.toLocaleLowerCase().includes(term));
           if (matchedTerm) matchedNoteSnippet = buildNoteSnippet(note.body, matchedTerm);
         }
       }
