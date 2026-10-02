@@ -36,6 +36,7 @@ const repo = {
   list: jest.fn(),
   get: jest.fn(),
   update: jest.fn(),
+  delete: jest.fn(),
 };
 const searchRepo = { search: jest.fn() };
 const tagRepo = { list: jest.fn(), listQuick: jest.fn(), create: jest.fn(), setQuick: jest.fn() };
@@ -258,6 +259,52 @@ test('a read error can be retried without a false success state', async () => {
   await fireEvent.press(screen.getByText('重试'));
   await waitFor(() => expect(screen.getByText('某作者')).toBeTruthy());
   expect(repo.get).toHaveBeenCalledTimes(2);
+});
+
+test('detail page asks for confirmation before deleting a novel', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  repo.delete.mockResolvedValue(undefined);
+  try {
+    const screen = await render(<BookPage />);
+    await waitFor(() => expect(screen.getByText('删除小说')).toBeTruthy());
+    await fireEvent.press(screen.getByText('删除小说'));
+    expect(repo.delete).not.toHaveBeenCalled();
+    expect(alert).toHaveBeenLastCalledWith('删除小说', expect.stringContaining('《长夜》'), expect.any(Array));
+    let buttons = alert.mock.calls.at(-1)?.[2] as Array<{ text?: string; onPress?: () => void }> | undefined;
+    await act(async () => { buttons?.[0]?.onPress?.(); });
+    expect(repo.delete).not.toHaveBeenCalled();
+    expect(router.replace).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('删除小说'));
+    buttons = alert.mock.calls.at(-1)?.[2] as Array<{ text?: string; onPress?: () => void }> | undefined;
+    await act(async () => { await buttons?.[1]?.onPress?.(); });
+    await waitFor(() => expect(repo.delete).toHaveBeenCalledWith(book.id));
+    expect(router.replace).toHaveBeenCalledWith('/');
+  } finally {
+    alert.mockRestore();
+  }
+});
+
+test('detail page stays open and allows retry when novel deletion fails', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  repo.delete.mockRejectedValueOnce(new Error('disk full')).mockResolvedValueOnce(undefined);
+  try {
+    const screen = await render(<BookPage />);
+    await waitFor(() => expect(screen.getByText('删除小说')).toBeTruthy());
+    await fireEvent.press(screen.getByText('删除小说'));
+    let buttons = alert.mock.calls.at(-1)?.[2] as Array<{ onPress?: () => void }> | undefined;
+    await act(async () => { await buttons?.[1]?.onPress?.(); });
+    await waitFor(() => expect(screen.getByText('删除失败，请重试')).toBeTruthy());
+    expect(router.replace).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('删除小说'));
+    buttons = alert.mock.calls.at(-1)?.[2] as Array<{ onPress?: () => void }> | undefined;
+    await act(async () => { await buttons?.[1]?.onPress?.(); });
+    await waitFor(() => expect(repo.delete).toHaveBeenCalledTimes(2));
+    expect(router.replace).toHaveBeenCalledWith('/');
+  } finally {
+    alert.mockRestore();
+  }
 });
 
 test('reading correction route saves edited dates and returns on success', async () => {
