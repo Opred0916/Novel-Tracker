@@ -101,6 +101,39 @@ export async function migrateDatabase(db: Database): Promise<void> {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS one_active_reading_per_book
       ON reading_sessions(book_id) WHERE outcome = 'reading';
+    CREATE TABLE IF NOT EXISTS image_assets (
+      id TEXT PRIMARY KEY NOT NULL,
+      book_id TEXT NOT NULL,
+      local_path TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS notes (
+      id TEXT PRIMARY KEY NOT NULL,
+      book_id TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      reading_session_id TEXT,
+      FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+      FOREIGN KEY (reading_session_id) REFERENCES reading_sessions(id) ON DELETE SET NULL
+    );
+    CREATE TABLE IF NOT EXISTS note_images (
+      note_id TEXT NOT NULL,
+      image_id TEXT NOT NULL,
+      position INTEGER NOT NULL CHECK (position >= 0),
+      PRIMARY KEY (note_id, image_id),
+      FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
+      FOREIGN KEY (image_id) REFERENCES image_assets(id) ON DELETE CASCADE
+    );
+    CREATE TABLE IF NOT EXISTS highlight_images (
+      book_id TEXT NOT NULL,
+      image_id TEXT NOT NULL,
+      position INTEGER NOT NULL CHECK (position >= 0),
+      PRIMARY KEY (book_id, image_id),
+      FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+      FOREIGN KEY (image_id) REFERENCES image_assets(id) ON DELETE CASCADE
+    );
   `);
 
   if (version < 4) {
@@ -116,7 +149,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
   if (version < 5) {
     await db.runAsync("UPDATE books SET legacy_read_count = 1 WHERE status = 'finished'");
   }
-  await db.execAsync('PRAGMA user_version = 5');
+  await db.execAsync('PRAGMA user_version = 6');
 }
 
 export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {

@@ -38,3 +38,23 @@ export type BookEditInput = Pick<Book, 'title' | 'author' | 'status' | 'protagon
     newTags?: Pick<Tag, 'id' | 'name'>[];
     readingDates?: ReadingDatesInput;
   };
+
+export type ImageAsset = {
+  id: string;
+  bookId: string;
+  localPath: string;
+  createdAt: string;
+};
+
+export type Note = {
+  id: string;
+  bookId: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+  readingSessionId: string | null;
+  images: ImageAsset[];
+};
+
+export type NoteInput = { body: string; imageIds?: string[]; createdAt?: string };
+export type HighlightImage = ImageAsset & { position: number };
