@@ -8,7 +8,11 @@ export function NotesSection({ bookId, repository, highlights, onChanged }: { bo
   const [notes, setNotes] = useState<Note[]>([]);
   const [editing, setEditing] = useState<Note | null | undefined>(undefined);
   async function refresh() { setNotes(await repository.listNotes(bookId)); }
-  useEffect(() => { void refresh(); }, [bookId]);
+  useEffect(() => {
+    let active = true;
+    void repository.listNotes(bookId).then(next => { if (active) setNotes(next); });
+    return () => { active = false; };
+  }, [bookId, repository]);
   if (editing !== undefined) return <NoteForm bookId={bookId} note={editing ?? undefined} highlights={highlights} repository={repository} onSaved={() => { setEditing(undefined); void refresh(); onChanged?.(); }} onCancel={() => setEditing(undefined)} />;
   async function remove(note: Note) {
     Alert.alert('删除摘记？', '删除后文字摘记将无法恢复，图片仍会保留在精彩片段或其他摘记中。', [

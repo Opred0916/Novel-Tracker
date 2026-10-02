@@ -96,6 +96,15 @@ export class SqliteNotesRepository {
     return rows.map(fromImage);
   }
 
+  async recalculateAssociations(bookId: string): Promise<void> {
+    await this.db.withExclusiveTransactionAsync(async txn => {
+      const sessions = await txn.getAllAsync<{ id: string; book_id: string; ordinal: number; started_on: string; ended_on: string | null; outcome: 'reading' | 'finished' | 'dropped' }>('SELECT * FROM reading_sessions WHERE book_id = ? ORDER BY ordinal ASC', bookId);
+      const normalized = sessions.map(session => ({ id: session.id, bookId: session.book_id, ordinal: session.ordinal, startedOn: session.started_on, endedOn: session.ended_on, outcome: session.outcome }));
+      const notes = await txn.getAllAsync<{ id: string; created_at: string }>('SELECT id, created_at FROM notes WHERE book_id = ?', bookId);
+      for (const note of notes) await txn.runAsync('UPDATE notes SET reading_session_id = ? WHERE id = ?', findReadingSessionForNote(dateOf(note.created_at), normalized), note.id);
+    });
+  }
+
   async removeHighlight(bookId: string, imageId: string): Promise<void> {
     await this.db.withExclusiveTransactionAsync(async txn => {
       await txn.runAsync('DELETE FROM highlight_images WHERE book_id = ? AND image_id = ?', bookId, imageId);

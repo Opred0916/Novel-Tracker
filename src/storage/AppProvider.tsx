@@ -24,8 +24,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (active) {
         setRepository(new SqliteBookRepository(db));
         setTagRepository(new SqliteTagRepository(db));
-        setReadingHistory(new SqliteReadingHistoryRepository(db));
-        setNotesRepository(new SqliteNotesRepository(db));
+        const notes = new SqliteNotesRepository(db);
+        setNotesRepository(notes);
+        setReadingHistory(new SqliteReadingHistoryRepository(db, undefined, bookId => notes.recalculateAssociations(bookId)));
       }
     }).catch(e => {
       if (active) setError(String(e));

@@ -25,7 +25,7 @@ function fromRow(row: SessionRow): ReadingSession {
 }
 
 export class SqliteReadingHistoryRepository {
-  constructor(private readonly db: Database, private readonly idFactory: () => string = randomUUID) {}
+  constructor(private readonly db: Database, private readonly idFactory: () => string = randomUUID, private readonly onDatesChanged?: (bookId: string) => Promise<void>) {}
 
   async list(bookId: string): Promise<ReadingSession[]> {
     const rows = await this.db.getAllAsync<SessionRow>(
@@ -65,6 +65,7 @@ export class SqliteReadingHistoryRepository {
         dates.startedOn, dates.endedOn, bookId, sessionId,
       );
     });
+    await this.onDatesChanged?.(bookId);
   }
 
   async delete(bookId: string, sessionId: string): Promise<void> {

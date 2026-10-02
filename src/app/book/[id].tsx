@@ -2,11 +2,10 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookDetail } from '../../books/BookDetail';
-import type { Book, ReadingSession } from '../../books/types';
+import type { Book, ImageAsset, ReadingSession } from '../../books/types';
 import { useBooks, useNotes, useReadingHistory } from '../../storage/AppProvider';
 import { NotesSection } from '../../books/NotesSection';
 import { HighlightsSection } from '../../books/HighlightsSection';
-import type { ImageAsset } from '../../books/types';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 

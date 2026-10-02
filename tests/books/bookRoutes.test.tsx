@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useBooks, useReadingHistory, useTags } from '../../src/storage/AppProvider';
+import { useBooks, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
 import Bookshelf from '../../src/app/index';
 import NewBook from '../../src/app/book/new';
 import QuickTagsPage from '../../src/app/settings/tags';
@@ -19,7 +19,7 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn() }));
+jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn(), useNotes: jest.fn() }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'new-tag-id') }));
 
 const book: Book = {
@@ -35,12 +35,14 @@ const repo = {
 };
 const tagRepo = { list: jest.fn(), listQuick: jest.fn(), create: jest.fn(), setQuick: jest.fn() };
 const historyRepo = { list: jest.fn(), backfillFirst: jest.fn(), updateDates: jest.fn(), delete: jest.fn() };
+const notesRepo = { listNotes: jest.fn(), listHighlights: jest.fn(), createNote: jest.fn(), updateNote: jest.fn(), deleteNote: jest.fn(), registerImage: jest.fn(), addHighlights: jest.fn(), removeHighlight: jest.fn() };
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useBooks).mockReturnValue(repo as unknown as ReturnType<typeof useBooks>);
   jest.mocked(useTags).mockReturnValue(tagRepo as unknown as ReturnType<typeof useTags>);
   jest.mocked(useReadingHistory).mockReturnValue(historyRepo as unknown as ReturnType<typeof useReadingHistory>);
+  jest.mocked(useNotes).mockReturnValue(notesRepo as unknown as ReturnType<typeof useNotes>);
   jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id });
   repo.get.mockResolvedValue(book);
   repo.list.mockResolvedValue([book]);
@@ -48,6 +50,8 @@ beforeEach(() => {
   tagRepo.list.mockResolvedValue([{ id: 'ancient', name: '古代', isSystem: true }]);
   tagRepo.listQuick.mockResolvedValue([{ id: 'ancient', name: '古代', isSystem: true }]);
   historyRepo.list.mockResolvedValue([]);
+  notesRepo.listHighlights.mockResolvedValue([]);
+  notesRepo.listNotes.mockResolvedValue([]);
 });
 
 test('new book route loads quick tags and saves the selected tag', async () => {

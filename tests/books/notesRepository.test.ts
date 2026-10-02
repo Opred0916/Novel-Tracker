@@ -40,3 +40,16 @@ test('attaches multiple images and keeps an image used by a note after highlight
     expect(await db.getFirstAsync('SELECT image_id FROM highlight_images WHERE book_id = ? AND image_id = ?', 'book-1', 'image-2')).toEqual({ image_id: 'image-2' });
   } finally { db.close(); }
 });
+
+test('recalculates note association after reading dates change', async () => {
+  const db = await setup();
+  try {
+    await db.runAsync("INSERT INTO reading_sessions VALUES ('session-1', 'book-1', 1, '2026-03-10', '2026-03-12', 'finished')");
+    const repo = new SqliteNotesRepository(db, () => 'note-1');
+    await repo.createNote('book-1', { body: '想法', createdAt: '2026-03-05T10:00:00.000Z' });
+    expect(await db.getFirstAsync('SELECT reading_session_id FROM notes WHERE id = ?', 'note-1')).toEqual({ reading_session_id: null });
+    await db.runAsync("UPDATE reading_sessions SET started_on = '2026-03-01' WHERE id = 'session-1'");
+    await repo.recalculateAssociations('book-1');
+    expect(await db.getFirstAsync('SELECT reading_session_id FROM notes WHERE id = ?', 'note-1')).toEqual({ reading_session_id: 'session-1' });
+  } finally { db.close(); }
+});

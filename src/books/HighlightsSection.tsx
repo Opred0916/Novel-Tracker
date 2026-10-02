@@ -12,7 +12,11 @@ export function HighlightsSection({ bookId, repository, onChanged, onSelect }: {
   const [error, setError] = useState('');
   const storage = new ImageStorage();
   async function refresh() { setImages(await repository.listHighlights(bookId)); }
-  useEffect(() => { void refresh(); }, [bookId]);
+  useEffect(() => {
+    let active = true;
+    void repository.listHighlights(bookId).then(next => { if (active) setImages(next); });
+    return () => { active = false; };
+  }, [bookId, repository]);
   async function add() {
     setError('');
     try {
