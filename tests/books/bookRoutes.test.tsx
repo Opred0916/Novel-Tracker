@@ -11,6 +11,7 @@ import EditBookPage from '../../src/app/book/[id]/edit';
 import ReadingHistoryPage from '../../src/app/book/[id]/reading/[sessionId]';
 import { BookCard } from '../../src/books/BookCard';
 import type { Book } from '../../src/books/types';
+import { chooseReadingDate } from './chooseReadingDate';
 
 jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void | (() => void)) => require('react').useEffect(callback, [callback]),
@@ -190,8 +191,8 @@ test('reading correction route saves edited dates and returns on success', async
   jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id, sessionId: 'session-1' });
   historyRepo.updateDates.mockResolvedValue(undefined);
   const screen = await render(<ReadingHistoryPage />);
-  await waitFor(() => expect(screen.getByDisplayValue('2026-09-01')).toBeTruthy());
-  await fireEvent.changeText(screen.getByLabelText('结束日期'), '2026-09-15');
+  await waitFor(() => expect(screen.getByText('2026-09-01')).toBeTruthy());
+  await chooseReadingDate(screen, '结束日期', 2026, 9, 15);
   await fireEvent.press(screen.getByText('保存日期'));
   await waitFor(() => expect(historyRepo.updateDates).toHaveBeenCalledWith(book.id, 'session-1', '2026-09-01', '2026-09-15'));
   expect(router.back).toHaveBeenCalledTimes(1);
@@ -203,8 +204,8 @@ test('old finished book can backfill its first read from the correction route', 
   historyRepo.backfillFirst.mockResolvedValue(undefined);
   const screen = await render(<ReadingHistoryPage />);
   await waitFor(() => expect(screen.getByText('补记首刷日期')).toBeTruthy());
-  await fireEvent.changeText(screen.getByLabelText('开始日期'), '2026-08-01');
-  await fireEvent.changeText(screen.getByLabelText('结束日期'), '2026-08-10');
+  await chooseReadingDate(screen, '开始日期', 2026, 8, 1);
+  await chooseReadingDate(screen, '结束日期', 2026, 8, 10);
   await fireEvent.press(screen.getByText('保存日期'));
   await waitFor(() => expect(historyRepo.backfillFirst).toHaveBeenCalledWith(book.id, '2026-08-01', '2026-08-10'));
   expect(router.back).toHaveBeenCalledTimes(1);

@@ -4,6 +4,7 @@ import { Alert } from 'react-native';
 import { BookEditForm } from '../../src/books/BookEditForm';
 import type { Book } from '../../src/books/types';
 import { todayLocalDate } from '../../src/books/readingDates';
+import { chooseReadingDate } from './chooseReadingDate';
 
 const baseBook: Book = {
   id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [],
@@ -110,7 +111,7 @@ test('previews the next reading number and uses its edited start date', async ()
   const screen = await render(<BookEditForm book={{ ...baseBook, status: 'finished', legacyReadCount: 1 }} onSave={onSave} sessions={[]} />);
   await fireEvent.press(screen.getByText('在读'));
   expect(screen.getByText(/第 2 次阅读/)).toBeTruthy();
-  await fireEvent.changeText(screen.getByLabelText('开始日期'), '2026-09-01');
+  await chooseReadingDate(screen, '开始日期', 2026, 9, 1);
   await fireEvent.press(screen.getByText('保存修改'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
     readingDates: { startedOn: '2026-09-01', endedOn: null },
@@ -123,8 +124,8 @@ test('finishes an active record with its original start date and editable end da
     { id: 'first', bookId: baseBook.id, ordinal: 1, startedOn: '2026-09-01', endedOn: null, outcome: 'reading' },
   ]} />);
   await fireEvent.press(screen.getByText('弃读'));
-  expect(screen.getByDisplayValue('2026-09-01')).toBeTruthy();
-  await fireEvent.changeText(screen.getByLabelText('结束日期'), '2026-09-15');
+  expect(screen.getByText('2026-09-01')).toBeTruthy();
+  await chooseReadingDate(screen, '结束日期', 2026, 9, 15);
   await fireEvent.press(screen.getByText('保存修改'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
     readingDates: { startedOn: '2026-09-01', endedOn: '2026-09-15' },
