@@ -1,4 +1,4 @@
-import { BOOK_STATUSES, BOOK_TYPES, type BookStatus, type BookType } from '../books/types';
+import { BOOK_STATUSES, BOOK_TYPES, type BookType } from '../books/types';
 import {
   BACKUP_FORMAT_VERSION,
   type BackupCounts,
@@ -88,7 +88,7 @@ function requireReference(ids: ReadonlySet<string>, value: string, label: string
 }
 
 export function isSafeArchivePath(path: string): boolean {
-  if (typeof path !== 'string' || path.length === 0 || path.includes('\\') || path.includes('//')) return false;
+  if (typeof path !== 'string' || path.length === 0 || path.includes('%') || path.includes('\\') || path.includes('//')) return false;
   if (path.startsWith('/') || path.startsWith('./') || /^[A-Za-z]:/.test(path) || /^[a-z][a-z0-9+.-]*:/i.test(path)) return false;
   const parts = path.split('/');
   return parts.length === 2 && parts[0] === 'images' && parts[1].length > 0 && parts.every(part => part !== '.' && part !== '..');
@@ -139,11 +139,11 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
   for (const [index, value] of books.entries()) {
     const item = record(value, `books[${index}]`);
     string(item.id, 'book.id'); string(item.title, 'book.title'); nullableString(item.author, 'book.author');
-    const status = enumValue(item.status, BOOK_STATUSES, 'book.status') as BookStatus;
+    enumValue(item.status, BOOK_STATUSES, 'book.status');
     optionalNullableBookType(item.bookType, 'book.bookType');
     if (item.ratingHalfStars !== null) {
       const rating = integer(item.ratingHalfStars, 'book.ratingHalfStars', 1);
-      if (rating > 10 || status !== 'finished') fail('invalid_value', 'book.ratingHalfStars is invalid');
+      if (rating > 10) fail('invalid_value', 'book.ratingHalfStars is invalid');
     }
     const legacyReadCount = integer(item.legacyReadCount, 'book.legacyReadCount');
     if (legacyReadCount > 1) fail('invalid_value', 'book.legacyReadCount is invalid');

@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { pickBackupFile, shareBackup } from '../../backup/backupPlatform';
 import type { BackupInspection, BackupProgress } from '../../backup/backupService';
@@ -29,7 +29,10 @@ export default function BackupPage() {
   const [inspection, setInspection] = useState<BackupInspection | null>(null);
   const [progress, setProgress] = useState<BackupProgress | null>(null);
   const [error, setError] = useState('');
+  const mounted = useRef(true);
   const busy = progress !== null;
+
+  useEffect(() => () => { mounted.current = false; }, []);
 
   async function refresh() {
     try { setOverview(await service.getOverview()); } catch { setError('读取备份信息失败，请重试。'); }
@@ -51,7 +54,7 @@ export default function BackupPage() {
     return () => { void service.cancelInspection(inspectionToken); };
   }, [inspectionToken, service]);
 
-  const reportProgress = (next: BackupProgress) => setProgress(next);
+  const reportProgress = (next: BackupProgress) => { if (mounted.current) setProgress(next); };
 
   async function generate() {
     if (busy) return;
@@ -63,10 +66,10 @@ export default function BackupPage() {
       await shareBackup(generated.uri);
       await refresh();
     } catch {
-      setError('生成或分享备份失败，请重试。');
+      if (mounted.current) setError('生成或分享备份失败，请重试。');
     } finally {
       if (operationId) await service.releaseGeneratedBackup(operationId).catch(() => undefined);
-      setProgress(null);
+      if (mounted.current) setProgress(null);
     }
   }
 
@@ -77,11 +80,12 @@ export default function BackupPage() {
       const uri = await pickBackupFile();
       if (!uri) return;
       const next = await service.inspectBackup(uri, reportProgress);
-      setInspection(next);
+      if (mounted.current) setInspection(next);
+      else await service.cancelInspection(next.token).catch(() => undefined);
     } catch (restoreError) {
-      setError(restoreReadError(restoreError));
+      if (mounted.current) setError(restoreReadError(restoreError));
     } finally {
-      setProgress(null);
+      if (mounted.current) setProgress(null);
     }
   }
 
@@ -113,9 +117,9 @@ export default function BackupPage() {
       await refresh();
       router.replace('/');
     } catch {
-      setError('恢复失败，原有数据未发生变化。');
+      if (mounted.current) setError('恢复失败，原有数据未发生变化。');
     } finally {
-      setProgress(null);
+      if (mounted.current) setProgress(null);
     }
   }
 

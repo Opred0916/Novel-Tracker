@@ -1,4 +1,4 @@
-import { strFromU8, strToU8, Unzip, UnzipInflate, Zip, ZipDeflate, ZipPassThrough } from 'fflate';
+import { strFromU8, strToU8, unzipSync, Unzip, UnzipInflate, Zip, ZipDeflate, ZipPassThrough } from 'fflate';
 import type { BackupSnapshot } from './backupRepository';
 import {
   MAX_ARCHIVE_ENTRIES,
@@ -26,6 +26,44 @@ const concat = (chunks: readonly Uint8Array[]): Uint8Array => {
   let offset = 0;
   for (const chunk of chunks) { output.set(chunk, offset); offset += chunk.length; }
   return output;
+};
+
+const u16 = (bytes: Uint8Array, offset: number): number => bytes[offset] | (bytes[offset + 1] << 8);
+const u32 = (bytes: Uint8Array, offset: number): number => (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+const crcTable = (() => {
+  const table = new Uint32Array(256);
+  for (let n = 0; n < 256; n += 1) { let c = n; for (let k = 0; k < 8; k += 1) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1); table[n] = c >>> 0; }
+  return table;
+})();
+const crc32 = (bytes: Uint8Array): number => {
+  let crc = 0xffffffff;
+  for (const byte of bytes) crc = crcTable[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+  return (crc ^ 0xffffffff) >>> 0;
+};
+const validateZipIntegrity = (bytes: Uint8Array): void => {
+  const unzipped = unzipSync(bytes);
+  let eocd = -1;
+  for (let index = bytes.length - 22; index >= Math.max(0, bytes.length - 65557); index -= 1) {
+    if (u32(bytes, index) === 0x06054b50) { eocd = index; break; }
+  }
+  if (eocd < 0) throw new Error('missing end of central directory');
+  const count = u16(bytes, eocd + 10);
+  const centralSize = u32(bytes, eocd + 12);
+  const centralOffset = u32(bytes, eocd + 16);
+  if (centralOffset + centralSize > eocd) throw new Error('invalid central directory');
+  let offset = centralOffset;
+  for (let index = 0; index < count; index += 1) {
+    if (u32(bytes, offset) !== 0x02014b50) throw new Error('invalid central directory entry');
+    const crc = u32(bytes, offset + 16);
+    const nameLength = u16(bytes, offset + 28);
+    const extraLength = u16(bytes, offset + 30);
+    const commentLength = u16(bytes, offset + 32);
+    const name = strFromU8(bytes.slice(offset + 46, offset + 46 + nameLength));
+    const data = unzipped[name];
+    if (!data || crc32(data) !== crc) throw new Error(`CRC mismatch: ${name}`);
+    offset += 46 + nameLength + extraLength + commentLength;
+  }
+  if (offset !== centralOffset + centralSize) throw new Error('invalid central directory size');
 };
 
 export class BackupArchive {
@@ -57,7 +95,8 @@ export class BackupArchive {
     } as Omit<BackupManifestV1, 'counts'>;
     const manifest = validateBackupManifest({ ...draft, counts: countsFromManifest(draft as BackupManifestV1) });
     const manifestBytes = strToU8(JSON.stringify(manifest));
-    if (manifestBytes.length > this.limits.maxManifestBytes || imageEntries.length + 1 > this.limits.maxEntries) {
+    if (manifestBytes.length > this.limits.maxManifestBytes || imageEntries.length + 1 > this.limits.maxEntries
+      || manifestBytes.length + totalBytes > this.limits.maxUncompressedBytes) {
       throw new BackupValidationError('archive_too_large', '备份内容超过安全上限');
     }
 
@@ -117,6 +156,7 @@ export class BackupArchive {
     const extracted = new Map<string, string>();
     const actualSizes = new Map<string, number>();
     const pending: Promise<void>[] = [];
+    const archiveChunks: Uint8Array[] = [];
     let entryCount = 0;
     let declaredTotal = 0;
     let actualTotal = 0;
@@ -160,19 +200,46 @@ export class BackupArchive {
           let size = 0;
           let chain = this.files.openChunkWriter(uri).then(async writer => {
             let writes = Promise.resolve();
+            let resolveComplete!: () => void;
+            let rejectComplete!: (error: Error) => void;
+            const complete = new Promise<void>((resolve, reject) => { resolveComplete = resolve; rejectComplete = reject; });
+            let closed = false;
+            const closeWriter = async () => {
+              if (closed) return;
+              closed = true;
+              await writes;
+              await writer.close();
+            };
             file.ondata = (error, data, final) => {
               if (streamError) return;
-              if (error) { streamError = error; return; }
+              if (error) {
+                streamError = error;
+                rejectComplete(error);
+                return;
+              }
               size += data.length;
               actualTotal += data.length;
-              if (actualTotal > this.limits.maxUncompressedBytes) { streamError = new BackupValidationError('archive_too_large', '解压内容过大'); return; }
-              if (actualTotal > freeSpace) { streamError = new BackupValidationError('storage_insufficient', '设备空间不足'); return; }
+              if (actualTotal > this.limits.maxUncompressedBytes) {
+                streamError = new BackupValidationError('archive_too_large', '解压内容过大');
+                rejectComplete(streamError);
+                return;
+              }
+              if (actualTotal > freeSpace) {
+                streamError = new BackupValidationError('storage_insufficient', '设备空间不足');
+                rejectComplete(streamError);
+                return;
+              }
               writes = writes.then(() => writer.write(data));
-              if (final) writes = writes.then(() => writer.close());
+              if (final) void closeWriter().then(resolveComplete, rejectComplete);
             };
-            file.start();
-            await writes;
-            actualSizes.set(file.name, size);
+            try {
+              file.start();
+              await complete;
+              actualSizes.set(file.name, size);
+            } catch (error) {
+              try { await closeWriter(); } catch { /* remove below */ }
+              throw error;
+            }
           });
           pending.push(chain.catch(error => { streamError = error as Error; }));
           return;
@@ -189,6 +256,7 @@ export class BackupArchive {
       let readBytes = 0;
       let previousChunk: Uint8Array | null = null;
       for await (const chunk of this.files.readChunks(sourceUri, BACKUP_CHUNK_SIZE)) {
+        archiveChunks.push(chunk.slice());
         if (previousChunk) {
           readBytes += previousChunk.length;
           unzip.push(previousChunk, false);
@@ -204,6 +272,7 @@ export class BackupArchive {
       if (streamError) throw streamError;
       await Promise.all(pending);
       if (streamError) throw streamError;
+      try { validateZipIntegrity(concat(archiveChunks)); } catch { throw new BackupValidationError('invalid_file', '备份 ZIP 完整性校验失败'); }
       if (!entryNames.has('manifest.json')) throw new BackupValidationError('invalid_file', '缺少 manifest.json');
       let parsed: unknown;
       try { parsed = JSON.parse(strFromU8(concat(manifestChunks))); } catch { throw new BackupValidationError('invalid_manifest', 'manifest.json 不是有效 JSON'); }

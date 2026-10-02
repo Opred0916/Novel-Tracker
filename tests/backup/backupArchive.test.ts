@@ -16,6 +16,8 @@ const concat = (chunks: Uint8Array[]): Uint8Array => {
 class MemoryFilePort implements BackupFilePort {
   readonly files = new Map<string, Uint8Array>();
   diskSpace = 10_000_000;
+  maxReadChunkSize = Number.POSITIVE_INFINITY;
+  readonly openWriters = new Set<string>();
 
   put(uri: string, data: Uint8Array): void { this.files.set(uri, data.slice()); }
 
@@ -27,14 +29,16 @@ class MemoryFilePort implements BackupFilePort {
   async *readChunks(uri: string, chunkSize: number): AsyncIterable<Uint8Array> {
     const data = this.files.get(uri);
     if (!data) throw new Error(`missing ${uri}`);
-    for (let offset = 0; offset < data.length; offset += chunkSize) yield data.slice(offset, offset + chunkSize);
+    const effectiveChunkSize = Math.min(chunkSize, this.maxReadChunkSize);
+    for (let offset = 0; offset < data.length; offset += effectiveChunkSize) yield data.slice(offset, offset + effectiveChunkSize);
   }
 
   async openChunkWriter(uri: string): Promise<BackupChunkWriter> {
     const chunks: Uint8Array[] = [];
+    this.openWriters.add(uri);
     return {
       write: async chunk => { chunks.push(chunk.slice()); },
-      close: async () => { this.files.set(uri, concat(chunks)); },
+      close: async () => { this.files.set(uri, concat(chunks)); this.openWriters.delete(uri); },
     };
   }
 
@@ -94,6 +98,50 @@ describe('BackupArchive', () => {
     expect(port.files.get('memory://restore/images/image-1.jpg')).toEqual(new Uint8Array([1, 2, 3, 4]));
     expect(writeProgress[0]).toBe('packing');
     expect(inspectProgress[0]).toBe('validating');
+  });
+
+  test('waits for all decompressed image chunks before checking size and closing writers', async () => {
+    const port = new MemoryFilePort();
+    port.maxReadChunkSize = 1024;
+    const bytes = Uint8Array.from({ length: 600_000 }, (_, index) => index % 251);
+    port.put('memory://source.jpg', bytes);
+    const archive = new BackupArchive(port);
+    await archive.write(makeSnapshot(), 'memory://backup.zip');
+
+    const inspected = await archive.inspect('memory://backup.zip', 'memory://restore');
+
+    expect(port.files.get(inspected.imagePaths.get('image-1')!)).toEqual(bytes);
+    expect(port.openWriters.size).toBe(0);
+  });
+
+  test('rejects image payload corruption with an unchanged byte length', async () => {
+    const port = new MemoryFilePort();
+    const image = new Uint8Array([1, 2, 3, 4]);
+    const archiveBytes = await makeZip([
+      { name: 'manifest.json', data: strToU8(JSON.stringify(makeValidManifest())) },
+      { name: 'images/image-1.jpg', data: image, compressed: false },
+    ]);
+    const payloadIndex = archiveBytes.findIndex((value, index) => index + image.length <= archiveBytes.length
+      && image.every((byte, byteIndex) => archiveBytes[index + byteIndex] === byte));
+    expect(payloadIndex).toBeGreaterThanOrEqual(0);
+    archiveBytes[payloadIndex] ^= 0xff;
+    port.put('memory://corrupt.zip', archiveBytes);
+
+    await expectCode(new BackupArchive(port).inspect('memory://corrupt.zip', 'memory://restore'), 'invalid_file');
+  });
+
+  test('rejects an archive truncated before its end-of-central-directory record', async () => {
+    const port = new MemoryFilePort();
+    const archiveBytes = await makeZip([
+      { name: 'manifest.json', data: strToU8(JSON.stringify(makeValidManifest())) },
+      { name: 'images/image-1.jpg', data: new Uint8Array([1, 2, 3, 4]), compressed: false },
+    ]);
+    const eocdIndex = archiveBytes.findIndex((value, index) => value === 0x50 && archiveBytes[index + 1] === 0x4b
+      && archiveBytes[index + 2] === 0x05 && archiveBytes[index + 3] === 0x06);
+    expect(eocdIndex).toBeGreaterThanOrEqual(0);
+    port.put('memory://truncated.zip', archiveBytes.slice(0, eocdIndex));
+
+    await expectCode(new BackupArchive(port).inspect('memory://truncated.zip', 'memory://restore'), 'invalid_file');
   });
 
   test.each([

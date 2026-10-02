@@ -42,13 +42,24 @@ describe('backup manifest validation', () => {
     ['invalid status', (() => { const value: any = makeValidManifest(); value.books[0].status = 'later'; return value; })(), 'invalid_value'],
     ['invalid book type', (() => { const value: any = makeValidManifest(); value.books[0].bookType = 'mystery'; return value; })(), 'invalid_value'],
     ['invalid rating', (() => { const value = makeValidManifest(); value.books[0].ratingHalfStars = 11; return value; })(), 'invalid_value'],
-    ['rating on unfinished book', (() => { const value = makeValidManifest(); value.books[0].status = 'reading'; return value; })(), 'invalid_value'],
     ['invalid date-only value', (() => { const value = makeValidManifest(); value.readingSessions[0].startedOn = '2026-02-30'; return value; })(), 'invalid_value'],
     ['invalid timestamp', (() => { const value = makeValidManifest(); value.notes[0].createdAt = 'yesterday'; return value; })(), 'invalid_value'],
     ['reading session with end date', (() => { const value = makeValidManifest(); value.readingSessions[0].outcome = 'reading'; return value; })(), 'invalid_value'],
     ['finished session without end date', (() => { const value = makeValidManifest(); value.readingSessions[0].endedOn = null; return value; })(), 'invalid_value'],
   ])('rejects %s', (_name, input, code) => {
     expectCode(input, code);
+  });
+
+  test('rejects URI-encoded traversal in an archive path', () => {
+    const value = makeValidManifest();
+    value.images[0].archivePath = 'images/%2e%2e%2fvictim.jpg';
+    expectCode(value, 'unsafe_path');
+  });
+
+  test('accepts a retained rating while a book is being reread', () => {
+    const value = makeValidManifest();
+    value.books[0].status = 'reading';
+    expect(validateBackupManifest(value)).toEqual(value);
   });
 
   test.each([

@@ -32,6 +32,7 @@ export class ExpoBackupFilePort implements BackupFilePort {
         for (let offset = 0; offset < value.length; offset += chunkSize) yield value.slice(offset, offset + chunkSize);
       }
     } finally {
+      try { await reader.cancel(); } catch { /* stream may already be closed */ }
       reader.releaseLock();
     }
   }

@@ -14,7 +14,7 @@ export type BackupInspection = {
   stagingOperationId: string;
 };
 
-type InspectionState = { publicValue: BackupInspection; archive: ValidatedBackupArchive };
+type InspectionState = { publicValue: BackupInspection; archive: ValidatedBackupArchive; stagingOperationId: string };
 
 function cloneManifest(manifest: BackupManifestV1): BackupManifestV1 {
   return JSON.parse(JSON.stringify(manifest)) as BackupManifestV1;
@@ -81,7 +81,7 @@ export class BackupService {
         const publicValue: BackupInspection = {
           token, sourceUri, manifest: cloneManifest(archive.manifest), counts: { ...archive.manifest.counts }, stagingOperationId: operationId,
         };
-        this.inspections.set(token, { publicValue, archive: protectedArchive });
+        this.inspections.set(token, { publicValue, archive: protectedArchive, stagingOperationId: operationId });
         return publicValue;
       } catch (error) {
         await this.storage.removeOperation(operationId).catch(() => undefined);
@@ -105,7 +105,7 @@ export class BackupService {
         committed = true;
         this.inspections.delete(token);
         onProgress?.({ stage: 'cleaning' });
-        await this.storage.removeOperation(state.publicValue.stagingOperationId).catch(() => undefined);
+        await this.storage.removeOperation(state.stagingOperationId).catch(() => undefined);
         try {
           await this.storage.removeFiles(oldPaths);
         } catch {
@@ -123,7 +123,7 @@ export class BackupService {
     const state = this.inspections.get(token);
     if (!state) return;
     this.inspections.delete(token);
-    await this.storage.removeOperation(state.publicValue.stagingOperationId);
+    await this.storage.removeOperation(state.stagingOperationId);
   }
 
   async cleanupStaleOperations(): Promise<void> {
