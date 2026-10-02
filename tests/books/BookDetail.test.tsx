@@ -5,7 +5,7 @@ import type { Book } from '../../src/books/types';
 
 const baseBook: Book = {
   id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [],
-  legacyReadCount: 0, createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
+  legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
 };
 
 test('shows selected work type and custom tags', async () => {
@@ -18,7 +18,7 @@ test('shows selected work type and custom tags', async () => {
 test('shows author, actual status and every protagonist', async () => {
   const book: Book = { ...baseBook, author: '某作者', status: 'reading', protagonists: ['阿青', '王五'] };
   const screen = await render(<BookDetail book={book} />);
-  expect(screen.getByText('长夜')).toBeTruthy();
+  expect(screen.getAllByText('长夜').length).toBeGreaterThanOrEqual(1);
   expect(screen.getByText('某作者')).toBeTruthy();
   expect(screen.getByText('在读')).toBeTruthy();
   expect(screen.getByText('阿青')).toBeTruthy();

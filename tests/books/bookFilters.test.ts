@@ -5,7 +5,7 @@ const base: Book = {
   id: 'one', title: '长夜', author: '某作者', protagonists: ['阿青'], status: 'finished',
   ratingHalfStars: 9, bookType: 'romance_male_male',
   tags: [{ id: 'ancient', name: '古代', isSystem: true }, { id: 'suspense', name: '悬疑', isSystem: true }],
-  legacyReadCount: 0, createdAt: '2026-09-29', updatedAt: '2026-10-01',
+  legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '2026-09-29', updatedAt: '2026-10-01',
 };
 const books: Book[] = [base, {
   ...base, id: 'two', title: '归途', author: '另一作者', protagonists: ['小林'],

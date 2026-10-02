@@ -8,6 +8,8 @@ import { TypePicker } from './TypePicker';
 import { BOOK_STATUS_LABELS } from './status';
 import { BOOK_STATUSES, type BookInput, type BookStatus, type BookType, type Tag } from './types';
 import { normalizeBookCreate } from './validation';
+import { BookCoverField } from './BookCoverField';
+import type { StagedCover } from './bookCoverFiles';
 
 export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookInput) => Promise<void>; quickTags?: Tag[] }) {
   const [title, setTitle] = useState('');
@@ -19,6 +21,7 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
   const [ratingHalfStars, setRatingHalfStars] = useState<number | null>(null);
   const [bookType, setBookType] = useState<BookType | null>(null);
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [coverSource, setCoverSource] = useState<StagedCover | undefined>();
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -34,6 +37,7 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
       input = normalizeBookCreate({
         title, author, status, protagonists, bookType, tagIds,
         ratingHalfStars: status === 'finished' ? ratingHalfStars : null,
+        coverSource,
         ...(status !== 'want_to_read' ? { readingDates: { startedOn, endedOn: status === 'reading' ? null : endedOn } } : {}),
       });
     } catch (cause) {
@@ -78,6 +82,7 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
       <Text style={styles.addNameText}>＋ 添加主角</Text>
     </Pressable>
     {status === 'finished' ? <RatingField value={ratingHalfStars} onChange={setRatingHalfStars} allowNewValue /> : null}
+    <BookCoverField title={title} onChange={value => setCoverSource(value ?? undefined)} />
     {error ? <Text style={styles.error}>{error}</Text> : null}
     <Pressable accessibilityRole="button" disabled={saving} onPress={save} style={styles.button}>
       <Text style={styles.buttonText}>{saving ? '保存中…' : '保存小说'}</Text>

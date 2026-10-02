@@ -33,9 +33,18 @@ describe('backup manifest validation', () => {
     expect(validateBackupManifest(makeEmptyManifest())).toEqual(makeEmptyManifest());
   });
 
+  test('accepts version 2 cover metadata and validates cover ownership', () => {
+    const value: any = makeValidManifest();
+    value.formatVersion = 2;
+    value.books[0].coverImageId = 'image-1';
+    expect(validateBackupManifest(value)).toEqual(value);
+    value.books[0].coverImageId = 'missing';
+    expectCode(value, 'invalid_reference');
+  });
+
   test.each([
     ['non-object wrapper', null, 'invalid_manifest'],
-    ['newer version', { ...makeEmptyManifest(), formatVersion: 2 }, 'unsupported_version'],
+    ['newer version', { ...makeEmptyManifest(), formatVersion: 3 }, 'unsupported_version'],
     ['missing array', (() => { const value: any = clone(makeEmptyManifest()); delete value.notes; return value; })(), 'invalid_manifest'],
     ['empty book title', (() => { const value = makeValidManifest(); value.books[0].title = '  '; return value; })(), 'invalid_value'],
     ['empty note body', (() => { const value = makeValidManifest(); value.notes[0].body = ''; return value; })(), 'invalid_value'],

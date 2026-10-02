@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BOOK_STATUS_LABELS } from './status';
 import type { Book, ReadingSession } from './types';
 import { BOOK_TYPE_LABELS } from './TypePicker';
+import { BookCover } from './BookCover';
 
 export function BookDetail({ book, sessions = [], onEditReading }: {
   book: Book;
@@ -11,6 +12,7 @@ export function BookDetail({ book, sessions = [], onEditReading }: {
 }) {
   const ordered = [...sessions].sort((a, b) => a.ordinal - b.ordinal);
   return <View style={styles.container}>
+    <BookCover title={book.title} uri={book.coverUri} size="large" showTitle />
     <Text style={styles.title}>{book.title}</Text>
     <Text style={styles.status}>{BOOK_STATUS_LABELS[book.status]}</Text>
     <View style={styles.section}>

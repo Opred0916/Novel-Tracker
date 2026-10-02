@@ -4,7 +4,7 @@ import type { BookSearchFilters, BookSearchResult } from '../../src/books/bookSe
 
 const filters = (query: string): BookSearchFilters => ({ query, status: null, bookType: null, tagIds: [] });
 const result = (id: string): BookSearchResult => ({
-  book: { id, title: id, author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [], legacyReadCount: 0, createdAt: 'a', updatedAt: 'b' },
+  book: { id, title: id, author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [], legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: 'a', updatedAt: 'b' },
   matchedNoteSnippet: null,
 });
 const deferred = <T,>() => { let resolve!: (value: T) => void; let reject!: (error: Error) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };

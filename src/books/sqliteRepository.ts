@@ -1,9 +1,10 @@
 import { randomUUID } from 'expo-crypto';
 import type { Database } from '../storage/database';
 import type { BookRepository } from './repository';
-import type { Book, BookEditInput, BookInput, BookStatus, BookType, Tag } from './types';
+import type { Book, BookEditInput, BookInput, BookStatus, BookType, ImageAsset, Tag } from './types';
 import { normalizeBookCreate, normalizeBookEdit } from './validation';
 import { normalizeReadingDates, todayLocalDate } from './readingDates';
+import { BookCoverFiles } from './bookCoverFiles';
 
 type BookRow = {
   id: string;
@@ -15,6 +16,8 @@ type BookRow = {
   created_at: string;
   updated_at: string;
   legacy_read_count: number;
+  cover_image_id: string | null;
+  cover_local_path: string | null;
 };
 
 type ProtagonistRow = { book_id: string; position: number; name: string };
@@ -34,6 +37,8 @@ function fromRow(row: BookRow, protagonists: string[] = [], tags: Tag[] = []): B
     bookType: row.type,
     tags,
     legacyReadCount: row.legacy_read_count,
+    coverImageId: row.cover_image_id,
+    coverUri: row.cover_local_path,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -44,6 +49,7 @@ export class SqliteBookRepository implements BookRepository {
     private readonly db: Database,
     private readonly idFactory: () => string = randomUUID,
     private readonly todayFactory: () => string = todayLocalDate,
+    private readonly coverFiles: BookCoverFiles = new BookCoverFiles(),
   ) {}
 
   private async addSession(
@@ -102,30 +108,43 @@ export class SqliteBookRepository implements BookRepository {
     const normalized = normalizeBookCreate(input);
     const now = new Date().toISOString();
     const id = this.idFactory();
-    await this.db.withExclusiveTransactionAsync(async txn => {
-      await txn.runAsync(
-        'INSERT INTO books (id, title, author, status, rating_half_stars, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        id, normalized.title, normalized.author, normalized.status, normalized.ratingHalfStars, normalized.bookType, now, now,
-      );
-      for (const [position, name] of normalized.protagonists.entries()) {
+    let copied: ImageAsset | null = null;
+    try {
+      await this.db.withExclusiveTransactionAsync(async txn => {
         await txn.runAsync(
-          'INSERT INTO book_protagonists (book_id, position, name) VALUES (?, ?, ?)', id, position, name,
+          'INSERT INTO books (id, title, author, status, rating_half_stars, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          id, normalized.title, normalized.author, normalized.status, normalized.ratingHalfStars, normalized.bookType, now, now,
         );
-      }
-      for (const [position, tagId] of normalized.tagIds.entries()) {
-        await txn.runAsync('INSERT INTO book_tags (book_id, tag_id, position) VALUES (?, ?, ?)', id, tagId, position);
-      }
-      if (normalized.status !== 'want_to_read') {
-        await this.addSession(txn, id, 0, normalized.status, normalized.readingDates);
-      }
-    });
+        if (normalized.coverSource) {
+          copied = await this.coverFiles.copyToBook(normalized.coverSource, id, this.idFactory());
+          await txn.runAsync('INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)', copied.id, id, copied.localPath, copied.createdAt);
+          await txn.runAsync('UPDATE books SET cover_image_id = ? WHERE id = ?', copied.id, id);
+        }
+        for (const [position, name] of normalized.protagonists.entries()) {
+          await txn.runAsync(
+            'INSERT INTO book_protagonists (book_id, position, name) VALUES (?, ?, ?)', id, position, name,
+          );
+        }
+        for (const [position, tagId] of normalized.tagIds.entries()) {
+          await txn.runAsync('INSERT INTO book_tags (book_id, tag_id, position) VALUES (?, ?, ?)', id, tagId, position);
+        }
+        if (normalized.status !== 'want_to_read') {
+          await this.addSession(txn, id, 0, normalized.status, normalized.readingDates);
+        }
+      });
+    } catch (error) {
+      const copiedAsset = copied as ImageAsset | null;
+      if (copiedAsset) await this.coverFiles.removeFile(copiedAsset.localPath).catch(() => undefined);
+      throw error;
+    }
+    if (normalized.coverSource) await this.coverFiles.discard(normalized.coverSource).catch(() => undefined);
     const result = await this.get(id);
     if (!result) throw new Error('找不到这本小说');
     return result;
   }
 
   async list(): Promise<Book[]> {
-    const rows = await this.db.getAllAsync<BookRow>('SELECT * FROM books ORDER BY updated_at DESC, id ASC');
+    const rows = await this.db.getAllAsync<BookRow>('SELECT b.*, a.local_path AS cover_local_path FROM books b LEFT JOIN image_assets a ON a.id = b.cover_image_id ORDER BY b.updated_at DESC, b.id ASC');
     const names = await this.db.getAllAsync<ProtagonistRow>(
       'SELECT book_id, position, name FROM book_protagonists ORDER BY book_id, position',
     );
@@ -148,7 +167,7 @@ export class SqliteBookRepository implements BookRepository {
   }
 
   async get(id: string): Promise<Book | null> {
-    const row = await this.db.getFirstAsync<BookRow>('SELECT * FROM books WHERE id = ?', id);
+    const row = await this.db.getFirstAsync<BookRow>('SELECT b.*, a.local_path AS cover_local_path FROM books b LEFT JOIN image_assets a ON a.id = b.cover_image_id WHERE b.id = ?', id);
     if (!row) return null;
     const names = await this.db.getAllAsync<ProtagonistRow>(
       'SELECT book_id, position, name FROM book_protagonists WHERE book_id = ? ORDER BY position', id,
@@ -161,9 +180,21 @@ export class SqliteBookRepository implements BookRepository {
 
   async update(id: string, input: BookEditInput): Promise<Book> {
     const edited = normalizeBookEdit(input);
-    await this.db.withExclusiveTransactionAsync(async txn => {
-      const existing = await txn.getFirstAsync<BookRow>('SELECT * FROM books WHERE id = ?', id);
+    let copied: ImageAsset | null = null;
+    let oldCoverPath: string | null = null;
+    let oldCoverRetained = false;
+    try {
+      await this.db.withExclusiveTransactionAsync(async txn => {
+      const existing = await txn.getFirstAsync<BookRow>('SELECT b.*, a.local_path AS cover_local_path FROM books b LEFT JOIN image_assets a ON a.id = b.cover_image_id WHERE b.id = ?', id);
       if (!existing) throw new Error('找不到这本小说');
+      oldCoverPath = existing.cover_local_path;
+      if (existing.cover_image_id) {
+        const usage = await txn.getFirstAsync<{ count: number }>(
+          'SELECT (SELECT COUNT(*) FROM note_images WHERE image_id = ?) + (SELECT COUNT(*) FROM highlight_images WHERE image_id = ?) AS count',
+          existing.cover_image_id, existing.cover_image_id,
+        );
+        oldCoverRetained = (usage?.count ?? 0) > 0;
+      }
       const ratingHalfStars = edited.ratingHalfStars === undefined
         ? existing.rating_half_stars
         : edited.ratingHalfStars;
@@ -173,9 +204,19 @@ export class SqliteBookRepository implements BookRepository {
       const now = new Date().toISOString();
       await this.applyStatusTransition(txn, id, existing, edited.status, edited.readingDates);
       await txn.runAsync(
-        'UPDATE books SET title = ?, author = ?, status = ?, rating_half_stars = ?, type = ?, updated_at = ? WHERE id = ?',
-        edited.title, edited.author, edited.status, ratingHalfStars, edited.bookType === undefined ? existing.type : edited.bookType, now, id,
+        'UPDATE books SET title = ?, author = ?, status = ?, rating_half_stars = ?, type = ?, cover_image_id = ?, updated_at = ? WHERE id = ?',
+        edited.title, edited.author, edited.status, ratingHalfStars, edited.bookType === undefined ? existing.type : edited.bookType,
+        existing.cover_image_id, now, id,
       );
+      if (edited.coverChange?.kind === 'remove') {
+        await txn.runAsync('UPDATE books SET cover_image_id = NULL WHERE id = ?', id);
+        if (existing.cover_image_id && !oldCoverRetained) await txn.runAsync('DELETE FROM image_assets WHERE id = ?', existing.cover_image_id);
+      } else if (edited.coverChange?.kind === 'set') {
+        copied = await this.coverFiles.copyToBook(edited.coverChange.source, id, this.idFactory());
+        await txn.runAsync('INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)', copied.id, id, copied.localPath, copied.createdAt);
+        await txn.runAsync('UPDATE books SET cover_image_id = ? WHERE id = ?', copied.id, id);
+        if (existing.cover_image_id && !oldCoverRetained) await txn.runAsync('DELETE FROM image_assets WHERE id = ?', existing.cover_image_id);
+      }
       await txn.runAsync('DELETE FROM book_protagonists WHERE book_id = ?', id);
       for (const [position, name] of edited.protagonists.entries()) {
         await txn.runAsync(
@@ -191,7 +232,18 @@ export class SqliteBookRepository implements BookRepository {
           await txn.runAsync('INSERT INTO book_tags (book_id, tag_id, position) VALUES (?, ?, ?)', id, tagId, position);
         }
       }
-    });
+      });
+    } catch (error) {
+      const copiedAsset = copied as ImageAsset | null;
+      if (copiedAsset) await this.coverFiles.removeFile(copiedAsset.localPath).catch(() => undefined);
+      throw error;
+    }
+    if (edited.coverChange?.kind === 'set') {
+      await this.coverFiles.discard(edited.coverChange.source).catch(() => undefined);
+      if (oldCoverPath && !oldCoverRetained) await this.coverFiles.removeFile(oldCoverPath).catch(() => undefined);
+    } else if (edited.coverChange?.kind === 'remove' && oldCoverPath && !oldCoverRetained) {
+      await this.coverFiles.removeFile(oldCoverPath).catch(() => undefined);
+    }
     const result = await this.get(id);
     if (!result) throw new Error('找不到这本小说');
     return result;
