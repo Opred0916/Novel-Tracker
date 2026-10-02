@@ -13,6 +13,7 @@ import { BackupFileStorage } from '../backup/backupFileStorage';
 import { SqliteBackupRepository } from '../backup/backupRepository';
 import { BackupService } from '../backup/backupService';
 import { openDatabase } from './database';
+import { BookCoverFiles } from '../books/bookCoverFiles';
 
 const RepositoryContext = createContext<SqliteBookRepository | null>(null);
 const TagRepositoryContext = createContext<SqliteTagRepository | null>(null);
@@ -34,7 +35,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     openDatabase().then(db => {
       if (active) {
-        const books = new SqliteBookRepository(db);
+        const books = new SqliteBookRepository(db, undefined, undefined, new BookCoverFiles());
         setRepository(books);
         setTagRepository(new SqliteTagRepository(db));
         const notes = new SqliteNotesRepository(db);

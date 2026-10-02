@@ -40,7 +40,9 @@ export async function migrateDatabase(db: Database): Promise<void> {
         rating_half_stars INTEGER CHECK (
           rating_half_stars IS NULL OR
           (typeof(rating_half_stars) = 'integer' AND rating_half_stars BETWEEN 1 AND 10)
-        )
+        ),
+        cover_image_id TEXT,
+        FOREIGN KEY (cover_image_id) REFERENCES image_assets(id) ON DELETE SET NULL
       );
     `);
   } else {
@@ -59,6 +61,9 @@ export async function migrateDatabase(db: Database): Promise<void> {
     }
     if (!columns.some(column => column.name === 'legacy_read_count')) {
       await db.execAsync('ALTER TABLE books ADD COLUMN legacy_read_count INTEGER NOT NULL DEFAULT 0 CHECK (legacy_read_count IN (0, 1))');
+    }
+    if (!columns.some(column => column.name === 'cover_image_id')) {
+      await db.execAsync('ALTER TABLE books ADD COLUMN cover_image_id TEXT REFERENCES image_assets(id) ON DELETE SET NULL');
     }
   }
 
@@ -149,7 +154,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
   if (version < 5) {
     await db.runAsync("UPDATE books SET legacy_read_count = 1 WHERE status = 'finished'");
   }
-  await db.execAsync('PRAGMA user_version = 6');
+  await db.execAsync('PRAGMA user_version = 7');
 }
 
 export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {

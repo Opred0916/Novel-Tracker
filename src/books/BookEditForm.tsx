@@ -9,6 +9,8 @@ import { TagPicker } from './TagPicker';
 import { TypePicker } from './TypePicker';
 import { BOOK_STATUSES, type Book, type BookEditInput, type BookStatus, type BookType, type ReadingSession, type Tag } from './types';
 import { normalizeBookEdit } from './validation';
+import { BookCoverField } from './BookCoverField';
+import type { StagedCover } from './bookCoverFiles';
 
 export function BookEditForm({ book, onSave, allTags = [], sessions = [] }: {
   book: Book; onSave: (input: BookEditInput) => Promise<void>;
@@ -25,6 +27,7 @@ export function BookEditForm({ book, onSave, allTags = [], sessions = [] }: {
   const [bookType, setBookType] = useState<BookType | null>(book.bookType);
   const [tagIds, setTagIds] = useState<string[]>(book.tags.map(tag => tag.id));
   const [pendingTags, setPendingTags] = useState<Tag[]>([]);
+  const [coverChange, setCoverChange] = useState<BookEditInput['coverChange']>({ kind: 'keep' });
   const [protagonists, setProtagonists] = useState<string[]>([
     ...book.protagonists,
     ...Array(Math.max(0, 2 - book.protagonists.length)).fill(''),
@@ -84,6 +87,7 @@ export function BookEditForm({ book, onSave, allTags = [], sessions = [] }: {
         ...(pendingTags.some(tag => tagIds.includes(tag.id)) ? {
           newTags: pendingTags.filter(tag => tagIds.includes(tag.id)).map(({ id, name }) => ({ id, name })),
         } : {}),
+        ...(coverChange && coverChange.kind !== 'keep' ? { coverChange } : {}),
       });
       if (book.status === 'reading' && status === 'want_to_read' && activeSession) {
         Alert.alert('取消本次阅读？', '这会移除尚未结束的阅读记录，已结束的历史不受影响。', [
@@ -127,6 +131,10 @@ export function BookEditForm({ book, onSave, allTags = [], sessions = [] }: {
       allowNewValue={status === 'finished'}
       onChange={value => { setRatingHalfStars(value); setRatingCleared(value === null); }}
     /> : null}
+    <BookCoverField title={title} initialUri={book.coverUri} onChange={(value: StagedCover | null, removed) => {
+      if (value) setCoverChange({ kind: 'set', source: value });
+      else setCoverChange(removed && book.coverUri ? { kind: 'remove' } : { kind: 'keep' });
+    }} />
     <Text style={styles.label}>主角名字</Text>
     {protagonists.map((name, index) => <View key={index} style={styles.nameRow}>
       <Text style={styles.nameLabel}>主角 {index + 1}</Text>

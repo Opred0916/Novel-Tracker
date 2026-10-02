@@ -1,3 +1,5 @@
+import type { StagedCover } from './bookCoverFiles';
+
 export const BOOK_STATUSES = ['want_to_read', 'reading', 'finished', 'dropped'] as const;
 
 export type BookStatus = (typeof BOOK_STATUSES)[number];
@@ -25,18 +27,21 @@ export type Book = {
   bookType: BookType | null;
   tags: Tag[];
   legacyReadCount: number;
+  coverImageId: string | null;
+  coverUri: string | null;
   createdAt: string;
   updatedAt: string;
 };
 
 export type BookInput = Pick<Book, 'title' | 'status'> &
-  Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars' | 'bookType'>> & { tagIds?: string[]; readingDates?: ReadingDatesInput };
+  Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars' | 'bookType'>> & { tagIds?: string[]; readingDates?: ReadingDatesInput; coverSource?: StagedCover };
 
 export type BookEditInput = Pick<Book, 'title' | 'author' | 'status' | 'protagonists'> &
   Partial<Pick<Book, 'ratingHalfStars' | 'bookType'>> & {
     tagIds?: string[];
     newTags?: Pick<Tag, 'id' | 'name'>[];
     readingDates?: ReadingDatesInput;
+    coverChange?: { kind: 'keep' } | { kind: 'remove' } | { kind: 'set'; source: StagedCover };
   };
 
 export type ImageAsset = {

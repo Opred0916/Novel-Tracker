@@ -28,7 +28,7 @@ jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'new-tag-id') }));
 
 const book: Book = {
   id: 'book-1', title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青'], ratingHalfStars: null, bookType: null, tags: [],
-  legacyReadCount: 0, createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T11:00:00.000Z',
+  legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T11:00:00.000Z',
 };
 
 const repo = {
@@ -109,14 +109,14 @@ test('book card shows author, rating, and an optional matching note snippet', as
   expect(screen.getByText('匹配摘记')).toBeTruthy();
   expect(screen.getByText('这是命中的摘记内容')).toBeTruthy();
   expect(screen.queryByText('在读')).toBeNull();
-  await fireEvent.press(screen.getByText('长夜'));
+  await fireEvent.press(screen.getAllByText('长夜')[0]);
   expect(onPress).toHaveBeenCalledTimes(1);
 });
 
 test('bookshelf opens the tapped novel detail page', async () => {
   const screen = await render(<Bookshelf />);
-  await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
-  await fireEvent.press(screen.getByText('长夜'));
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getAllByText('长夜')[0]);
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: book.id } });
 });
 
@@ -126,12 +126,12 @@ test('bookshelf filters by search and clears the filter', async () => {
     ? [{ book, matchedNoteSnippet: '长夜之后仍有归途' }]
     : [{ book, matchedNoteSnippet: null }, { book: other, matchedNoteSnippet: null }]);
   const screen = await render(<Bookshelf />);
-  await waitFor(() => expect(screen.getByText('归途')).toBeTruthy());
+  await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
   await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角或摘记'), '长夜');
   await waitFor(() => expect(screen.queryByText('归途')).toBeNull());
   expect(screen.getByText('匹配摘记')).toBeTruthy();
   await fireEvent.press(screen.getByText('清除筛选'));
-  await waitFor(() => expect(screen.getByText('归途')).toBeTruthy());
+  await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
 });
 
 test('bookshelf opens backup and restore settings', async () => {
@@ -143,7 +143,7 @@ test('bookshelf opens backup and restore settings', async () => {
 
 test('bookshelf submits status, type, and every selected tag then clears them together', async () => {
   const screen = await render(<Bookshelf />);
-  await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   await fireEvent.press(screen.getByText('筛选条件'));
   await fireEvent.press(screen.getByText('在读'));
   await fireEvent.press(screen.getByText('耽美'));
@@ -166,7 +166,7 @@ test('bookshelf offers retry after a search failure', async () => {
   expect(screen.queryByText('书架还是空的')).toBeNull();
   expect(screen.queryByText('没有符合条件的小说')).toBeNull();
   await fireEvent.press(screen.getByText('重试'));
-  await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   expect(searchRepo.search).toHaveBeenCalledTimes(2);
 });
 
@@ -175,10 +175,10 @@ test('bookshelf keeps old results visible while a new search is loading', async 
   const pending = new Promise<{ book: Book; matchedNoteSnippet: null }[]>(resolve => { resolveSearch = resolve; });
   searchRepo.search.mockResolvedValueOnce([{ book, matchedNoteSnippet: null }]).mockReturnValueOnce(pending);
   const screen = await render(<Bookshelf />);
-  await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角或摘记'), '新条件');
   await waitFor(() => expect(screen.getByLabelText('正在搜索')).toBeTruthy());
-  expect(screen.getByText('长夜')).toBeTruthy();
+  expect(screen.getAllByText('长夜').length).toBeGreaterThan(0);
   await act(async () => { resolveSearch([{ book, matchedNoteSnippet: null }]); });
 });
 
@@ -186,9 +186,9 @@ test('bookshelf refreshes results on returning to focus without clearing conditi
   const updatedBook = { ...book, title: '长夜·修订版' };
   searchRepo.search.mockResolvedValueOnce([{ book, matchedNoteSnippet: null }]).mockResolvedValueOnce([{ book: updatedBook, matchedNoteSnippet: null }]);
   const screen = await render(<Bookshelf />);
-  await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   await act(async () => { mockFocusCallback?.(); });
-  await waitFor(() => expect(screen.getByText('长夜·修订版')).toBeTruthy());
+  await waitFor(() => expect(screen.getAllByText('长夜·修订版').length).toBeGreaterThan(0));
 });
 
 test('detail page loads the novel and offers an edit entry', async () => {

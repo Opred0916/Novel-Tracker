@@ -1,5 +1,5 @@
 import type { Database } from '../storage/database';
-import { BACKUP_FORMAT_VERSION, type BackupCounts, type BackupDataCollections, type BackupManifestV1 } from './backupTypes';
+import { BACKUP_FORMAT_VERSION, CURRENT_BACKUP_FORMAT_VERSION, type BackupCounts, type BackupDataCollections, type BackupManifestV1 } from './backupTypes';
 import { validateBackupManifest } from './backupValidation';
 
 export type BackupImageSource = {
@@ -12,7 +12,7 @@ export type BackupImageSource = {
 };
 
 export type BackupSnapshot = {
-  formatVersion: typeof BACKUP_FORMAT_VERSION;
+  formatVersion: typeof BACKUP_FORMAT_VERSION | typeof CURRENT_BACKUP_FORMAT_VERSION;
   exportedAt: string;
   appVersion: string;
   data: BackupDataCollections;
@@ -23,6 +23,7 @@ type BookRow = {
   id: string; title: string; author: string | null; status: BackupManifestV1['books'][number]['status'];
   type: BackupManifestV1['books'][number]['bookType']; rating_half_stars: number | null; legacy_read_count: number;
   created_at: string; updated_at: string;
+  cover_image_id: string | null;
 };
 type ProtagonistRow = { book_id: string; position: number; name: string };
 type TagRow = { id: string; name: string; is_system: number };
@@ -72,14 +73,14 @@ export class SqliteBackupRepository {
       const highlightImages = await txn.getAllAsync<HighlightImageRow>('SELECT * FROM highlight_images ORDER BY book_id ASC, position ASC, image_id ASC');
       const images = await txn.getAllAsync<ImageRow>('SELECT * FROM image_assets ORDER BY id ASC');
       result = {
-        formatVersion: BACKUP_FORMAT_VERSION,
+        formatVersion: CURRENT_BACKUP_FORMAT_VERSION,
         exportedAt,
         appVersion,
         data: {
           books: books.map(row => ({
             id: row.id, title: row.title, author: row.author, status: row.status, bookType: row.type,
             ratingHalfStars: row.rating_half_stars, legacyReadCount: row.legacy_read_count,
-            createdAt: row.created_at, updatedAt: row.updated_at,
+            createdAt: row.created_at, updatedAt: row.updated_at, coverImageId: row.cover_image_id,
           })),
           protagonists: protagonists.map(row => ({ bookId: row.book_id, position: row.position, name: row.name })),
           tags: tags.map(row => ({ id: row.id, name: row.name, isSystem: row.is_system === 1 })),
@@ -117,7 +118,7 @@ export class SqliteBackupRepository {
         DELETE FROM book_protagonists; DELETE FROM books;
       `);
       for (const book of manifest.books) await txn.runAsync(
-        'INSERT INTO books (id, title, author, status, created_at, updated_at, rating_half_stars, type, legacy_read_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO books (id, title, author, status, created_at, updated_at, rating_half_stars, type, legacy_read_count, cover_image_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)',
         book.id, book.title, book.author, book.status, book.createdAt, book.updatedAt, book.ratingHalfStars, book.bookType, book.legacyReadCount,
       );
       for (const protagonist of manifest.protagonists) await txn.runAsync(
@@ -140,6 +141,11 @@ export class SqliteBackupRepository {
         'INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)',
         image.id, image.bookId, restoredImagePaths.get(image.id)!, image.createdAt,
       );
+      for (const book of manifest.books) {
+        if ((manifest as unknown as { formatVersion: number }).formatVersion === 2 && book.coverImageId !== undefined && book.coverImageId !== null) {
+          await txn.runAsync('UPDATE books SET cover_image_id = ? WHERE id = ?', book.coverImageId, book.id);
+        }
+      }
       for (const note of manifest.notes) await txn.runAsync(
         'INSERT INTO notes (id, book_id, body, created_at, updated_at, reading_session_id) VALUES (?, ?, ?, ?, ?, ?)',
         note.id, note.bookId, note.body, note.createdAt, note.updatedAt, note.readingSessionId,

@@ -1,6 +1,7 @@
 import { BOOK_STATUSES, BOOK_TYPES, type BookType } from '../books/types';
 import {
   BACKUP_FORMAT_VERSION,
+  CURRENT_BACKUP_FORMAT_VERSION,
   type BackupCounts,
   type BackupErrorCode,
   type BackupManifestV1,
@@ -111,8 +112,9 @@ export function countsFromManifest(manifest: BackupManifestV1): BackupCounts {
 
 export function validateBackupManifest(input: unknown): BackupManifestV1 {
   const root = record(input, 'manifest');
-  if (root.formatVersion !== BACKUP_FORMAT_VERSION) {
-    if (typeof root.formatVersion === 'number' && root.formatVersion > BACKUP_FORMAT_VERSION) fail('unsupported_version', 'backup is newer than this app');
+  const formatVersion = root.formatVersion;
+  if (formatVersion !== BACKUP_FORMAT_VERSION && formatVersion !== CURRENT_BACKUP_FORMAT_VERSION) {
+    if (typeof formatVersion === 'number' && formatVersion > CURRENT_BACKUP_FORMAT_VERSION) fail('unsupported_version', 'backup is newer than this app');
     fail('invalid_manifest', 'formatVersion is invalid');
   }
 
@@ -148,6 +150,10 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
     const legacyReadCount = integer(item.legacyReadCount, 'book.legacyReadCount');
     if (legacyReadCount > 1) fail('invalid_value', 'book.legacyReadCount is invalid');
     timestamp(item.createdAt, 'book.createdAt'); timestamp(item.updatedAt, 'book.updatedAt');
+    if (formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
+      if (!Object.prototype.hasOwnProperty.call(item, 'coverImageId')) fail('invalid_value', 'book.coverImageId is required in format v2');
+      if (item.coverImageId !== null) string(item.coverImageId, 'book.coverImageId');
+    }
   }
   for (const [index, value] of protagonists.entries()) {
     const item = record(value, `protagonists[${index}]`);
@@ -229,6 +235,16 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
     }
   }
   for (const value of images) requireReference(bookIds, (value as any).bookId, 'image book');
+  if (formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
+    const imageById = new Map(images.map(value => [(value as any).id as string, value as any]));
+    for (const book of books) {
+      const coverImageId = (book as any).coverImageId as string | null;
+      if (coverImageId !== null) {
+        requireReference(imageIds, coverImageId, 'book cover image');
+        if (imageById.get(coverImageId).bookId !== (book as any).id) fail('invalid_reference', 'book cover image belongs to another book');
+      }
+    }
+  }
   for (const value of noteImages) { requireReference(noteIds, (value as any).noteId, 'note image note'); requireReference(imageIds, (value as any).imageId, 'note image image'); }
   for (const value of highlightImages) { requireReference(bookIds, (value as any).bookId, 'highlight image book'); requireReference(imageIds, (value as any).imageId, 'highlight image image'); }
 

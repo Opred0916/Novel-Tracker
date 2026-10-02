@@ -1,6 +1,7 @@
 import type { BookStatus, BookType } from '../books/types';
 
 export const BACKUP_FORMAT_VERSION = 1 as const;
+export const CURRENT_BACKUP_FORMAT_VERSION = 2 as const;
 export const MAX_ARCHIVE_ENTRIES = 20_001;
 export const MAX_MANIFEST_BYTES = 10 * 1024 * 1024;
 export const MAX_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024;
@@ -15,6 +16,8 @@ export type BackupBook = {
   legacyReadCount: number;
   createdAt: string;
   updatedAt: string;
+  /** Present in format v2; absent in v1 and normalized to null on restore. */
+  coverImageId?: string | null;
 };
 
 export type BackupProtagonist = { bookId: string; position: number; name: string };
@@ -79,6 +82,11 @@ export type BackupManifestV1 = BackupDataCollections & {
   appVersion: string;
   counts: BackupCounts;
   images: BackupImageEntry[];
+};
+
+export type BackupManifestV2 = Omit<BackupManifestV1, 'formatVersion'> & {
+  formatVersion: typeof CURRENT_BACKUP_FORMAT_VERSION;
+  books: (BackupBook & { coverImageId: string | null })[];
 };
 
 export type BackupProgressStage = 'collecting' | 'packing' | 'validating' | 'staging' | 'restoring' | 'cleaning';

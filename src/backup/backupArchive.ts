@@ -1,4 +1,5 @@
 import { strFromU8, strToU8, unzipSync, Unzip, UnzipInflate, Zip, ZipDeflate, ZipPassThrough } from 'fflate';
+import { Image as ExpoImage } from 'expo-image';
 import type { BackupSnapshot } from './backupRepository';
 import {
   MAX_ARCHIVE_ENTRIES,
@@ -69,7 +70,11 @@ const validateZipIntegrity = (bytes: Uint8Array): void => {
 export class BackupArchive {
   private readonly limits: Limits;
 
-  constructor(private readonly files: BackupFilePort, limits: Partial<Limits> = {}) {
+  constructor(
+    private readonly files: BackupFilePort,
+    limits: Partial<Limits> = {},
+    private readonly decodeImage: (uri: string) => Promise<unknown> = async uri => ExpoImage.loadAsync(uri),
+  ) {
     this.limits = { ...DEFAULT_LIMITS, ...limits };
   }
 
@@ -92,7 +97,7 @@ export class BackupArchive {
       appVersion: snapshot.appVersion,
       ...snapshot.data,
       images: imageEntries,
-    } as Omit<BackupManifestV1, 'counts'>;
+    } as unknown as Omit<BackupManifestV1, 'counts'>;
     const manifest = validateBackupManifest({ ...draft, counts: countsFromManifest(draft as BackupManifestV1) });
     const manifestBytes = strToU8(JSON.stringify(manifest));
     if (manifestBytes.length > this.limits.maxManifestBytes || imageEntries.length + 1 > this.limits.maxEntries
@@ -287,6 +292,13 @@ export class BackupArchive {
         if (!uri) throw new BackupValidationError('image_missing', `缺少图片：${image.id}`);
         if (actualSizes.get(image.archivePath) !== image.byteLength) throw new BackupValidationError('invalid_file', `图片大小不符：${image.id}`);
         imagePaths.set(image.id, uri);
+      }
+      for (const book of manifest.books) {
+        if ((manifest as unknown as { formatVersion: number }).formatVersion !== 2 || !book.coverImageId) continue;
+        const coverPath = imagePaths.get(book.coverImageId);
+        if (!coverPath) throw new BackupValidationError('image_missing', `缺少封面图片：${book.id}`);
+        try { await this.decodeImage(coverPath); }
+        catch { throw new BackupValidationError('invalid_file', `封面图片无法读取：${book.id}`); }
       }
       return { manifest, imagePaths };
     } catch (error) {

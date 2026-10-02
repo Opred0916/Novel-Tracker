@@ -4,6 +4,16 @@ import { SqliteTagRepository } from '../../src/books/tagRepository';
 import { migrateDatabase } from '../../src/storage/database';
 import { createInMemoryDatabase } from '../helpers/inMemoryDatabase';
 
+function fakeCoverFiles() {
+  return {
+    copyToBook: jest.fn(async (source: { extension: string }, bookId: string, imageId: string) => ({
+      id: imageId, bookId, localPath: `file:///${bookId}/${imageId}.${source.extension}`, createdAt: 'now',
+    })),
+    discard: jest.fn(async () => undefined),
+    removeFile: jest.fn(async () => undefined),
+  };
+}
+
 test('created novels remain distinct when they share a title', async () => {
   const db = createInMemoryDatabase();
   try {
@@ -15,7 +25,26 @@ test('created novels remain distinct when they share a title', async () => {
     expect(first.id).not.toBe(second.id);
     expect((await repo.list()).map(book => book.title)).toEqual(['长夜', '长夜']);
     expect((await repo.get(first.id))?.status).toBe('want_to_read');
-    expect(first).toMatchObject({ author: null, protagonists: [], ratingHalfStars: null });
+    expect(first).toMatchObject({ author: null, protagonists: [], ratingHalfStars: null, coverImageId: null, coverUri: null });
+  } finally {
+    db.close();
+  }
+});
+
+test('hydrates a linked cover image path while keeping books without covers nullable', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    await db.runAsync("INSERT INTO books (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      'covered', '有封面', 'want_to_read', 'a', 'b');
+    await db.runAsync('INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)',
+      'cover-1', 'covered', 'file:///cover.png', 'a');
+    await db.runAsync('UPDATE books SET cover_image_id = ? WHERE id = ?', 'cover-1', 'covered');
+    await db.runAsync("INSERT INTO books (id, title, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+      'plain', '无封面', 'want_to_read', 'a', 'c');
+    const repo = new SqliteBookRepository(db, randomUUID);
+    expect(await repo.get('covered')).toMatchObject({ coverImageId: 'cover-1', coverUri: 'file:///cover.png' });
+    expect(await repo.get('plain')).toMatchObject({ coverImageId: null, coverUri: null });
   } finally {
     db.close();
   }
@@ -33,6 +62,48 @@ test('persists book type and multiple tags through create and update', async () 
     expect((await repo.get(book.id))?.bookType).toBe('romance_male_male');
     await repo.update(book.id, { title: book.title, author: null, status: book.status, protagonists: [], bookType: 'other', tagIds: [selected[1].id] });
     expect((await repo.list())[0]).toMatchObject({ bookType: 'other', tags: [{ name: '悬疑' }] });
+  } finally {
+    db.close();
+  }
+});
+
+test('stores, replaces, and removes a local book cover as one repository operation', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    const files = fakeCoverFiles();
+    const repo = new SqliteBookRepository(db, randomUUID, undefined, files as never);
+    const first = await repo.create({ title: '长夜', status: 'want_to_read', coverSource: { uri: 'file:///stage-a', extension: 'png' } });
+    expect(first).toMatchObject({ coverUri: expect.stringContaining('png') });
+    expect(await db.getFirstAsync('SELECT cover_image_id FROM books WHERE id = ?', first.id)).toEqual({ cover_image_id: first.coverImageId });
+    const second = await repo.update(first.id, {
+      title: first.title, author: first.author, status: first.status, protagonists: [],
+      coverChange: { kind: 'set', source: { uri: 'file:///stage-b', extension: 'jpg' } },
+    });
+    expect(second.coverImageId).not.toBe(first.coverImageId);
+    expect(files.removeFile).toHaveBeenCalledWith(first.coverUri);
+    const removed = await repo.update(second.id, {
+      title: second.title, author: second.author, status: second.status, protagonists: [],
+      coverChange: { kind: 'remove' },
+    });
+    expect(removed).toMatchObject({ coverImageId: null, coverUri: null });
+    expect(files.removeFile).toHaveBeenCalledWith(second.coverUri);
+  } finally {
+    db.close();
+  }
+});
+
+test('does not delete a cover asset that is also referenced by a note or highlight', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    const files = fakeCoverFiles();
+    const repo = new SqliteBookRepository(db, randomUUID, undefined, files as never);
+    const book = await repo.create({ title: '共享封面', status: 'want_to_read', coverSource: { uri: 'file:///stage', extension: 'png' } });
+    await db.runAsync('INSERT INTO highlight_images (book_id, image_id, position) VALUES (?, ?, ?)', book.id, book.coverImageId, 0);
+    await repo.update(book.id, { title: book.title, author: null, status: book.status, protagonists: [], coverChange: { kind: 'remove' } });
+    expect(await db.getFirstAsync('SELECT id FROM image_assets WHERE id = ?', book.coverImageId)).toEqual({ id: book.coverImageId });
+    expect(files.removeFile).not.toHaveBeenCalledWith(book.coverUri);
   } finally {
     db.close();
   }

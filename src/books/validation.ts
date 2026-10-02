@@ -55,12 +55,22 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
     }
     edited.newTags = input.newTags.map(tag => ({ id: tag.id, name: tag.name.trim() }));
   }
+  if (input.coverChange !== undefined) {
+    if (input.coverChange.kind === 'set') {
+      if (!input.coverChange.source?.uri || !input.coverChange.source.extension) throw new Error('封面图片无效');
+      edited.coverChange = { kind: 'set', source: input.coverChange.source };
+    } else if (input.coverChange.kind === 'keep' || input.coverChange.kind === 'remove') {
+      edited.coverChange = { kind: input.coverChange.kind };
+    } else {
+      throw new Error('封面图片无效');
+    }
+  }
   return edited;
 }
 
 export function normalizeBookCreate(
   input: BookInput,
-): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars' | 'bookType'> & { tagIds: string[]; readingDates?: BookInput['readingDates'] } {
+): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars' | 'bookType'> & { tagIds: string[]; readingDates?: BookInput['readingDates']; coverSource?: BookInput['coverSource'] } {
   const normalized = normalizeBookEdit({
     title: input.title,
     author: input.author ?? null,
@@ -75,5 +85,5 @@ export function normalizeBookCreate(
   if (normalized.status !== 'finished' && ratingHalfStars !== null) {
     throw new Error('只有读完的小说才能新增评分');
   }
-  return { ...normalized, bookType: normalized.bookType ?? null, tagIds: normalized.tagIds ?? [], ratingHalfStars };
+  return { ...normalized, bookType: normalized.bookType ?? null, tagIds: normalized.tagIds ?? [], ratingHalfStars, coverSource: input.coverSource };
 }

@@ -64,13 +64,13 @@ describe('SqliteBackupRepository', () => {
     const snapshot = await repository.createSnapshot('1.2.3', '2026-10-02T12:00:00.000Z');
 
     expect(snapshot).toEqual({
-      formatVersion: 1,
+      formatVersion: 2,
       exportedAt: '2026-10-02T12:00:00.000Z',
       appVersion: '1.2.3',
       data: {
         books: [
-          { id: 'book-a', title: '第一本', author: '甲', status: 'finished', bookType: 'romance_male_male', ratingHalfStars: 10, legacyReadCount: 1, createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-03T00:00:00.000Z' },
-          { id: 'book-b', title: '第二本', author: '乙', status: 'want_to_read', bookType: 'other', ratingHalfStars: null, legacyReadCount: 0, createdAt: '2026-09-02T00:00:00.000Z', updatedAt: '2026-09-02T00:00:00.000Z' },
+          { id: 'book-a', title: '第一本', author: '甲', status: 'finished', bookType: 'romance_male_male', ratingHalfStars: 10, legacyReadCount: 1, coverImageId: null, createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-03T00:00:00.000Z' },
+          { id: 'book-b', title: '第二本', author: '乙', status: 'want_to_read', bookType: 'other', ratingHalfStars: null, legacyReadCount: 0, coverImageId: null, createdAt: '2026-09-02T00:00:00.000Z', updatedAt: '2026-09-02T00:00:00.000Z' },
         ],
         protagonists: [
           { bookId: 'book-a', position: 0, name: '主角一' },
@@ -121,7 +121,7 @@ describe('SqliteBackupRepository', () => {
     expect(await db.getAllAsync('SELECT id, local_path FROM image_assets')).toEqual([{ id: 'image-1', local_path: 'file:///restored/image-1.jpg' }]);
     expect(await db.getAllAsync('SELECT note_id, image_id FROM note_images')).toEqual([{ note_id: 'note-1', image_id: 'image-1' }]);
     expect(await db.getAllAsync('SELECT book_id, image_id FROM highlight_images')).toEqual([{ book_id: 'book-1', image_id: 'image-1' }]);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 6 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 7 });
   });
 
   test('rolls back every table when replacement fails in the middle', async () => {
