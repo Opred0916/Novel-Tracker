@@ -5,6 +5,7 @@ import type { Book, BookEditInput, BookInput, BookStatus, BookType, ImageAsset, 
 import { normalizeBookCreate, normalizeBookEdit } from './validation';
 import { normalizeReadingDates, todayLocalDate } from './readingDates';
 import { BookCoverFiles } from './bookCoverFiles';
+import { ImageDeletionQueue } from './imageDeletionQueue';
 
 type BookRow = {
   id: string;
@@ -50,6 +51,7 @@ export class SqliteBookRepository implements BookRepository {
     private readonly idFactory: () => string = randomUUID,
     private readonly todayFactory: () => string = todayLocalDate,
     private readonly coverFiles: BookCoverFiles = new BookCoverFiles(),
+    private readonly deletionQueue: ImageDeletionQueue = new ImageDeletionQueue(db),
   ) {}
 
   private async addSession(
@@ -247,5 +249,30 @@ export class SqliteBookRepository implements BookRepository {
     const result = await this.get(id);
     if (!result) throw new Error('找不到这本小说');
     return result;
+  }
+
+  async delete(id: string): Promise<void> {
+    const imagePaths: string[] = [];
+    await this.db.withExclusiveTransactionAsync(async txn => {
+      const book = await txn.getFirstAsync<{ id: string }>('SELECT id FROM books WHERE id = ?', id);
+      if (!book) throw new Error('找不到这本小说');
+      const images = await txn.getAllAsync<{ id: string; local_path: string }>('SELECT id, local_path FROM image_assets WHERE book_id = ?', id);
+      for (const image of images) {
+        const crossBookReference = await txn.getFirstAsync<{ found: number }>(`
+          SELECT 1 AS found FROM image_assets WHERE id = ? AND book_id <> ?
+          UNION ALL SELECT 1 FROM books WHERE cover_image_id = ? AND id <> ?
+          UNION ALL SELECT 1 FROM notes n JOIN note_images ni ON ni.note_id = n.id WHERE ni.image_id = ? AND n.book_id <> ?
+          UNION ALL SELECT 1 FROM highlight_images hi WHERE hi.image_id = ? AND hi.book_id <> ?
+          UNION ALL SELECT 1 FROM image_assets WHERE local_path = ? AND book_id <> ?
+          LIMIT 1
+        `, image.id, id, image.id, id, image.id, id, image.id, id, image.local_path, id);
+        if (crossBookReference) throw new Error('图片关联异常');
+        imagePaths.push(image.local_path);
+      }
+      if (imagePaths.length) await this.deletionQueue.enqueue(txn, imagePaths);
+      await txn.runAsync('UPDATE books SET cover_image_id = NULL WHERE id = ?', id);
+      await txn.runAsync('DELETE FROM books WHERE id = ?', id);
+    });
+    try { await this.deletionQueue.drain(); } catch { /* committed deletion remains authoritative */ }
   }
 }

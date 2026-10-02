@@ -32,7 +32,8 @@ function isManagedFile(localPath: string, roots: readonly URL[]): boolean {
   let parsed: URL;
   try { parsed = new URL(localPath); } catch { return false; }
   if (parsed.protocol !== 'file:') return false;
-  const pathname = decodeURIComponent(parsed.pathname).replace(/\/+/g, '/');
+  let pathname: string;
+  try { pathname = decodeURIComponent(parsed.pathname).replace(/\/+/g, '/'); } catch { return false; }
   if (pathname.endsWith('/')) return false;
   return roots.some(root => parsed.origin === root.origin && pathname.startsWith(root.pathname));
 }
@@ -43,7 +44,10 @@ export class ImageDeletionQueue {
   constructor(
     private readonly db: Database,
     private readonly files: ImageDeletionFilePort = defaultFiles,
-    managedRoots: readonly string[] = [],
+    managedRoots: readonly string[] = [
+      ...(FileSystem.documentDirectory ? [`${FileSystem.documentDirectory}novel-tracker/`] : []),
+      ...(FileSystem.documentDirectory ? [`${FileSystem.documentDirectory}novel-tracker-restored-images/`] : []),
+    ],
   ) {
     this.roots = managedRoots.map(normalizeRoot).filter((root): root is URL => root !== null);
   }
