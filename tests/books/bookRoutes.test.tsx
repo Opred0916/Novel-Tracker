@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useBooks, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
+import { useBooks, useBookSearchRepository, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
 import Bookshelf from '../../src/app/index';
 import NewBook from '../../src/app/book/new';
 import QuickTagsPage from '../../src/app/settings/tags';
@@ -19,7 +19,7 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn(), useNotes: jest.fn() }));
+jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useBookSearchRepository: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn(), useNotes: jest.fn() }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'new-tag-id') }));
 
 const book: Book = {
@@ -33,6 +33,7 @@ const repo = {
   get: jest.fn(),
   update: jest.fn(),
 };
+const searchRepo = { search: jest.fn() };
 const tagRepo = { list: jest.fn(), listQuick: jest.fn(), create: jest.fn(), setQuick: jest.fn() };
 const historyRepo = { list: jest.fn(), backfillFirst: jest.fn(), updateDates: jest.fn(), delete: jest.fn() };
 const notesRepo = { listNotes: jest.fn(), listHighlights: jest.fn(), createNote: jest.fn(), updateNote: jest.fn(), deleteNote: jest.fn(), registerImage: jest.fn(), addHighlights: jest.fn(), removeHighlight: jest.fn() };
@@ -40,6 +41,7 @@ const notesRepo = { listNotes: jest.fn(), listHighlights: jest.fn(), createNote:
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useBooks).mockReturnValue(repo as unknown as ReturnType<typeof useBooks>);
+  jest.mocked(useBookSearchRepository).mockReturnValue(searchRepo as unknown as ReturnType<typeof useBookSearchRepository>);
   jest.mocked(useTags).mockReturnValue(tagRepo as unknown as ReturnType<typeof useTags>);
   jest.mocked(useReadingHistory).mockReturnValue(historyRepo as unknown as ReturnType<typeof useReadingHistory>);
   jest.mocked(useNotes).mockReturnValue(notesRepo as unknown as ReturnType<typeof useNotes>);
@@ -47,6 +49,7 @@ beforeEach(() => {
   repo.get.mockResolvedValue(book);
   repo.list.mockResolvedValue([book]);
   repo.update.mockResolvedValue(book);
+  searchRepo.search.mockResolvedValue([{ book, matchedNoteSnippet: null }]);
   tagRepo.list.mockResolvedValue([{ id: 'ancient', name: '古代', isSystem: true }]);
   tagRepo.listQuick.mockResolvedValue([{ id: 'ancient', name: '古代', isSystem: true }]);
   historyRepo.list.mockResolvedValue([]);
@@ -94,11 +97,13 @@ test('quick tag settings save the chosen tags without deleting the library', asy
   expect(tagRepo.list).toHaveBeenCalled();
 });
 
-test('book card shows author and rating without repeating the status filter', async () => {
+test('book card shows author, rating, and an optional matching note snippet', async () => {
   const onPress = jest.fn();
-  const screen = await render(<BookCard book={{ ...book, ratingHalfStars: 9 }} onPress={onPress} />);
+  const screen = await render(<BookCard book={{ ...book, ratingHalfStars: 9 }} matchedNoteSnippet="这是命中的摘记内容" onPress={onPress} />);
   expect(screen.getByText('某作者')).toBeTruthy();
   expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
+  expect(screen.getByText('匹配摘记')).toBeTruthy();
+  expect(screen.getByText('这是命中的摘记内容')).toBeTruthy();
   expect(screen.queryByText('在读')).toBeNull();
   await fireEvent.press(screen.getByText('长夜'));
   expect(onPress).toHaveBeenCalledTimes(1);
@@ -112,13 +117,44 @@ test('bookshelf opens the tapped novel detail page', async () => {
 });
 
 test('bookshelf filters by search and clears the filter', async () => {
-  repo.list.mockResolvedValue([book, { ...book, id: 'book-2', title: '归途', author: '另一作者' }]);
+  const other = { ...book, id: 'book-2', title: '归途', author: '另一作者' };
+  searchRepo.search.mockImplementation(async ({ query }: { query: string }) => query
+    ? [{ book, matchedNoteSnippet: '长夜之后仍有归途' }]
+    : [{ book, matchedNoteSnippet: null }, { book: other, matchedNoteSnippet: null }]);
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getByText('归途')).toBeTruthy());
-  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者或主角'), '长夜');
-  expect(screen.queryByText('归途')).toBeNull();
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角或摘记'), '长夜');
+  await waitFor(() => expect(screen.queryByText('归途')).toBeNull());
+  expect(screen.getByText('匹配摘记')).toBeTruthy();
   await fireEvent.press(screen.getByText('清除筛选'));
-  expect(screen.getByText('归途')).toBeTruthy();
+  await waitFor(() => expect(screen.getByText('归途')).toBeTruthy());
+});
+
+test('bookshelf submits status, type, and every selected tag then clears them together', async () => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
+  await fireEvent.press(screen.getByText('筛选条件'));
+  await fireEvent.press(screen.getByText('在读'));
+  await fireEvent.press(screen.getByText('耽美'));
+  await fireEvent.press(screen.getByText('古代'));
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({
+    query: '', status: 'reading', bookType: 'romance_male_male', tagIds: ['ancient'],
+  }));
+  expect(screen.getByText('筛选条件（3）')).toBeTruthy();
+  await fireEvent.press(screen.getByText('清除筛选'));
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({
+    query: '', status: null, bookType: null, tagIds: [],
+  }));
+  expect(screen.getByText('筛选条件')).toBeTruthy();
+});
+
+test('bookshelf offers retry after a search failure', async () => {
+  searchRepo.search.mockRejectedValueOnce(new Error('read failed')).mockResolvedValueOnce([{ book, matchedNoteSnippet: null }]);
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('搜索失败，请重试')).toBeTruthy());
+  await fireEvent.press(screen.getByText('重试'));
+  await waitFor(() => expect(screen.getByText('长夜')).toBeTruthy());
+  expect(searchRepo.search).toHaveBeenCalledTimes(2);
 });
 
 test('detail page loads the novel and offers an edit entry', async () => {
