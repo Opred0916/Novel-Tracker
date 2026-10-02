@@ -12,6 +12,10 @@ const fromImage = (row: ImageRow): ImageAsset => ({ id: row.id, bookId: row.book
 export class SqliteNotesRepository {
   constructor(private readonly db: Database, private readonly idFactory: () => string = randomUUID) {}
 
+  async registerImage(asset: ImageAsset): Promise<void> {
+    await this.db.runAsync('INSERT OR IGNORE INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)', asset.id, asset.bookId, asset.localPath, asset.createdAt);
+  }
+
   private async imagesForNote(noteId: string, txn: Database): Promise<ImageAsset[]> {
     const rows = await txn.getAllAsync<ImageRow>(
       'SELECT a.* FROM image_assets a JOIN note_images n ON n.image_id = a.id WHERE n.note_id = ? ORDER BY n.position ASC', noteId,
