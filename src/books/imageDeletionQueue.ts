@@ -28,7 +28,10 @@ function hasTraversal(path: string): boolean {
 }
 
 function isManagedFile(localPath: string, roots: readonly URL[]): boolean {
-  if (!localPath || localPath.includes('?') || localPath.includes('#') || hasTraversal(localPath)) return false;
+  if (!localPath || localPath.includes('?') || localPath.includes('#')) return false;
+  let decodedInput: string;
+  try { decodedInput = decodeURIComponent(localPath); } catch { return false; }
+  if (hasTraversal(localPath) || hasTraversal(decodedInput) || decodedInput.includes('\\')) return false;
   let parsed: URL;
   try { parsed = new URL(localPath); } catch { return false; }
   if (parsed.protocol !== 'file:') return false;

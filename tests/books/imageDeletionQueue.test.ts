@@ -93,13 +93,14 @@ test('drain does not delete a path outside managed roots or with encoded travers
     const queue = new ImageDeletionQueue(db, files, [ROOT]);
     const outside = 'file:///app/documents/novel-tracker-backup/image.jpg';
     const encodedTraversal = 'file:///app/documents/novel-tracker/%2e%2e/outside.jpg';
-    await enqueue(db, queue, [outside, encodedTraversal]);
+    const encodedSeparators = 'file:///app/documents/novel-tracker/%2e%2e%2f%2e%2e%2fvictim.jpg';
+    await enqueue(db, queue, [outside, encodedTraversal, encodedSeparators]);
 
     await queue.drain();
 
     expect(files.removeFile).not.toHaveBeenCalled();
     expect(await db.getAllAsync<{ local_path: string }>('SELECT local_path FROM pending_image_deletions ORDER BY local_path')).toEqual([
-      { local_path: outside }, { local_path: encodedTraversal },
+      { local_path: outside }, { local_path: encodedSeparators }, { local_path: encodedTraversal },
     ]);
   } finally {
     db.close();

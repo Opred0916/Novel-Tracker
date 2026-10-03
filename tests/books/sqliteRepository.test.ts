@@ -132,6 +132,9 @@ test('deletes a book and all of its owned records without deleting global tags o
     await db.runAsync('INSERT INTO notes (id, book_id, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', 'note-delete', book.id, '想法', '2026-09-01', '2026-09-01');
     await db.runAsync('INSERT INTO note_images (note_id, image_id, position) VALUES (?, ?, ?)', 'note-delete', 'image-delete', 0);
     await db.runAsync('INSERT INTO highlight_images (book_id, image_id, position) VALUES (?, ?, ?)', book.id, 'image-delete', 0);
+    // Expo SQLite's exclusive transaction may use a separate connection whose
+    // connection-local foreign_keys pragma is not enabled.
+    await db.execAsync('PRAGMA foreign_keys = OFF');
 
     await repo.delete(book.id);
 

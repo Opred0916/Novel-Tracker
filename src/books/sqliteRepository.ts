@@ -271,6 +271,17 @@ export class SqliteBookRepository implements BookRepository {
       }
       if (imagePaths.length) await this.deletionQueue.enqueue(txn, imagePaths);
       await txn.runAsync('UPDATE books SET cover_image_id = NULL WHERE id = ?', id);
+      // `withExclusiveTransactionAsync` can run on a new Expo SQLite
+      // connection, so do not rely on connection-local foreign_keys pragma
+      // state for cleanup. Delete dependent rows explicitly in dependency
+      // order; the transaction still rolls back atomically on any failure.
+      await txn.runAsync('DELETE FROM note_images WHERE note_id IN (SELECT id FROM notes WHERE book_id = ?)', id);
+      await txn.runAsync('DELETE FROM highlight_images WHERE book_id = ?', id);
+      await txn.runAsync('DELETE FROM notes WHERE book_id = ?', id);
+      await txn.runAsync('DELETE FROM reading_sessions WHERE book_id = ?', id);
+      await txn.runAsync('DELETE FROM book_protagonists WHERE book_id = ?', id);
+      await txn.runAsync('DELETE FROM book_tags WHERE book_id = ?', id);
+      await txn.runAsync('DELETE FROM image_assets WHERE book_id = ?', id);
       await txn.runAsync('DELETE FROM books WHERE id = ?', id);
     });
     try { await this.deletionQueue.drain(); } catch { /* committed deletion remains authoritative */ }

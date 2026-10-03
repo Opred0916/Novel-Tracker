@@ -80,7 +80,7 @@ export default function BookPage() {
     })} />
     <NotesSection bookId={id} repository={notesRepo} highlights={highlights} onChanged={() => setRetry(value => value + 1)} />
     <HighlightsSection bookId={id} repository={notesRepo} onChanged={() => setRetry(value => value + 1)} />
-    <Pressable accessibilityRole="button" style={styles.edit} onPress={() => router.push({ pathname: '/book/[id]/edit', params: { id } })}>
+    <Pressable accessibilityRole="button" disabled={deleting} style={[styles.edit, deleting && styles.disabled]} onPress={() => router.push({ pathname: '/book/[id]/edit', params: { id } })}>
       <Text style={styles.editText}>编辑资料</Text>
     </Pressable>
     {deleteError ? <Text style={styles.deleteError}>{deleteError}</Text> : null}

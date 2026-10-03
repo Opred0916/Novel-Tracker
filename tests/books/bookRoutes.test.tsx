@@ -307,6 +307,27 @@ test('detail page stays open and allows retry when novel deletion fails', async 
   }
 });
 
+test('detail page disables editing while novel deletion is in progress', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  let resolveDelete!: () => void;
+  repo.delete.mockReturnValueOnce(new Promise<void>(resolve => { resolveDelete = resolve; }));
+  try {
+    const screen = await render(<BookPage />);
+    await waitFor(() => expect(screen.getByText('删除小说')).toBeTruthy());
+    await fireEvent.press(screen.getByText('删除小说'));
+    const buttons = alert.mock.calls.at(-1)?.[2] as Array<{ onPress?: () => void }> | undefined;
+    await act(async () => { buttons?.[1]?.onPress?.(); });
+    await waitFor(() => expect(screen.getByText('正在删除…')).toBeTruthy());
+    expect(screen.getByText('编辑资料').parent?.props.accessibilityState?.disabled).toBe(true);
+    await fireEvent.press(screen.getByText('编辑资料'));
+    expect(router.push).not.toHaveBeenCalled();
+    await act(async () => { resolveDelete(); });
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
+  } finally {
+    alert.mockRestore();
+  }
+});
+
 test('reading correction route saves edited dates and returns on success', async () => {
   historyRepo.list.mockResolvedValue([{ id: 'session-1', bookId: book.id, ordinal: 1, startedOn: '2026-09-01', endedOn: '2026-09-10', outcome: 'finished' }]);
   jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id, sessionId: 'session-1' });
