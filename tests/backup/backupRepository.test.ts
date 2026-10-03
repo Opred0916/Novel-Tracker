@@ -2,6 +2,7 @@ import { SqliteBackupRepository } from '../../src/backup/backupRepository';
 import { migrateDatabase, type Database } from '../../src/storage/database';
 import { createInMemoryDatabase } from '../helpers/inMemoryDatabase';
 import { makeValidManifest } from './backupFixtures';
+import { SqliteBookRepository } from '../../src/books/sqliteRepository';
 
 const TABLES = [
   'books', 'book_protagonists', 'tags', 'book_tags', 'quick_tags', 'reading_sessions',
@@ -107,6 +108,22 @@ describe('SqliteBackupRepository', () => {
     });
   });
 
+  test('new snapshots exclude a book and its images after repository deletion', async () => {
+    await seedCompleteLibrary(db);
+    const queue = { enqueue: jest.fn(async () => undefined), drain: jest.fn(async () => undefined) };
+    const books = new SqliteBookRepository(db, undefined, undefined, undefined, queue as never);
+    const before = await repository.createSnapshot('1.2.3', '2026-10-02T12:00:00.000Z');
+    expect(before.data.books.map(book => book.id)).toEqual(['book-a', 'book-b']);
+    await books.delete('book-a');
+
+    const after = await repository.createSnapshot('1.2.3', '2026-10-02T13:00:00.000Z');
+
+    expect(after.data.books.map(book => book.id)).toEqual(['book-b']);
+    expect(after.images).toEqual([]);
+    expect(after.data.notes).toEqual([]);
+    expect(after.data.highlightImages).toEqual([]);
+  });
+
   test('replaces every library table in one transaction and preserves schema version', async () => {
     await db.execAsync(`
       INSERT INTO books (id, title, author, status, created_at, updated_at, rating_half_stars, type, legacy_read_count)
@@ -121,7 +138,7 @@ describe('SqliteBackupRepository', () => {
     expect(await db.getAllAsync('SELECT id, local_path FROM image_assets')).toEqual([{ id: 'image-1', local_path: 'file:///restored/image-1.jpg' }]);
     expect(await db.getAllAsync('SELECT note_id, image_id FROM note_images')).toEqual([{ note_id: 'note-1', image_id: 'image-1' }]);
     expect(await db.getAllAsync('SELECT book_id, image_id FROM highlight_images')).toEqual([{ book_id: 'book-1', image_id: 'image-1' }]);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 7 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 8 });
   });
 
   test('rolls back every table when replacement fails in the middle', async () => {

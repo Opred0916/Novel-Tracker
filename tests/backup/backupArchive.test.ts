@@ -46,6 +46,13 @@ class MemoryFilePort implements BackupFilePort {
   async availableDiskSpace(): Promise<number> { return this.diskSpace; }
 }
 
+class DisappearingSourcePort extends MemoryFilePort {
+  async *readChunks(uri: string, chunkSize: number): AsyncIterable<Uint8Array> {
+    this.files.delete(uri);
+    yield* super.readChunks(uri, chunkSize);
+  }
+}
+
 function makeSnapshot(): BackupSnapshot {
   const manifest = makeValidManifest();
   const { images: _images, counts: _counts, formatVersion, exportedAt, appVersion, ...data } = manifest;
@@ -111,6 +118,15 @@ describe('BackupArchive', () => {
     const inspected = await archive.inspect('memory://backup.zip', 'memory://restore');
 
     expect(port.files.get(inspected.imagePaths.get('image-1')!)).toEqual(bytes);
+    expect(port.openWriters.size).toBe(0);
+  });
+
+  test('removes an incomplete archive when an image disappears during export', async () => {
+    const port = new DisappearingSourcePort();
+    port.put('memory://source.jpg', new Uint8Array([1, 2, 3, 4]));
+
+    await expect(new BackupArchive(port).write(makeSnapshot(), 'memory://backup.zip')).rejects.toThrow('missing memory://source.jpg');
+    expect(port.files.has('memory://backup.zip')).toBe(false);
     expect(port.openWriters.size).toBe(0);
   });
 

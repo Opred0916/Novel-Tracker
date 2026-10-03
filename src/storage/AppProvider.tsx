@@ -14,6 +14,7 @@ import { SqliteBackupRepository } from '../backup/backupRepository';
 import { BackupService } from '../backup/backupService';
 import { openDatabase } from './database';
 import { BookCoverFiles } from '../books/bookCoverFiles';
+import { ImageDeletionQueue } from '../books/imageDeletionQueue';
 
 const RepositoryContext = createContext<SqliteBookRepository | null>(null);
 const TagRepositoryContext = createContext<SqliteTagRepository | null>(null);
@@ -35,7 +36,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     let active = true;
     openDatabase().then(db => {
       if (active) {
-        const books = new SqliteBookRepository(db, undefined, undefined, new BookCoverFiles());
+        const deletionQueue = new ImageDeletionQueue(db);
+        const books = new SqliteBookRepository(db, undefined, undefined, new BookCoverFiles(), deletionQueue);
         setRepository(books);
         setTagRepository(new SqliteTagRepository(db));
         const notes = new SqliteNotesRepository(db);
@@ -50,6 +52,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           randomUUID,
         );
         setBackupService(backup);
+        void deletionQueue.drain().catch(() => undefined);
         void backup.cleanupStaleOperations().catch(() => undefined);
       }
     }).catch(e => {

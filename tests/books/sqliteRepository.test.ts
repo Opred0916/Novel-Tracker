@@ -3,6 +3,7 @@ import { SqliteBookRepository } from '../../src/books/sqliteRepository';
 import { SqliteTagRepository } from '../../src/books/tagRepository';
 import { migrateDatabase } from '../../src/storage/database';
 import { createInMemoryDatabase } from '../helpers/inMemoryDatabase';
+import { ImageDeletionQueue } from '../../src/books/imageDeletionQueue';
 
 function fakeCoverFiles() {
   return {
@@ -11,6 +12,13 @@ function fakeCoverFiles() {
     })),
     discard: jest.fn(async () => undefined),
     removeFile: jest.fn(async () => undefined),
+  };
+}
+
+function fakeDeletionQueue() {
+  return {
+    enqueue: jest.fn(async (..._args: unknown[]) => undefined),
+    drain: jest.fn(async () => undefined),
   };
 }
 
@@ -104,6 +112,97 @@ test('does not delete a cover asset that is also referenced by a note or highlig
     await repo.update(book.id, { title: book.title, author: null, status: book.status, protagonists: [], coverChange: { kind: 'remove' } });
     expect(await db.getFirstAsync('SELECT id FROM image_assets WHERE id = ?', book.coverImageId)).toEqual({ id: book.coverImageId });
     expect(files.removeFile).not.toHaveBeenCalledWith(book.coverUri);
+  } finally {
+    db.close();
+  }
+});
+
+test('deletes a book and all of its owned records without deleting global tags or another book', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    const tagRepo = new SqliteTagRepository(db, randomUUID);
+    const tag = (await tagRepo.list()).find(item => item.name === '古代')!;
+    const queue = fakeDeletionQueue();
+    const repo = new SqliteBookRepository(db, randomUUID, undefined, undefined, queue as never);
+    const book = await repo.create({ title: '要删的书', author: '作者', status: 'finished', protagonists: ['甲', '乙'], tagIds: [tag.id], ratingHalfStars: 8 });
+    const other = await repo.create({ title: '保留的书', status: 'want_to_read', tagIds: [tag.id] });
+    await db.runAsync('INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)', 'image-delete', book.id, 'file:///app/documents/novel-tracker/delete.jpg', 'now');
+    await db.runAsync('UPDATE books SET cover_image_id = ? WHERE id = ?', 'image-delete', book.id);
+    await db.runAsync('INSERT INTO notes (id, book_id, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', 'note-delete', book.id, '想法', '2026-09-01', '2026-09-01');
+    await db.runAsync('INSERT INTO note_images (note_id, image_id, position) VALUES (?, ?, ?)', 'note-delete', 'image-delete', 0);
+    await db.runAsync('INSERT INTO highlight_images (book_id, image_id, position) VALUES (?, ?, ?)', book.id, 'image-delete', 0);
+    // Expo SQLite's exclusive transaction may use a separate connection whose
+    // connection-local foreign_keys pragma is not enabled.
+    await db.execAsync('PRAGMA foreign_keys = OFF');
+
+    await repo.delete(book.id);
+
+    expect(await repo.get(book.id)).toBeNull();
+    for (const table of ['book_protagonists', 'book_tags', 'reading_sessions', 'notes', 'highlight_images', 'image_assets']) {
+      expect(await db.getFirstAsync(`SELECT COUNT(*) AS count FROM ${table} WHERE book_id = ?`, book.id)).toEqual({ count: 0 });
+    }
+    expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM note_images WHERE note_id = ?', 'note-delete')).toEqual({ count: 0 });
+    expect(await repo.get(other.id)).toMatchObject({ title: '保留的书', tags: [{ id: tag.id }] });
+    expect(await db.getFirstAsync('SELECT id FROM tags WHERE id = ?', tag.id)).toEqual({ id: tag.id });
+    expect(await db.getFirstAsync('SELECT tag_id FROM book_tags WHERE book_id = ?', other.id)).toEqual({ tag_id: tag.id });
+    expect(queue.enqueue).toHaveBeenCalledTimes(1);
+    expect(queue.enqueue.mock.calls[0][1]).toEqual(['file:///app/documents/novel-tracker/delete.jpg']);
+    expect(queue.drain).toHaveBeenCalledTimes(1);
+  } finally {
+    db.close();
+  }
+});
+
+test('rejects deletion when an owned image is referenced by another book', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    const repo = new SqliteBookRepository(db, randomUUID, undefined, undefined, fakeDeletionQueue() as never);
+    const first = await repo.create({ title: '甲书', status: 'want_to_read' });
+    const second = await repo.create({ title: '乙书', status: 'want_to_read' });
+    await db.runAsync('INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)', 'image-shared', first.id, 'file:///app/documents/novel-tracker/shared.jpg', 'now');
+    await db.runAsync('INSERT INTO notes (id, book_id, body, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', 'note-other', second.id, '其他想法', '2026-09-01', '2026-09-01');
+    await db.runAsync('INSERT INTO note_images (note_id, image_id, position) VALUES (?, ?, ?)', 'note-other', 'image-shared', 0);
+    await expect(repo.delete(first.id)).rejects.toThrow('图片关联异常');
+    expect(await repo.get(first.id)).toMatchObject({ title: '甲书' });
+    expect(await db.getFirstAsync('SELECT id FROM image_assets WHERE id = ?', 'image-shared')).toEqual({ id: 'image-shared' });
+  } finally {
+    db.close();
+  }
+});
+
+test('rolls back book deletion when the database transaction fails', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    const queue = fakeDeletionQueue();
+    const repo = new SqliteBookRepository(db, randomUUID, undefined, undefined, queue as never);
+    const book = await repo.create({ title: '不能删除', status: 'want_to_read' });
+    await db.execAsync("CREATE TRIGGER fail_book_delete BEFORE DELETE ON books BEGIN SELECT RAISE(ABORT, 'injected delete failure'); END;");
+    await expect(repo.delete(book.id)).rejects.toThrow('injected delete failure');
+    expect(await repo.get(book.id)).toMatchObject({ title: '不能删除' });
+    expect(queue.enqueue).not.toHaveBeenCalled();
+  } finally {
+    db.close();
+  }
+});
+
+test('keeps the deletion task when local file cleanup fails after commit', async () => {
+  const db = createInMemoryDatabase();
+  const files = { removeFile: jest.fn<Promise<void>, [string]>().mockRejectedValue(new Error('busy')) };
+  try {
+    await migrateDatabase(db);
+    const book = await new SqliteBookRepository(db, randomUUID).create({ title: '图片清理', status: 'want_to_read' });
+    const path = 'file:///app/documents/novel-tracker/cleanup.jpg';
+    await db.runAsync('INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)', 'image-cleanup', book.id, path, 'now');
+    await db.runAsync('UPDATE books SET cover_image_id = ? WHERE id = ?', 'image-cleanup', book.id);
+    const queue = new ImageDeletionQueue(db, files, ['file:///app/documents/novel-tracker/']);
+    const repo = new SqliteBookRepository(db, randomUUID, undefined, undefined, queue);
+    await repo.delete(book.id);
+    expect(await repo.get(book.id)).toBeNull();
+    expect(await db.getFirstAsync('SELECT local_path FROM pending_image_deletions')).toEqual({ local_path: path });
+    expect(files.removeFile).toHaveBeenCalledWith(path);
   } finally {
     db.close();
   }

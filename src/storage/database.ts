@@ -113,6 +113,9 @@ export async function migrateDatabase(db: Database): Promise<void> {
       created_at TEXT NOT NULL,
       FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS pending_image_deletions (
+      local_path TEXT PRIMARY KEY NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS notes (
       id TEXT PRIMARY KEY NOT NULL,
       book_id TEXT NOT NULL,
@@ -154,7 +157,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
   if (version < 5) {
     await db.runAsync("UPDATE books SET legacy_read_count = 1 WHERE status = 'finished'");
   }
-  await db.execAsync('PRAGMA user_version = 7');
+  await db.execAsync('PRAGMA user_version = 8');
 }
 
 export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
