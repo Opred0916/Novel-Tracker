@@ -53,7 +53,7 @@ export default function ImportPage() {
     setError('');
     const candidate = {
       id: `manual-${Date.now()}`, sourceLine: 0, sourceText: '', title: '', author: null, protagonists: [], status: defaultStatus,
-      ratingHalfStars: null, bookType: null, tagIds: [], sessions: [], notes: [],
+      ratingHalfStars: null, bookType: null, tagIds: [], sessions: [], notes: [], whyWantToRead: null, platform: null,
     };
     setReview({ items: [{ candidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] }], fragments: [], ignoredFragmentIds: [] });
     setHints([]);

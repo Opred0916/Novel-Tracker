@@ -69,7 +69,7 @@ function note(id: string, body: string, sourceText: string, date: ParsedDate): I
 }
 
 function candidate(id: string, sourceLine: number, sourceText: string, title: string, status: BookStatus): ImportCandidate {
-  return { id, sourceLine, sourceText, title: cleanTitle(title), author: null, protagonists: [], status, ratingHalfStars: null, bookType: null, tagIds: [], sessions: [], notes: [] };
+  return { id, sourceLine, sourceText, title: cleanTitle(title), author: null, protagonists: [], status, ratingHalfStars: null, bookType: null, tagIds: [], sessions: [], notes: [], whyWantToRead: null, platform: null };
 }
 
 function applyField(target: ImportCandidate, key: string, value: string, sourceText: string, lineDate: ParsedDate, warnings: string[]): void {
