@@ -10,6 +10,7 @@ export default function RootLayout() {
     <Stack.Screen name="book/[id]/reading/[sessionId]" options={{ title: '阅读日期' }} />
     <Stack.Screen name="settings/tags" options={{ title: '快捷标签设置' }} />
     <Stack.Screen name="settings/backup" options={{ title: '备份与恢复' }} />
+    <Stack.Screen name="settings/export" options={{ title: '导出开放格式' }} />
     <Stack.Screen name="settings/data" options={{ title: '数据管理' }} />
     <Stack.Screen name="settings/import" options={{ title: '追加旧记录' }} />
   </Stack></AppProvider>;

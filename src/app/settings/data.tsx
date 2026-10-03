@@ -6,6 +6,7 @@ export default function DataManagementPage() {
     <Text style={styles.heading}>数据管理</Text>
     <Text style={styles.help}>追加旧记录只会新增或追加预览中确认的内容；备份恢复则是整库替换，两者互不混用。</Text>
     <Pressable accessibilityRole="button" onPress={() => router.push('/settings/import')} style={styles.primary}><Text style={styles.primaryText}>追加旧记录</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => router.push('/settings/export')} style={styles.secondary}><Text style={styles.secondaryText}>导出开放格式</Text></Pressable>
     <Pressable accessibilityRole="button" onPress={() => router.push('/settings/backup')} style={styles.secondary}><Text style={styles.secondaryText}>备份与恢复</Text></Pressable>
   </ScrollView>;
 }

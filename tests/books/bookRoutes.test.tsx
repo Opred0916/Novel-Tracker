@@ -9,6 +9,7 @@ import QuickTagsPage from '../../src/app/settings/tags';
 import BookPage from '../../src/app/book/[id]';
 import EditBookPage from '../../src/app/book/[id]/edit';
 import ReadingHistoryPage from '../../src/app/book/[id]/reading/[sessionId]';
+import DataManagementPage from '../../src/app/settings/data';
 import { BookCard } from '../../src/books/BookCard';
 import type { Book } from '../../src/books/types';
 import { chooseReadingDate } from './chooseReadingDate';
@@ -140,6 +141,12 @@ test('bookshelf opens backup and restore settings', async () => {
   await waitFor(() => expect(screen.getByText('备份与恢复')).toBeTruthy());
   await fireEvent.press(screen.getByText('备份与恢复'));
   expect(router.push).toHaveBeenCalledWith('/settings/backup');
+});
+
+test('data management exposes the open export entry', async () => {
+  const screen = await render(<DataManagementPage />);
+  await fireEvent.press(screen.getByText('导出开放格式'));
+  expect(router.push).toHaveBeenCalledWith('/settings/export');
 });
 
 test('bookshelf submits status, type, and every selected tag then clears them together', async () => {

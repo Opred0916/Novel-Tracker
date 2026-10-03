@@ -9,3 +9,5 @@ Task 1: complete — serializer/types implemented in commit `ef98767`; focused s
 Task 2: complete — streaming ZIP archive with image deduplication, limits, and cleanup implemented in commit `8c8cbae`; archive plus backup-archive regression tests passed (17/17).
 
 Task 3: complete — single-flight export lifecycle, timestamped output, temporary-operation cleanup, and sharing handoff result implemented; focused export-service and backup-service regression tests passed (12/12).
+
+Task 4: complete — data-management entry, export page, Provider hook, Expo Router route, and iOS sharing adapter implemented; export-page and book-route tests passed (27/27), and TypeScript compilation passed after correcting the v3 validation cast in the archive layer.

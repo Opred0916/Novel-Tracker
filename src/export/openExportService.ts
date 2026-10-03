@@ -3,6 +3,7 @@ import type { SqliteBackupRepository } from '../backup/backupRepository';
 import { BackupValidationError } from '../backup/backupValidation';
 import type { OpenExportArchive } from './openExportArchive';
 import type { OpenExportProgress } from './openExportTypes';
+import type { BackupCounts } from '../backup/backupTypes';
 
 const pad = (value: number): string => String(value).padStart(2, '0');
 const filenameDate = (date: Date): string => `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
@@ -19,7 +20,7 @@ export class OpenExportService {
     private readonly nowFactory: () => Date = () => new Date(),
   ) {}
 
-  async getOverview() {
+  async getOverview(): Promise<BackupCounts> {
     return this.repository.getOverview();
   }
 
