@@ -158,6 +158,7 @@ test('v9 allows unknown historical dates and stores note provenance columns', as
     await db.runAsync("INSERT INTO reading_sessions (id, book_id, ordinal, started_on, ended_on, outcome) VALUES ('historical-session', 'historical', 1, NULL, NULL, 'finished')");
     expect(await db.getFirstAsync('SELECT started_on, ended_on FROM reading_sessions WHERE id = ?', 'historical-session'))
       .toEqual({ started_on: null, ended_on: null });
+    await expect(db.runAsync("INSERT INTO reading_sessions (id, book_id, ordinal, started_on, ended_on, outcome) VALUES ('bad-reading', 'historical', 2, NULL, '2026-10-02', 'reading')")).rejects.toThrow();
   } finally { db.close(); }
 });
 

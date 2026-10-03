@@ -48,7 +48,8 @@ export class ImportCommitService {
         for (const imported of item.candidate.notes) {
           const duplicate = existingNotes.find(note => noteKey(note.body) === noteKey(imported.body));
           if (duplicate && !item.acknowledgedDuplicateNoteIds.includes(duplicate.id)) throw new Error(`摘记重复：${imported.body}`);
-          await this.insertNote(txn, bookId, imported, sessionIds, now);
+          const insertedId = await this.insertNote(txn, bookId, imported, sessionIds, now);
+          existingNotes.push({ id: insertedId, body: imported.body });
         }
       }
     });
@@ -87,13 +88,15 @@ export class ImportCommitService {
     return result;
   }
 
-  private async insertNote(txn: Database, bookId: string, draft: ImportNoteDraft, sessions: ReadingSession[], createdAt: string): Promise<void> {
+  private async insertNote(txn: Database, bookId: string, draft: ImportNoteDraft, sessions: ReadingSession[], createdAt: string): Promise<string> {
     const body = draft.body.trim();
     if (!body) throw new Error('摘记正文不能为空');
     const readingSessionId = draft.originalRecordedOn ? findReadingSessionForNote(draft.originalRecordedOn, sessions) : null;
+    const id = this.idFactory();
     await txn.runAsync(
       'INSERT INTO notes (id, book_id, body, created_at, updated_at, reading_session_id, source_kind, original_recorded_on, original_recorded_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      this.idFactory(), bookId, body, createdAt, createdAt, readingSessionId, 'import', draft.originalRecordedOn, draft.originalRecordedTime,
+      id, bookId, body, createdAt, createdAt, readingSessionId, 'import', draft.originalRecordedOn, draft.originalRecordedTime,
     );
+    return id;
   }
 }

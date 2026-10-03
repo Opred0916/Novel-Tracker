@@ -101,7 +101,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
       ended_on TEXT,
       outcome TEXT NOT NULL CHECK (outcome IN ('reading', 'finished', 'dropped')),
       UNIQUE (book_id, ordinal),
-      CHECK (outcome = 'reading' OR ended_on IS NULL OR ended_on >= started_on),
+      CHECK ((outcome = 'reading' AND ended_on IS NULL) OR (outcome != 'reading' AND (ended_on IS NULL OR started_on IS NULL OR ended_on >= started_on))),
       FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
     );
     CREATE UNIQUE INDEX IF NOT EXISTS one_active_reading_per_book
@@ -175,7 +175,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
         ended_on TEXT,
         outcome TEXT NOT NULL CHECK (outcome IN ('reading', 'finished', 'dropped')),
         UNIQUE (book_id, ordinal),
-        CHECK (outcome = 'reading' OR ended_on IS NULL OR ended_on >= started_on),
+        CHECK ((outcome = 'reading' AND ended_on IS NULL) OR (outcome != 'reading' AND (ended_on IS NULL OR started_on IS NULL OR ended_on >= started_on))),
         FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
       );
       INSERT INTO reading_sessions_v9 (id, book_id, ordinal, started_on, ended_on, outcome)
