@@ -60,7 +60,7 @@ test('adds another protagonist and sends trimmed, ordered names with the chosen 
   await fireEvent.press(screen.getByText('保存修改'));
 
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
-    title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青', '王五'], ratingHalfStars: null, bookType: null, tagIds: [],
+    title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青', '王五'], ratingHalfStars: null, bookType: null, tagIds: [], whyWantToRead: null, platform: null,
     readingDates: { startedOn: todayLocalDate(), endedOn: null },
   }));
 });
