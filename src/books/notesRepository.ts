@@ -3,7 +3,10 @@ import type { Database } from '../storage/database';
 import { findReadingSessionForNote } from './noteAssociation';
 import type { ImageAsset, Note, NoteInput } from './types';
 
-type NoteRow = { id: string; book_id: string; body: string; created_at: string; updated_at: string; reading_session_id: string | null };
+type NoteRow = {
+  id: string; book_id: string; body: string; created_at: string; updated_at: string; reading_session_id: string | null;
+  source_kind: 'app' | 'import'; original_recorded_on: string | null; original_recorded_time: string | null;
+};
 type ImageRow = { id: string; book_id: string; local_path: string; created_at: string };
 
 const dateOf = (timestamp: string) => timestamp.slice(0, 10);
@@ -27,7 +30,8 @@ export class SqliteNotesRepository {
     const rows = await this.db.getAllAsync<NoteRow>('SELECT * FROM notes WHERE book_id = ? ORDER BY created_at DESC, id DESC', bookId);
     return Promise.all(rows.map(async row => ({
       id: row.id, bookId: row.book_id, body: row.body, createdAt: row.created_at, updatedAt: row.updated_at,
-      readingSessionId: row.reading_session_id, images: await this.imagesForNote(row.id, this.db),
+      readingSessionId: row.reading_session_id, sourceKind: row.source_kind, originalRecordedOn: row.original_recorded_on,
+      originalRecordedTime: row.original_recorded_time, images: await this.imagesForNote(row.id, this.db),
     })));
   }
 
@@ -36,15 +40,24 @@ export class SqliteNotesRepository {
     if (!body) throw new Error('请输入我的想法');
     const id = this.idFactory();
     const createdAt = input.createdAt ?? new Date().toISOString();
+    const sourceKind = input.sourceKind ?? 'app';
+    const originalRecordedOn = input.originalRecordedOn ?? null;
+    const originalRecordedTime = input.originalRecordedTime ?? null;
     let sessionId: string | null = null;
     await this.db.withExclusiveTransactionAsync(async txn => {
       const sessions = await txn.getAllAsync<{ id: string; book_id: string; ordinal: number; started_on: string; ended_on: string | null; outcome: 'reading' | 'finished' | 'dropped' }>(
         'SELECT * FROM reading_sessions WHERE book_id = ? ORDER BY ordinal ASC', bookId,
       );
-      sessionId = findReadingSessionForNote(dateOf(createdAt), sessions.map(session => ({
-        id: session.id, bookId: session.book_id, ordinal: session.ordinal, startedOn: session.started_on, endedOn: session.ended_on, outcome: session.outcome,
-      })));
-      await txn.runAsync('INSERT INTO notes (id, book_id, body, created_at, updated_at, reading_session_id) VALUES (?, ?, ?, ?, ?, ?)', id, bookId, body, createdAt, createdAt, sessionId);
+      const associationDate = sourceKind === 'import' ? originalRecordedOn : dateOf(createdAt);
+      sessionId = associationDate
+        ? findReadingSessionForNote(associationDate, sessions.map(session => ({
+          id: session.id, bookId: session.book_id, ordinal: session.ordinal, startedOn: session.started_on, endedOn: session.ended_on, outcome: session.outcome,
+        })))
+        : null;
+      await txn.runAsync(
+        'INSERT INTO notes (id, book_id, body, created_at, updated_at, reading_session_id, source_kind, original_recorded_on, original_recorded_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        id, bookId, body, createdAt, createdAt, sessionId, sourceKind, originalRecordedOn, originalRecordedTime,
+      );
       for (const [position, imageId] of (input.imageIds ?? []).entries()) {
         const image = await txn.getFirstAsync<{ id: string; book_id: string }>('SELECT id, book_id FROM image_assets WHERE id = ?', imageId);
         if (!image || image.book_id !== bookId) throw new Error('图片不存在');
@@ -52,7 +65,7 @@ export class SqliteNotesRepository {
       }
     });
     const images = await this.imagesForNote(id, this.db);
-    return { id, bookId, body, createdAt, updatedAt: createdAt, readingSessionId: sessionId, images };
+    return { id, bookId, body, createdAt, updatedAt: createdAt, readingSessionId: sessionId, sourceKind, originalRecordedOn, originalRecordedTime, images };
   }
 
   async updateNote(bookId: string, noteId: string, input: NoteInput): Promise<Note> {
@@ -98,10 +111,13 @@ export class SqliteNotesRepository {
 
   async recalculateAssociations(bookId: string): Promise<void> {
     await this.db.withExclusiveTransactionAsync(async txn => {
-      const sessions = await txn.getAllAsync<{ id: string; book_id: string; ordinal: number; started_on: string; ended_on: string | null; outcome: 'reading' | 'finished' | 'dropped' }>('SELECT * FROM reading_sessions WHERE book_id = ? ORDER BY ordinal ASC', bookId);
+      const sessions = await txn.getAllAsync<{ id: string; book_id: string; ordinal: number; started_on: string | null; ended_on: string | null; outcome: 'reading' | 'finished' | 'dropped' }>('SELECT * FROM reading_sessions WHERE book_id = ? ORDER BY ordinal ASC', bookId);
       const normalized = sessions.map(session => ({ id: session.id, bookId: session.book_id, ordinal: session.ordinal, startedOn: session.started_on, endedOn: session.ended_on, outcome: session.outcome }));
-      const notes = await txn.getAllAsync<{ id: string; created_at: string }>('SELECT id, created_at FROM notes WHERE book_id = ?', bookId);
-      for (const note of notes) await txn.runAsync('UPDATE notes SET reading_session_id = ? WHERE id = ?', findReadingSessionForNote(dateOf(note.created_at), normalized), note.id);
+      const notes = await txn.getAllAsync<{ id: string; created_at: string; source_kind: 'app' | 'import'; original_recorded_on: string | null }>('SELECT id, created_at, source_kind, original_recorded_on FROM notes WHERE book_id = ?', bookId);
+      for (const note of notes) {
+        const associationDate = note.source_kind === 'import' ? note.original_recorded_on : dateOf(note.created_at);
+        await txn.runAsync('UPDATE notes SET reading_session_id = ? WHERE id = ?', associationDate ? findReadingSessionForNote(associationDate, normalized) : null, note.id);
+      }
     });
   }
 

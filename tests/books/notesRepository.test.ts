@@ -53,3 +53,28 @@ test('recalculates note association after reading dates change', async () => {
     expect(await db.getFirstAsync('SELECT reading_session_id FROM notes WHERE id = ?', 'note-1')).toEqual({ reading_session_id: 'session-1' });
   } finally { db.close(); }
 });
+
+test('preserves imported note provenance and associates it by the original recorded date', async () => {
+  const db = await setup();
+  try {
+    await db.runAsync("INSERT INTO reading_sessions VALUES ('session-1', 'book-1', 1, '2026-03-10', '2026-03-12', 'finished')");
+    const repo = new SqliteNotesRepository(db, () => 'note-imported');
+    const note = await repo.createNote('book-1', {
+      body: '微博摘记', sourceKind: 'import', originalRecordedOn: '2026-03-11', originalRecordedTime: '21:30',
+      createdAt: '2026-10-03T10:00:00.000Z',
+    });
+    expect(note).toMatchObject({ sourceKind: 'import', originalRecordedOn: '2026-03-11', originalRecordedTime: '21:30', readingSessionId: 'session-1' });
+    expect(await db.getFirstAsync('SELECT source_kind, original_recorded_on, original_recorded_time FROM notes WHERE id = ?', 'note-imported'))
+      .toEqual({ source_kind: 'import', original_recorded_on: '2026-03-11', original_recorded_time: '21:30' });
+  } finally { db.close(); }
+});
+
+test('does not guess a reading session for an imported note without an original date', async () => {
+  const db = await setup();
+  try {
+    await db.runAsync("INSERT INTO reading_sessions VALUES ('session-1', 'book-1', 1, '2026-03-10', '2026-03-12', 'finished')");
+    const repo = new SqliteNotesRepository(db, () => 'note-undated');
+    const note = await repo.createNote('book-1', { body: '没有原始日期', sourceKind: 'import', createdAt: '2026-10-03T10:00:00.000Z' });
+    expect(note.readingSessionId).toBeNull();
+  } finally { db.close(); }
+});

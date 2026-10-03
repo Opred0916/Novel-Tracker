@@ -58,8 +58,18 @@ export type Note = {
   createdAt: string;
   updatedAt: string;
   readingSessionId: string | null;
+  sourceKind: 'app' | 'import';
+  originalRecordedOn: string | null;
+  originalRecordedTime: string | null;
   images: ImageAsset[];
 };
 
-export type NoteInput = { body: string; imageIds?: string[]; createdAt?: string };
+export type NoteInput = {
+  body: string;
+  imageIds?: string[];
+  createdAt?: string;
+  sourceKind?: 'app' | 'import';
+  originalRecordedOn?: string | null;
+  originalRecordedTime?: string | null;
+};
 export type HighlightImage = ImageAsset & { position: number };
