@@ -27,8 +27,21 @@ test('adds a novel with only its title', async () => {
   await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '  长夜  ');
   await fireEvent.press(screen.getByText('保存小说'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
-    title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tagIds: [],
+    title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null,
+    tagIds: [], whyWantToRead: null, platform: null,
   }));
+});
+
+test('adds optional motivation and reading platform', async () => {
+  const onSave = jest.fn().mockResolvedValue(undefined);
+  const screen = await render(<AddBookForm onSave={onSave} />);
+  await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '长夜');
+  await fireEvent.changeText(screen.getByPlaceholderText('为什么想看（可选）'), '朋友推荐');
+  await fireEvent.changeText(screen.getByPlaceholderText('阅读平台（可选）'), '晋江文学城');
+  await fireEvent.press(screen.getByText('保存小说'));
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    whyWantToRead: '朋友推荐', platform: '晋江文学城',
+  })));
 });
 
 test('allows the form to scroll above the iPhone keyboard', async () => {
@@ -52,7 +65,7 @@ test('adds a finished novel with author, ordered protagonists and 4.5 stars', as
   await fireEvent.press(screen.getByText('保存小说'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
     title: '长夜', author: '某作者', status: 'finished',
-    protagonists: ['阿青', '李四'], ratingHalfStars: 9, bookType: null, tagIds: [],
+    protagonists: ['阿青', '李四'], ratingHalfStars: 9, bookType: null, tagIds: [], whyWantToRead: null, platform: null,
     readingDates: { startedOn: todayLocalDate(), endedOn: todayLocalDate() },
   }));
 });
@@ -96,7 +109,7 @@ test('submits all details after switching finished to reading and back', async (
   await fireEvent.press(screen.getByText('保存小说'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
     title: '长夜', author: '某作者', status: 'finished',
-    protagonists: ['阿青', '李四'], ratingHalfStars: 9, bookType: null, tagIds: [],
+    protagonists: ['阿青', '李四'], ratingHalfStars: 9, bookType: null, tagIds: [], whyWantToRead: null, platform: null,
     readingDates: { startedOn: todayLocalDate(), endedOn: todayLocalDate() },
   }));
 });

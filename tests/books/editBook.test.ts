@@ -77,6 +77,19 @@ test('edits novel details and keeps ordered nonblank protagonist names after rel
   }
 });
 
+test('preserves omitted optional details and clears them only when explicitly blank', async () => {
+  const { db, repo } = await setup();
+  try {
+    const original = await repo.create({ title: '长夜', status: 'want_to_read', whyWantToRead: '封面好看', platform: '晋江文学城' });
+    const preserved = await repo.update(original.id, { title: '长夜', author: null, status: 'want_to_read', protagonists: [] });
+    expect(preserved).toMatchObject({ whyWantToRead: '封面好看', platform: '晋江文学城' });
+    const cleared = await repo.update(original.id, {
+      title: '长夜', author: null, status: 'want_to_read', protagonists: [], whyWantToRead: '  ', platform: null,
+    });
+    expect(cleared).toMatchObject({ whyWantToRead: null, platform: null });
+  } finally { db.close(); }
+});
+
 test('rejects blank title and invalid status without changing the stored novel', async () => {
   const { db, repo } = await setup();
   try {

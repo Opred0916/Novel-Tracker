@@ -9,6 +9,7 @@ import { chooseReadingDate } from './chooseReadingDate';
 const baseBook: Book = {
   id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [],
   legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
+  whyWantToRead: null, platform: null,
 };
 
 test('edits a work type and tags from the full library', async () => {

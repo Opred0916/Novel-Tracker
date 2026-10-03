@@ -6,6 +6,7 @@ import type { Book } from '../../src/books/types';
 const baseBook: Book = {
   id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [],
   legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
+  whyWantToRead: null, platform: null,
 };
 
 test('shows selected work type and custom tags', async () => {
@@ -35,6 +36,12 @@ test('explains when optional details have not been entered', async () => {
 test('shows the overall rating even when the book is now being reread', async () => {
   const screen = await render(<BookDetail book={{ ...baseBook, status: 'reading', ratingHalfStars: 9 }} />);
   expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
+});
+
+test('shows optional motivation and platform when present', async () => {
+  const screen = await render(<BookDetail book={{ ...baseBook, whyWantToRead: '朋友推荐', platform: '晋江文学城' }} />);
+  expect(screen.getByText('朋友推荐')).toBeTruthy();
+  expect(screen.getByText('晋江文学城')).toBeTruthy();
 });
 
 test('shows all reading attempts and an editable undated first read', async () => {

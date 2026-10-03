@@ -19,6 +19,8 @@ export function BookEditForm({ book, onSave, allTags = [], sessions = [] }: {
 }) {
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author ?? '');
+  const [whyWantToRead, setWhyWantToRead] = useState(book.whyWantToRead ?? '');
+  const [platform, setPlatform] = useState(book.platform ?? '');
   const [status, setStatus] = useState<BookStatus>(book.status);
   const [startedOn, setStartedOn] = useState(todayLocalDate);
   const [endedOn, setEndedOn] = useState(todayLocalDate);
@@ -81,6 +83,7 @@ export function BookEditForm({ book, onSave, allTags = [], sessions = [] }: {
     try {
       const input = normalizeBookEdit({
         title, author, status, protagonists, ratingHalfStars: effectiveRatingHalfStars, bookType, tagIds,
+        whyWantToRead, platform,
         ...(changingStatus && status !== 'want_to_read' ? {
           readingDates: { startedOn, endedOn: status === 'reading' ? null : endedOn },
         } : {}),
@@ -107,6 +110,11 @@ export function BookEditForm({ book, onSave, allTags = [], sessions = [] }: {
     <TextInput placeholder="输入小说书名" value={title} onChangeText={setTitle} style={styles.input} />
     <Text style={styles.label}>作者</Text>
     <TextInput placeholder="作者名字" value={author} onChangeText={setAuthor} style={styles.input} />
+    <Text style={styles.label}>为什么想看</Text>
+    <TextInput placeholder="为什么想看（可选）" value={whyWantToRead} onChangeText={setWhyWantToRead}
+      style={[styles.input, styles.multiline]} multiline textAlignVertical="top" />
+    <Text style={styles.label}>阅读平台</Text>
+    <TextInput placeholder="阅读平台（可选）" value={platform} onChangeText={setPlatform} style={styles.input} />
     <Text style={styles.label}>阅读状态</Text>
     <View style={styles.statusGroup}>
       {BOOK_STATUSES.map(choice => <Pressable key={choice} accessibilityRole="radio"
@@ -155,6 +163,7 @@ const styles = StyleSheet.create({
   container: { padding: 24, gap: 12, paddingBottom: 50 },
   label: { fontSize: 15, fontWeight: '600', color: '#302a25', marginTop: 8 },
   input: { borderColor: '#d6cec4', borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 17, backgroundColor: '#fff' },
+  multiline: { minHeight: 84 },
   statusGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   statusOption: { borderColor: '#d6cec4', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#fff' },
   statusSelected: { backgroundColor: '#593f72', borderColor: '#593f72' },

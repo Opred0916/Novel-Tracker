@@ -27,7 +27,7 @@ test('upgrades a first-version database without replacing its book', async () =>
       rating_half_stars: null,
     });
     expect(await db.getAllAsync('SELECT * FROM book_protagonists')).toEqual([]);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 9 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 10 });
     expect((await db.getAllAsync<{ name: string }>('PRAGMA table_info(books)')).map(column => column.name)).toContain('cover_image_id');
     expect(await db.getAllAsync('PRAGMA foreign_key_list(books)')).toEqual(expect.arrayContaining([
       expect.objectContaining({ table: 'image_assets', on_delete: 'SET NULL' }),
@@ -70,12 +70,12 @@ test('upgrades a second-version database without changing details or protagonist
 
     expect(await db.getFirstAsync('SELECT * FROM books')).toEqual({
       id: 'old-id', title: '长夜', status: 'finished', author: '某作者', rating_half_stars: null, type: null, legacy_read_count: 1, cover_image_id: null,
-      created_at: '2026-09-29T10:00:00.000Z', updated_at: '2026-09-29T11:00:00.000Z',
+      created_at: '2026-09-29T10:00:00.000Z', updated_at: '2026-09-29T11:00:00.000Z', why_want_to_read: null, platform: null,
     });
     expect(await db.getAllAsync('SELECT position, name FROM book_protagonists ORDER BY position')).toEqual([
       { position: 0, name: '阿青' }, { position: 1, name: '王五' },
     ]);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 9 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 10 });
     expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM books')).toEqual({ count: 1 });
   } finally {
     db.close();
@@ -92,7 +92,7 @@ test('creates author and protagonist storage for a new database', async () => {
     expect(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'book_protagonists'")).toEqual({
       name: 'book_protagonists',
     });
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 9 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 10 });
     expect(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'notes'")).toEqual({ name: 'notes' });
     expect(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'image_assets'")).toEqual({ name: 'image_assets' });
     expect(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'note_images'")).toEqual({ name: 'note_images' });
@@ -131,7 +131,7 @@ test('upgrades a rated book to type and tag storage without duplicating presets'
       id: 'old-id', title: '长夜', author: '某作者', rating_half_stars: 9, type: null,
     });
     expect(await db.getFirstAsync('SELECT name FROM book_protagonists')).toEqual({ name: '阿青' });
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 9 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 10 });
     expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM tags WHERE name = ?', '古代')).toEqual({ count: 1 });
     expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM tags WHERE name = ?', '破镜重圆')).toEqual({ count: 1 });
     expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM quick_tags')).toEqual({ count: 5 });
@@ -221,8 +221,26 @@ test('marks only legacy finished books as previously read without inventing date
       title: '旧书', author: '某作者', type: 'romance_male_male', rating_half_stars: 9,
     });
     expect(await db.getFirstAsync('SELECT tag_id FROM book_tags WHERE book_id = ?', 'finished-old')).toEqual({ tag_id: 'tag-1' });
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 9 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 10 });
   } finally {
     db.close();
   }
+});
+
+test('adds nullable motivation and platform columns while preserving existing books', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await db.execAsync(`
+      CREATE TABLE books (
+        id TEXT PRIMARY KEY NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL,
+        created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      INSERT INTO books VALUES ('legacy', '旧书', 'want_to_read', 'a', 'b');
+      PRAGMA user_version = 9;
+    `);
+    await migrateDatabase(db);
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 10 });
+    expect(await db.getFirstAsync('SELECT title, why_want_to_read, platform FROM books WHERE id = ?', 'legacy'))
+      .toEqual({ title: '旧书', why_want_to_read: null, platform: null });
+  } finally { db.close(); }
 });

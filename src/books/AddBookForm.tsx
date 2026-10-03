@@ -14,6 +14,8 @@ import type { StagedCover } from './bookCoverFiles';
 export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookInput) => Promise<void>; quickTags?: Tag[] }) {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
+  const [whyWantToRead, setWhyWantToRead] = useState('');
+  const [platform, setPlatform] = useState('');
   const [status, setStatus] = useState<BookStatus>('want_to_read');
   const [startedOn, setStartedOn] = useState(todayLocalDate);
   const [endedOn, setEndedOn] = useState(todayLocalDate);
@@ -35,7 +37,7 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
     let input: BookInput;
     try {
       input = normalizeBookCreate({
-        title, author, status, protagonists, bookType, tagIds,
+        title, author, status, protagonists, bookType, tagIds, whyWantToRead, platform,
         ratingHalfStars: status === 'finished' ? ratingHalfStars : null,
         coverSource,
         ...(status !== 'want_to_read' ? { readingDates: { startedOn, endedOn: status === 'reading' ? null : endedOn } } : {}),
@@ -58,6 +60,11 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
     <Text style={styles.help}>只填书名也能保存，其他资料可以现在填写或以后补充。</Text>
     <Text style={styles.label}>作者</Text>
     <TextInput placeholder="作者名字" value={author} onChangeText={setAuthor} style={styles.input} />
+    <Text style={styles.label}>为什么想看</Text>
+    <TextInput placeholder="为什么想看（可选）" value={whyWantToRead} onChangeText={setWhyWantToRead}
+      style={[styles.input, styles.multiline]} multiline textAlignVertical="top" />
+    <Text style={styles.label}>阅读平台</Text>
+    <TextInput placeholder="阅读平台（可选）" value={platform} onChangeText={setPlatform} style={styles.input} />
     <Text style={styles.label}>阅读状态</Text>
     <View style={styles.statusGroup}>
       {BOOK_STATUSES.map(choice => <Pressable key={choice} accessibilityRole="radio"
@@ -94,6 +101,7 @@ const styles = StyleSheet.create({
   container: { padding: 24, gap: 12, paddingBottom: 50 },
   label: { fontSize: 15, fontWeight: '600', color: '#302a25', marginTop: 8 },
   input: { borderColor: '#d6cec4', borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 17, backgroundColor: '#fff' },
+  multiline: { minHeight: 84 },
   help: { color: '#766f68', fontSize: 13 },
   statusGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   statusOption: { borderColor: '#d6cec4', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#fff' },

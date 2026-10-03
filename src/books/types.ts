@@ -31,13 +31,15 @@ export type Book = {
   coverUri: string | null;
   createdAt: string;
   updatedAt: string;
+  whyWantToRead: string | null;
+  platform: string | null;
 };
 
 export type BookInput = Pick<Book, 'title' | 'status'> &
-  Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars' | 'bookType'>> & { tagIds?: string[]; readingDates?: ReadingDatesInput; coverSource?: StagedCover };
+  Partial<Pick<Book, 'author' | 'protagonists' | 'ratingHalfStars' | 'bookType' | 'whyWantToRead' | 'platform'>> & { tagIds?: string[]; readingDates?: ReadingDatesInput; coverSource?: StagedCover };
 
 export type BookEditInput = Pick<Book, 'title' | 'author' | 'status' | 'protagonists'> &
-  Partial<Pick<Book, 'ratingHalfStars' | 'bookType'>> & {
+  Partial<Pick<Book, 'ratingHalfStars' | 'bookType' | 'whyWantToRead' | 'platform'>> & {
     tagIds?: string[];
     newTags?: Pick<Tag, 'id' | 'name'>[];
     readingDates?: ReadingDatesInput;
