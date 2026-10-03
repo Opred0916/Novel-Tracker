@@ -3,23 +3,26 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import ImportPage from '../../src/app/settings/import';
 import { pickImportTxt } from '../../src/import/importPlatform';
-import { useBooks, useImportCommitService, useNotes } from '../../src/storage/AppProvider';
+import { useBooks, useImportCommitService, useNotes, useTags } from '../../src/storage/AppProvider';
 
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() } }));
 jest.mock('../../src/import/importPlatform', () => ({ pickImportTxt: jest.fn() }));
-jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useNotes: jest.fn(), useImportCommitService: jest.fn() }));
+jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useNotes: jest.fn(), useTags: jest.fn(), useImportCommitService: jest.fn() }));
 
 const books = { list: jest.fn() };
 const notes = { listNotes: jest.fn() };
+const tags = { list: jest.fn() };
 const commitService = { commit: jest.fn() };
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useBooks).mockReturnValue(books as never);
   jest.mocked(useNotes).mockReturnValue(notes as never);
+  jest.mocked(useTags).mockReturnValue(tags as never);
   jest.mocked(useImportCommitService).mockReturnValue(commitService as never);
   books.list.mockResolvedValue([]);
   notes.listNotes.mockResolvedValue([]);
+  tags.list.mockResolvedValue([]);
   commitService.commit.mockResolvedValue({ createdBooks: 1, createdNotes: 0, appendedNotes: 0, skippedItems: 0 });
   jest.mocked(pickImportTxt).mockResolvedValue(null);
 });
