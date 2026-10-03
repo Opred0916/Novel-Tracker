@@ -1,0 +1,41 @@
+import React from 'react';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { BOOK_STATUS_LABELS } from '../books/status';
+import { BOOK_STATUSES } from '../books/types';
+import type { DuplicateHint, ImportReview, ImportReviewItem } from './importReview';
+
+export function ImportReviewList({ review, hints, busy, onChange, onConfirm, onCancel }: {
+  review: ImportReview; hints: DuplicateHint[]; busy: boolean; onChange: (next: ImportReview) => void; onConfirm: () => void; onCancel: () => void;
+}) {
+  function updateItem(index: number, update: Partial<ImportReviewItem>) {
+    const items = [...review.items]; items[index] = { ...items[index], ...update }; onChange({ ...review, items });
+  }
+  function ignore(fragmentId: string) { onChange({ ...review, ignoredFragmentIds: [...new Set([...review.ignoredFragmentIds, fragmentId])] }); }
+  return <View style={styles.container}>
+    <Text style={styles.heading}>导入预览</Text>
+    <Text style={styles.help}>重复书目不会自动合并；请逐项选择新增、跳过或追加摘记。未处理原文会阻止确认。</Text>
+    {review.warnings?.map((warning, index) => <Text key={`warning-${index}`} style={styles.warning}>提示：{warning}</Text>)}
+    <FlatList data={review.items} keyExtractor={item => item.candidate.id} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled" renderItem={({ item, index }) => {
+      const itemHints = hints.filter(hint => hint.candidateId === item.candidate.id);
+      return <View style={styles.card}>
+        <Text style={styles.source}>第 {item.candidate.sourceLine} 行</Text>
+        <TextInput accessibilityLabel={`第${index + 1}条书名`} value={item.candidate.title} onChangeText={title => updateItem(index, { candidate: { ...item.candidate, title } })} style={styles.input} />
+        <TextInput accessibilityLabel={`第${index + 1}条作者`} value={item.candidate.author ?? ''} onChangeText={author => updateItem(index, { candidate: { ...item.candidate, author: author || null } })} placeholder="作者（选填）" style={styles.input} />
+        <View style={styles.row}>{BOOK_STATUSES.map(status => <Pressable key={status} onPress={() => updateItem(index, { candidate: { ...item.candidate, status } })} style={[styles.chip, item.candidate.status === status && styles.selected]}><Text style={[styles.chipText, item.candidate.status === status && styles.selectedText]}>{BOOK_STATUS_LABELS[status]}</Text></Pressable>)}</View>
+        {item.candidate.notes.map((note, noteIndex) => <TextInput key={note.id} accessibilityLabel={`第${index + 1}条摘记${noteIndex + 1}`} value={note.body} onChangeText={body => updateItem(index, { candidate: { ...item.candidate, notes: item.candidate.notes.map((entry, position) => position === noteIndex ? { ...entry, body } : entry) } })} style={styles.note} multiline />)}
+        {itemHints.map((hint, hintIndex) => <Text key={`${hint.candidateId}-${hintIndex}`} style={styles.warning}>{hint.message}</Text>)}
+        <View style={styles.row}><Pressable onPress={() => updateItem(index, { action: 'create', targetBookId: null })} style={[styles.action, item.action === 'create' && styles.selected]}><Text style={[styles.chipText, item.action === 'create' && styles.selectedText]}>新增</Text></Pressable><Pressable onPress={() => updateItem(index, { action: 'append_notes', targetBookId: hintTarget(itemHints) })} style={[styles.action, item.action === 'append_notes' && styles.selected]}><Text style={[styles.chipText, item.action === 'append_notes' && styles.selectedText]}>追加摘记</Text></Pressable><Pressable onPress={() => updateItem(index, { action: 'skip' })} style={[styles.action, item.action === 'skip' && styles.selected]}><Text style={[styles.chipText, item.action === 'skip' && styles.selectedText]}>跳过</Text></Pressable></View>
+      </View>;
+    }} ListFooterComponent={<View style={styles.footer}>
+      {review.fragments.map(fragment => review.ignoredFragmentIds.includes(fragment.id) ? null : <View key={fragment.id} style={styles.fragment}><Text style={styles.warning}>原文未归属：{fragment.text}</Text><Pressable onPress={() => ignore(fragment.id)}><Text style={styles.link}>标记已处理</Text></Pressable></View>)}
+      <Text style={styles.summary}>新增 {review.items.filter(item => item.action === 'create').length} 条 · 追加 {review.items.filter(item => item.action === 'append_notes').length} 条 · 跳过 {review.items.filter(item => item.action === 'skip').length} 条</Text>
+      <Pressable accessibilityRole="button" disabled={busy} onPress={onConfirm} style={[styles.primary, busy && styles.disabled]}><Text style={styles.primaryText}>{busy ? '正在导入…' : '确认导入'}</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={busy} onPress={onCancel} style={styles.link}><Text style={styles.linkText}>返回修改文字</Text></Pressable>
+    </View>} />
+  </View>;
+}
+
+function hintTarget(hints: DuplicateHint[]): string | null { return hints.find(hint => hint.targetBookId)?.targetBookId ?? null; }
+const styles = StyleSheet.create({
+  container: { flex: 1, padding: 18 }, heading: { fontSize: 24, fontWeight: '700', color: '#302a25' }, help: { color: '#766f68', lineHeight: 20, marginVertical: 8 }, list: { gap: 14, paddingBottom: 20 }, card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 }, source: { color: '#817871', fontSize: 13 }, input: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 11, color: '#302a25' }, note: { minHeight: 60, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 11, color: '#302a25' }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 }, action: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 }, selected: { backgroundColor: '#593f72', borderColor: '#593f72' }, chipText: { color: '#302a25' }, selectedText: { color: '#fff', fontWeight: '700' }, warning: { color: '#9a5719', lineHeight: 20 }, fragment: { backgroundColor: '#fff7e9', borderRadius: 12, padding: 12, gap: 8 }, summary: { color: '#302a25', fontWeight: '600' }, footer: { gap: 12, paddingVertical: 18 }, primary: { backgroundColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center' }, primaryText: { color: '#fff', fontWeight: '700' }, link: { alignItems: 'center', padding: 10 }, linkText: { color: '#593f72', fontWeight: '600' }, disabled: { opacity: 0.5 },
+});

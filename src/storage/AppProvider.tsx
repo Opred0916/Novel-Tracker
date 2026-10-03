@@ -15,6 +15,7 @@ import { BackupService } from '../backup/backupService';
 import { openDatabase } from './database';
 import { BookCoverFiles } from '../books/bookCoverFiles';
 import { ImageDeletionQueue } from '../books/imageDeletionQueue';
+import { ImportCommitService } from '../import/importCommitService';
 
 const RepositoryContext = createContext<SqliteBookRepository | null>(null);
 const TagRepositoryContext = createContext<SqliteTagRepository | null>(null);
@@ -22,6 +23,7 @@ const ReadingHistoryContext = createContext<SqliteReadingHistoryRepository | nul
 const NotesRepositoryContext = createContext<SqliteNotesRepository | null>(null);
 const BookSearchRepositoryContext = createContext<SqliteBookSearchRepository | null>(null);
 const BackupServiceContext = createContext<BackupService | null>(null);
+const ImportCommitServiceContext = createContext<ImportCommitService | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [repository, setRepository] = useState<SqliteBookRepository | null>(null);
@@ -30,6 +32,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notesRepository, setNotesRepository] = useState<SqliteNotesRepository | null>(null);
   const [bookSearchRepository, setBookSearchRepository] = useState<SqliteBookSearchRepository | null>(null);
   const [backupService, setBackupService] = useState<BackupService | null>(null);
+  const [importCommitService, setImportCommitService] = useState<ImportCommitService | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -52,6 +55,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           randomUUID,
         );
         setBackupService(backup);
+        setImportCommitService(new ImportCommitService(db));
         void deletionQueue.drain().catch(() => undefined);
         void backup.cleanupStaleOperations().catch(() => undefined);
       }
@@ -62,8 +66,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (error) return <View style={{ padding: 24 }}><Text>无法打开书架：{error}</Text></View>;
-  if (!repository || !tagRepository || !readingHistory || !notesRepository || !bookSearchRepository || !backupService) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
-  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}><NotesRepositoryContext.Provider value={notesRepository}><BookSearchRepositoryContext.Provider value={bookSearchRepository}><BackupServiceContext.Provider value={backupService}>{children}</BackupServiceContext.Provider></BookSearchRepositoryContext.Provider></NotesRepositoryContext.Provider></ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;
+  if (!repository || !tagRepository || !readingHistory || !notesRepository || !bookSearchRepository || !backupService || !importCommitService) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
+  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}><NotesRepositoryContext.Provider value={notesRepository}><BookSearchRepositoryContext.Provider value={bookSearchRepository}><BackupServiceContext.Provider value={backupService}><ImportCommitServiceContext.Provider value={importCommitService}>{children}</ImportCommitServiceContext.Provider></BackupServiceContext.Provider></BookSearchRepositoryContext.Provider></NotesRepositoryContext.Provider></ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;
 }
 
 export function useBooks(): SqliteBookRepository {
@@ -99,5 +103,11 @@ export function useBookSearchRepository(): SqliteBookSearchRepository {
 export function useBackupService(): BackupService {
   const service = useContext(BackupServiceContext);
   if (!service) throw new Error('Backup service is not ready');
+  return service;
+}
+
+export function useImportCommitService(): ImportCommitService {
+  const service = useContext(ImportCommitServiceContext);
+  if (!service) throw new Error('Import service is not ready');
   return service;
 }

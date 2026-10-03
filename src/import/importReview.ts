@@ -9,7 +9,7 @@ export type ImportReviewItem = {
   acknowledgedDuplicateNoteIds: string[];
 };
 
-export type ImportReview = { items: ImportReviewItem[]; fragments: ImportFragment[]; ignoredFragmentIds: string[] };
+export type ImportReview = { items: ImportReviewItem[]; fragments: ImportFragment[]; ignoredFragmentIds: string[]; warnings?: string[] };
 export type ExistingBookSummary = { id: string; title: string; author: string | null };
 export type ExistingNoteSummary = { id: string; bookId: string; body: string };
 export type DuplicateHint = {
