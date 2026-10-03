@@ -12,7 +12,7 @@ export type BackupImageSource = {
 };
 
 export type BackupSnapshot = {
-  formatVersion: typeof BACKUP_FORMAT_VERSION | typeof CURRENT_BACKUP_FORMAT_VERSION;
+  formatVersion: typeof BACKUP_FORMAT_VERSION | 2 | typeof CURRENT_BACKUP_FORMAT_VERSION;
   exportedAt: string;
   appVersion: string;
   data: BackupDataCollections;
@@ -29,8 +29,8 @@ type ProtagonistRow = { book_id: string; position: number; name: string };
 type TagRow = { id: string; name: string; is_system: number };
 type BookTagRow = { book_id: string; tag_id: string; position: number };
 type QuickTagRow = { tag_id: string; position: number };
-type SessionRow = { id: string; book_id: string; ordinal: number; started_on: string; ended_on: string | null; outcome: 'reading' | 'finished' | 'dropped' };
-type NoteRow = { id: string; book_id: string; body: string; created_at: string; updated_at: string; reading_session_id: string | null };
+type SessionRow = { id: string; book_id: string; ordinal: number; started_on: string | null; ended_on: string | null; outcome: 'reading' | 'finished' | 'dropped' };
+type NoteRow = { id: string; book_id: string; body: string; created_at: string; updated_at: string; reading_session_id: string | null; source_kind: 'app' | 'import'; original_recorded_on: string | null; original_recorded_time: string | null };
 type NoteImageRow = { note_id: string; image_id: string; position: number };
 type HighlightImageRow = { book_id: string; image_id: string; position: number };
 type ImageRow = { id: string; book_id: string; local_path: string; created_at: string };
@@ -87,7 +87,7 @@ export class SqliteBackupRepository {
           bookTags: bookTags.map(row => ({ bookId: row.book_id, tagId: row.tag_id, position: row.position })),
           quickTags: quickTags.map(row => ({ tagId: row.tag_id, position: row.position })),
           readingSessions: sessions.map(row => ({ id: row.id, bookId: row.book_id, ordinal: row.ordinal, startedOn: row.started_on, endedOn: row.ended_on, outcome: row.outcome })),
-          notes: notes.map(row => ({ id: row.id, bookId: row.book_id, body: row.body, createdAt: row.created_at, updatedAt: row.updated_at, readingSessionId: row.reading_session_id })),
+          notes: notes.map(row => ({ id: row.id, bookId: row.book_id, body: row.body, createdAt: row.created_at, updatedAt: row.updated_at, readingSessionId: row.reading_session_id, sourceKind: row.source_kind, originalRecordedOn: row.original_recorded_on, originalRecordedTime: row.original_recorded_time })),
           noteImages: noteImages.map(row => ({ noteId: row.note_id, imageId: row.image_id, position: row.position })),
           highlightImages: highlightImages.map(row => ({ bookId: row.book_id, imageId: row.image_id, position: row.position })),
         },
@@ -147,8 +147,9 @@ export class SqliteBackupRepository {
         }
       }
       for (const note of manifest.notes) await txn.runAsync(
-        'INSERT INTO notes (id, book_id, body, created_at, updated_at, reading_session_id) VALUES (?, ?, ?, ?, ?, ?)',
+        'INSERT INTO notes (id, book_id, body, created_at, updated_at, reading_session_id, source_kind, original_recorded_on, original_recorded_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         note.id, note.bookId, note.body, note.createdAt, note.updatedAt, note.readingSessionId,
+        note.sourceKind ?? 'app', note.originalRecordedOn ?? null, note.originalRecordedTime ?? null,
       );
       for (const relation of manifest.noteImages) await txn.runAsync(
         'INSERT INTO note_images (note_id, image_id, position) VALUES (?, ?, ?)', relation.noteId, relation.imageId, relation.position,

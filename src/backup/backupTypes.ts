@@ -1,7 +1,7 @@
 import type { BookStatus, BookType } from '../books/types';
 
 export const BACKUP_FORMAT_VERSION = 1 as const;
-export const CURRENT_BACKUP_FORMAT_VERSION = 2 as const;
+export const CURRENT_BACKUP_FORMAT_VERSION = 3 as const;
 export const MAX_ARCHIVE_ENTRIES = 20_001;
 export const MAX_MANIFEST_BYTES = 10 * 1024 * 1024;
 export const MAX_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024;
@@ -28,7 +28,8 @@ export type BackupReadingSession = {
   id: string;
   bookId: string;
   ordinal: number;
-  startedOn: string;
+  /** Null when an imported historical record did not include the date. */
+  startedOn: string | null;
   endedOn: string | null;
   outcome: Exclude<BookStatus, 'want_to_read'>;
 };
@@ -39,6 +40,10 @@ export type BackupNote = {
   createdAt: string;
   updatedAt: string;
   readingSessionId: string | null;
+  /** Present in format v3; omitted in v1/v2 and restored as app-created. */
+  sourceKind?: 'app' | 'import';
+  originalRecordedOn?: string | null;
+  originalRecordedTime?: string | null;
 };
 export type BackupNoteImage = { noteId: string; imageId: string; position: number };
 export type BackupHighlightImage = { bookId: string; imageId: string; position: number };
@@ -85,6 +90,11 @@ export type BackupManifestV1 = BackupDataCollections & {
 };
 
 export type BackupManifestV2 = Omit<BackupManifestV1, 'formatVersion'> & {
+  formatVersion: 2;
+  books: (BackupBook & { coverImageId: string | null })[];
+};
+
+export type BackupManifestV3 = Omit<BackupManifestV1, 'formatVersion' | 'books'> & {
   formatVersion: typeof CURRENT_BACKUP_FORMAT_VERSION;
   books: (BackupBook & { coverImageId: string | null })[];
 };

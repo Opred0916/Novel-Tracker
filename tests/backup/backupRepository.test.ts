@@ -40,7 +40,7 @@ async function seedCompleteLibrary(db: Database): Promise<void> {
     INSERT INTO reading_sessions VALUES ('session-2', 'book-a', 2, '2026-09-03', '2026-09-04', 'finished');
     INSERT INTO reading_sessions VALUES ('session-1', 'book-a', 1, '2026-09-01', '2026-09-02', 'finished');
     INSERT INTO image_assets VALUES ('image-1', 'book-a', 'file:///library/shared.jpeg', '2026-09-02T12:00:00.000Z');
-    INSERT INTO notes VALUES ('note-1', 'book-a', '想法', '2026-09-02T13:00:00.000Z', '2026-09-02T13:30:00.000Z', 'session-1');
+    INSERT INTO notes (id, book_id, body, created_at, updated_at, reading_session_id) VALUES ('note-1', 'book-a', '想法', '2026-09-02T13:00:00.000Z', '2026-09-02T13:30:00.000Z', 'session-1');
     INSERT INTO note_images VALUES ('note-1', 'image-1', 0);
     INSERT INTO highlight_images VALUES ('book-a', 'image-1', 0);
   `);
@@ -65,7 +65,7 @@ describe('SqliteBackupRepository', () => {
     const snapshot = await repository.createSnapshot('1.2.3', '2026-10-02T12:00:00.000Z');
 
     expect(snapshot).toEqual({
-      formatVersion: 2,
+      formatVersion: 3,
       exportedAt: '2026-10-02T12:00:00.000Z',
       appVersion: '1.2.3',
       data: {
@@ -93,7 +93,7 @@ describe('SqliteBackupRepository', () => {
           { id: 'session-1', bookId: 'book-a', ordinal: 1, startedOn: '2026-09-01', endedOn: '2026-09-02', outcome: 'finished' },
           { id: 'session-2', bookId: 'book-a', ordinal: 2, startedOn: '2026-09-03', endedOn: '2026-09-04', outcome: 'finished' },
         ],
-        notes: [{ id: 'note-1', bookId: 'book-a', body: '想法', createdAt: '2026-09-02T13:00:00.000Z', updatedAt: '2026-09-02T13:30:00.000Z', readingSessionId: 'session-1' }],
+        notes: [{ id: 'note-1', bookId: 'book-a', body: '想法', createdAt: '2026-09-02T13:00:00.000Z', updatedAt: '2026-09-02T13:30:00.000Z', readingSessionId: 'session-1', sourceKind: 'app', originalRecordedOn: null, originalRecordedTime: null }],
         noteImages: [{ noteId: 'note-1', imageId: 'image-1', position: 0 }],
         highlightImages: [{ bookId: 'book-a', imageId: 'image-1', position: 0 }],
       },
@@ -138,7 +138,7 @@ describe('SqliteBackupRepository', () => {
     expect(await db.getAllAsync('SELECT id, local_path FROM image_assets')).toEqual([{ id: 'image-1', local_path: 'file:///restored/image-1.jpg' }]);
     expect(await db.getAllAsync('SELECT note_id, image_id FROM note_images')).toEqual([{ note_id: 'note-1', image_id: 'image-1' }]);
     expect(await db.getAllAsync('SELECT book_id, image_id FROM highlight_images')).toEqual([{ book_id: 'book-1', image_id: 'image-1' }]);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 8 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 9 });
   });
 
   test('rolls back every table when replacement fails in the middle', async () => {

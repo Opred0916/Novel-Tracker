@@ -294,7 +294,8 @@ export class BackupArchive {
         imagePaths.set(image.id, uri);
       }
       for (const book of manifest.books) {
-        if ((manifest as unknown as { formatVersion: number }).formatVersion !== 2 || !book.coverImageId) continue;
+        if (((manifest as unknown as { formatVersion: number }).formatVersion !== 2
+          && (manifest as unknown as { formatVersion: number }).formatVersion !== 3) || !book.coverImageId) continue;
         const coverPath = imagePaths.get(book.coverImageId);
         if (!coverPath) throw new BackupValidationError('image_missing', `缺少封面图片：${book.id}`);
         try { await this.decodeImage(coverPath); }

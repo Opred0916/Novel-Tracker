@@ -42,9 +42,21 @@ describe('backup manifest validation', () => {
     expectCode(value, 'invalid_reference');
   });
 
+  test('accepts version 3 historical nullable dates and note provenance', () => {
+    const value: any = makeValidManifest();
+    value.formatVersion = 3;
+    value.books[0].coverImageId = null;
+    value.readingSessions[0].startedOn = null;
+    value.readingSessions[0].endedOn = null;
+    value.notes[0].sourceKind = 'import';
+    value.notes[0].originalRecordedOn = null;
+    value.notes[0].originalRecordedTime = null;
+    expect(validateBackupManifest(value)).toEqual(value);
+  });
+
   test.each([
     ['non-object wrapper', null, 'invalid_manifest'],
-    ['newer version', { ...makeEmptyManifest(), formatVersion: 3 }, 'unsupported_version'],
+    ['newer version', { ...makeEmptyManifest(), formatVersion: 4 }, 'unsupported_version'],
     ['missing array', (() => { const value: any = clone(makeEmptyManifest()); delete value.notes; return value; })(), 'invalid_manifest'],
     ['empty book title', (() => { const value = makeValidManifest(); value.books[0].title = '  '; return value; })(), 'invalid_value'],
     ['empty note body', (() => { const value = makeValidManifest(); value.notes[0].body = ''; return value; })(), 'invalid_value'],

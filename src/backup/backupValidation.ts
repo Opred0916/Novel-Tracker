@@ -113,7 +113,7 @@ export function countsFromManifest(manifest: BackupManifestV1): BackupCounts {
 export function validateBackupManifest(input: unknown): BackupManifestV1 {
   const root = record(input, 'manifest');
   const formatVersion = root.formatVersion;
-  if (formatVersion !== BACKUP_FORMAT_VERSION && formatVersion !== CURRENT_BACKUP_FORMAT_VERSION) {
+  if (formatVersion !== BACKUP_FORMAT_VERSION && formatVersion !== 2 && formatVersion !== CURRENT_BACKUP_FORMAT_VERSION) {
     if (typeof formatVersion === 'number' && formatVersion > CURRENT_BACKUP_FORMAT_VERSION) fail('unsupported_version', 'backup is newer than this app');
     fail('invalid_manifest', 'formatVersion is invalid');
   }
@@ -150,8 +150,8 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
     const legacyReadCount = integer(item.legacyReadCount, 'book.legacyReadCount');
     if (legacyReadCount > 1) fail('invalid_value', 'book.legacyReadCount is invalid');
     timestamp(item.createdAt, 'book.createdAt'); timestamp(item.updatedAt, 'book.updatedAt');
-    if (formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
-      if (!Object.prototype.hasOwnProperty.call(item, 'coverImageId')) fail('invalid_value', 'book.coverImageId is required in format v2');
+    if (formatVersion === 2 || formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
+      if (!Object.prototype.hasOwnProperty.call(item, 'coverImageId')) fail('invalid_value', 'book.coverImageId is required in format v2/v3');
       if (item.coverImageId !== null) string(item.coverImageId, 'book.coverImageId');
     }
   }
@@ -174,13 +174,17 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
   for (const [index, value] of readingSessions.entries()) {
     const item = record(value, `readingSessions[${index}]`);
     string(item.id, 'readingSession.id'); string(item.bookId, 'readingSession.bookId'); integer(item.ordinal, 'readingSession.ordinal', 1);
-    dateOnly(item.startedOn, 'readingSession.startedOn');
+    const startedOn = formatVersion === CURRENT_BACKUP_FORMAT_VERSION
+      ? nullableString(item.startedOn, 'readingSession.startedOn')
+      : dateOnly(item.startedOn, 'readingSession.startedOn');
     const outcome = enumValue(item.outcome, ['reading', 'finished', 'dropped'] as const, 'readingSession.outcome');
     if (outcome === 'reading') {
       if (item.endedOn !== null) fail('invalid_value', 'active reading session cannot have an end date');
     } else {
-      const endedOn = dateOnly(item.endedOn, 'readingSession.endedOn');
-      if (endedOn < (item.startedOn as string)) fail('invalid_value', 'reading session ends before it starts');
+      const endedOn = formatVersion === CURRENT_BACKUP_FORMAT_VERSION
+        ? nullableString(item.endedOn, 'readingSession.endedOn')
+        : dateOnly(item.endedOn, 'readingSession.endedOn');
+      if (endedOn !== null && startedOn !== null && endedOn < startedOn) fail('invalid_value', 'reading session ends before it starts');
     }
   }
   for (const [index, value] of notes.entries()) {
@@ -188,6 +192,15 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
     string(item.id, 'note.id'); string(item.bookId, 'note.bookId'); string(item.body, 'note.body');
     timestamp(item.createdAt, 'note.createdAt'); timestamp(item.updatedAt, 'note.updatedAt');
     if (item.readingSessionId !== null) string(item.readingSessionId, 'note.readingSessionId');
+    if (formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
+      enumValue(item.sourceKind, ['app', 'import'] as const, 'note.sourceKind');
+      if (item.originalRecordedOn !== null) dateOnly(item.originalRecordedOn, 'note.originalRecordedOn');
+      if (item.originalRecordedTime !== null) string(item.originalRecordedTime, 'note.originalRecordedTime');
+    } else {
+      if (Object.prototype.hasOwnProperty.call(item, 'sourceKind')) enumValue(item.sourceKind, ['app', 'import'] as const, 'note.sourceKind');
+      if (Object.prototype.hasOwnProperty.call(item, 'originalRecordedOn') && item.originalRecordedOn !== null) dateOnly(item.originalRecordedOn, 'note.originalRecordedOn');
+      if (Object.prototype.hasOwnProperty.call(item, 'originalRecordedTime') && item.originalRecordedTime !== null) string(item.originalRecordedTime, 'note.originalRecordedTime');
+    }
   }
   for (const [index, value] of noteImages.entries()) {
     const item = record(value, `noteImages[${index}]`);
@@ -235,7 +248,7 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
     }
   }
   for (const value of images) requireReference(bookIds, (value as any).bookId, 'image book');
-  if (formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
+  if (formatVersion === 2 || formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
     const imageById = new Map(images.map(value => [(value as any).id as string, value as any]));
     for (const book of books) {
       const coverImageId = (book as any).coverImageId as string | null;
