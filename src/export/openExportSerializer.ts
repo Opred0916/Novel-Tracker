@@ -1,5 +1,5 @@
 import { strToU8 } from 'fflate';
-import type { BackupManifestV3 } from '../backup/backupTypes';
+import type { BackupManifestV4 } from '../backup/backupTypes';
 import {
   OPEN_EXPORT_FORMAT,
   OPEN_EXPORT_FORMAT_VERSION,
@@ -21,7 +21,7 @@ function csv(rows: readonly (readonly unknown[])[]): Uint8Array {
   return strToU8(text);
 }
 
-function imageUses(manifest: BackupManifestV3): Map<string, { usages: string[]; noteIds: string[] }> {
+function imageUses(manifest: BackupManifestV4): Map<string, { usages: string[]; noteIds: string[] }> {
   const uses = new Map<string, { usages: string[]; noteIds: string[] }>();
   const add = (imageId: string, usage: string, noteId?: string) => {
     const value = uses.get(imageId) ?? { usages: [], noteIds: [] };
@@ -58,7 +58,7 @@ function buildReadme(): string {
   ].join('\r\n');
 }
 
-export function createOpenExportFiles(manifest: BackupManifestV3): OpenExportFiles {
+export function createOpenExportFiles(manifest: BackupManifestV4): OpenExportFiles {
   const titles = new Map(manifest.books.map(book => [book.id, book.title]));
   const protagonists = new Map<string, string[]>();
   for (const item of manifest.protagonists) protagonists.set(item.bookId, [...(protagonists.get(item.bookId) ?? []), item.name]);
@@ -89,11 +89,12 @@ export function createOpenExportFiles(manifest: BackupManifestV3): OpenExportFil
   };
 
   const booksRows: unknown[][] = [[
-    'book_id', 'title', 'author', 'status', 'book_type', 'rating_half_stars', 'protagonists', 'tags', 'cover_path', 'created_at', 'updated_at',
+    'book_id', 'title', 'author', 'status', 'book_type', 'rating_half_stars', 'protagonists', 'tags', 'cover_path', 'why_want_to_read', 'platform', 'created_at', 'updated_at',
   ]];
   for (const book of manifest.books) booksRows.push([
     book.id, book.title, book.author, book.status, book.bookType, book.ratingHalfStars === null ? null : book.ratingHalfStars / 2,
     (protagonists.get(book.id) ?? []).join('; '), (tags.get(book.id) ?? []).join('; '), book.coverImageId ? imagePaths.get(book.coverImageId) ?? '' : '',
+    book.whyWantToRead, book.platform,
     book.createdAt, book.updatedAt,
   ]);
 

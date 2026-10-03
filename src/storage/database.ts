@@ -41,6 +41,8 @@ export async function migrateDatabase(db: Database): Promise<void> {
           rating_half_stars IS NULL OR
           (typeof(rating_half_stars) = 'integer' AND rating_half_stars BETWEEN 1 AND 10)
         ),
+        why_want_to_read TEXT,
+        platform TEXT,
         cover_image_id TEXT,
         FOREIGN KEY (cover_image_id) REFERENCES image_assets(id) ON DELETE SET NULL
       );
@@ -64,6 +66,12 @@ export async function migrateDatabase(db: Database): Promise<void> {
     }
     if (!columns.some(column => column.name === 'cover_image_id')) {
       await db.execAsync('ALTER TABLE books ADD COLUMN cover_image_id TEXT REFERENCES image_assets(id) ON DELETE SET NULL');
+    }
+    if (!columns.some(column => column.name === 'why_want_to_read')) {
+      await db.execAsync('ALTER TABLE books ADD COLUMN why_want_to_read TEXT');
+    }
+    if (!columns.some(column => column.name === 'platform')) {
+      await db.execAsync('ALTER TABLE books ADD COLUMN platform TEXT');
     }
   }
 
@@ -197,7 +205,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
   if (!noteColumns.some(column => column.name === 'original_recorded_time')) {
     await db.execAsync('ALTER TABLE notes ADD COLUMN original_recorded_time TEXT');
   }
-  await db.execAsync('PRAGMA user_version = 9');
+  await db.execAsync('PRAGMA user_version = 10');
 }
 
 export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {

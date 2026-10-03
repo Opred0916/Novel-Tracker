@@ -19,6 +19,16 @@ export function BookDetail({ book, sessions = [], onEditReading }: {
       <Text style={styles.label}>作者</Text>
       <Text style={styles.value}>{book.author ?? '未填写作者'}</Text>
     </View>
+    {book.whyWantToRead || book.platform ? <View style={styles.section}>
+      {book.whyWantToRead ? <>
+        <Text style={styles.label}>为什么想看</Text>
+        <Text style={styles.value}>{book.whyWantToRead}</Text>
+      </> : null}
+      {book.platform ? <>
+        <Text style={styles.label}>阅读平台</Text>
+        <Text style={styles.value}>{book.platform}</Text>
+      </> : null}
+    </View> : null}
     <View style={styles.section}>
       <Text style={styles.label}>作品类型</Text>
       <Text style={styles.value}>{book.bookType ? BOOK_TYPE_LABELS[book.bookType] : '未分类'}</Text>

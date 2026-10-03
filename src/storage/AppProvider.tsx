@@ -18,6 +18,7 @@ import { ImageDeletionQueue } from '../books/imageDeletionQueue';
 import { ImportCommitService } from '../import/importCommitService';
 import { OpenExportArchive } from '../export/openExportArchive';
 import { OpenExportService } from '../export/openExportService';
+import { SqliteLibraryOverviewRepository } from '../books/libraryOverviewRepository';
 
 const RepositoryContext = createContext<SqliteBookRepository | null>(null);
 const TagRepositoryContext = createContext<SqliteTagRepository | null>(null);
@@ -27,6 +28,7 @@ const BookSearchRepositoryContext = createContext<SqliteBookSearchRepository | n
 const BackupServiceContext = createContext<BackupService | null>(null);
 const ImportCommitServiceContext = createContext<ImportCommitService | null>(null);
 const OpenExportServiceContext = createContext<OpenExportService | null>(null);
+const LibraryOverviewRepositoryContext = createContext<SqliteLibraryOverviewRepository | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [repository, setRepository] = useState<SqliteBookRepository | null>(null);
@@ -37,6 +39,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [backupService, setBackupService] = useState<BackupService | null>(null);
   const [importCommitService, setImportCommitService] = useState<ImportCommitService | null>(null);
   const [openExportService, setOpenExportService] = useState<OpenExportService | null>(null);
+  const [libraryOverviewRepository, setLibraryOverviewRepository] = useState<SqliteLibraryOverviewRepository | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -66,6 +69,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           Constants.expoConfig?.version ?? '1.0.0',
           randomUUID,
         ));
+        setLibraryOverviewRepository(new SqliteLibraryOverviewRepository(db));
         setImportCommitService(new ImportCommitService(db));
         void deletionQueue.drain().catch(() => undefined);
         void backup.cleanupStaleOperations().catch(() => undefined);
@@ -77,8 +81,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (error) return <View style={{ padding: 24 }}><Text>无法打开书架：{error}</Text></View>;
-  if (!repository || !tagRepository || !readingHistory || !notesRepository || !bookSearchRepository || !backupService || !importCommitService || !openExportService) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
-  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}><NotesRepositoryContext.Provider value={notesRepository}><BookSearchRepositoryContext.Provider value={bookSearchRepository}><BackupServiceContext.Provider value={backupService}><OpenExportServiceContext.Provider value={openExportService}><ImportCommitServiceContext.Provider value={importCommitService}>{children}</ImportCommitServiceContext.Provider></OpenExportServiceContext.Provider></BackupServiceContext.Provider></BookSearchRepositoryContext.Provider></NotesRepositoryContext.Provider></ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;
+  if (!repository || !tagRepository || !readingHistory || !notesRepository || !bookSearchRepository || !backupService || !importCommitService || !openExportService || !libraryOverviewRepository) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
+  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}><NotesRepositoryContext.Provider value={notesRepository}><BookSearchRepositoryContext.Provider value={bookSearchRepository}><BackupServiceContext.Provider value={backupService}><OpenExportServiceContext.Provider value={openExportService}><ImportCommitServiceContext.Provider value={importCommitService}><LibraryOverviewRepositoryContext.Provider value={libraryOverviewRepository}>{children}</LibraryOverviewRepositoryContext.Provider></ImportCommitServiceContext.Provider></OpenExportServiceContext.Provider></BackupServiceContext.Provider></BookSearchRepositoryContext.Provider></NotesRepositoryContext.Provider></ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;
 }
 
 export function useBooks(): SqliteBookRepository {
@@ -127,4 +131,10 @@ export function useOpenExportService(): OpenExportService {
   const service = useContext(OpenExportServiceContext);
   if (!service) throw new Error('Open export service is not ready');
   return service;
+}
+
+export function useLibraryOverviewRepository(): SqliteLibraryOverviewRepository {
+  const repository = useContext(LibraryOverviewRepositoryContext);
+  if (!repository) throw new Error('Library overview repository is not ready');
+  return repository;
 }

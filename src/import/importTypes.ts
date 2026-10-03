@@ -30,6 +30,8 @@ export type ImportCandidate = {
   tagIds: string[];
   sessions: ImportSessionDraft[];
   notes: ImportNoteDraft[];
+  whyWantToRead: string | null;
+  platform: string | null;
 };
 
 export type ImportFragment = { id: string; sourceLine: number; text: string; reason: string };

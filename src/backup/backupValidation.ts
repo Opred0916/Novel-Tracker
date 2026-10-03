@@ -112,8 +112,8 @@ export function countsFromManifest(manifest: BackupManifestV1): BackupCounts {
 
 export function validateBackupManifest(input: unknown): BackupManifestV1 {
   const root = record(input, 'manifest');
-  const formatVersion = root.formatVersion;
-  if (formatVersion !== BACKUP_FORMAT_VERSION && formatVersion !== 2 && formatVersion !== CURRENT_BACKUP_FORMAT_VERSION) {
+  const formatVersion = root.formatVersion as number;
+  if (formatVersion !== BACKUP_FORMAT_VERSION && formatVersion !== 2 && formatVersion !== 3 && formatVersion !== CURRENT_BACKUP_FORMAT_VERSION) {
     if (typeof formatVersion === 'number' && formatVersion > CURRENT_BACKUP_FORMAT_VERSION) fail('unsupported_version', 'backup is newer than this app');
     fail('invalid_manifest', 'formatVersion is invalid');
   }
@@ -150,9 +150,16 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
     const legacyReadCount = integer(item.legacyReadCount, 'book.legacyReadCount');
     if (legacyReadCount > 1) fail('invalid_value', 'book.legacyReadCount is invalid');
     timestamp(item.createdAt, 'book.createdAt'); timestamp(item.updatedAt, 'book.updatedAt');
-    if (formatVersion === 2 || formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
-      if (!Object.prototype.hasOwnProperty.call(item, 'coverImageId')) fail('invalid_value', 'book.coverImageId is required in format v2/v3');
+    if (formatVersion >= 2) {
+      if (!Object.prototype.hasOwnProperty.call(item, 'coverImageId')) fail('invalid_value', 'book.coverImageId is required in format v2+');
       if (item.coverImageId !== null) string(item.coverImageId, 'book.coverImageId');
+    }
+    if (formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
+      nullableString(item.whyWantToRead, 'book.whyWantToRead');
+      nullableString(item.platform, 'book.platform');
+    } else {
+      if (Object.prototype.hasOwnProperty.call(item, 'whyWantToRead')) nullableString(item.whyWantToRead, 'book.whyWantToRead');
+      if (Object.prototype.hasOwnProperty.call(item, 'platform')) nullableString(item.platform, 'book.platform');
     }
   }
   for (const [index, value] of protagonists.entries()) {
@@ -174,14 +181,14 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
   for (const [index, value] of readingSessions.entries()) {
     const item = record(value, `readingSessions[${index}]`);
     string(item.id, 'readingSession.id'); string(item.bookId, 'readingSession.bookId'); integer(item.ordinal, 'readingSession.ordinal', 1);
-    const startedOn = formatVersion === CURRENT_BACKUP_FORMAT_VERSION
+    const startedOn = formatVersion >= 3
       ? nullableString(item.startedOn, 'readingSession.startedOn')
       : dateOnly(item.startedOn, 'readingSession.startedOn');
     const outcome = enumValue(item.outcome, ['reading', 'finished', 'dropped'] as const, 'readingSession.outcome');
     if (outcome === 'reading') {
       if (item.endedOn !== null) fail('invalid_value', 'active reading session cannot have an end date');
     } else {
-      const endedOn = formatVersion === CURRENT_BACKUP_FORMAT_VERSION
+      const endedOn = formatVersion >= 3
         ? nullableString(item.endedOn, 'readingSession.endedOn')
         : dateOnly(item.endedOn, 'readingSession.endedOn');
       if (endedOn !== null && startedOn !== null && endedOn < startedOn) fail('invalid_value', 'reading session ends before it starts');
@@ -192,7 +199,7 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
     string(item.id, 'note.id'); string(item.bookId, 'note.bookId'); string(item.body, 'note.body');
     timestamp(item.createdAt, 'note.createdAt'); timestamp(item.updatedAt, 'note.updatedAt');
     if (item.readingSessionId !== null) string(item.readingSessionId, 'note.readingSessionId');
-    if (formatVersion === CURRENT_BACKUP_FORMAT_VERSION) {
+    if (formatVersion >= 3) {
       enumValue(item.sourceKind, ['app', 'import'] as const, 'note.sourceKind');
       if (item.originalRecordedOn !== null) dateOnly(item.originalRecordedOn, 'note.originalRecordedOn');
       if (item.originalRecordedTime !== null) string(item.originalRecordedTime, 'note.originalRecordedTime');
@@ -261,7 +268,17 @@ export function validateBackupManifest(input: unknown): BackupManifestV1 {
   for (const value of noteImages) { requireReference(noteIds, (value as any).noteId, 'note image note'); requireReference(imageIds, (value as any).imageId, 'note image image'); }
   for (const value of highlightImages) { requireReference(bookIds, (value as any).bookId, 'highlight image book'); requireReference(imageIds, (value as any).imageId, 'highlight image image'); }
 
-  const manifest = root as unknown as BackupManifestV1;
+  const manifest = {
+    ...root,
+    books: books.map(value => {
+      const item = value as Record<string, unknown>;
+      return {
+        ...item,
+        whyWantToRead: formatVersion === CURRENT_BACKUP_FORMAT_VERSION ? item.whyWantToRead as string | null : (item.whyWantToRead as string | null | undefined) ?? null,
+        platform: formatVersion === CURRENT_BACKUP_FORMAT_VERSION ? item.platform as string | null : (item.platform as string | null | undefined) ?? null,
+      };
+    }),
+  } as unknown as BackupManifestV1;
   const actualCounts = countsFromManifest(manifest);
   for (const name of collectionNames) if (counts[name] !== actualCounts[name]) fail('count_mismatch', `${name} count does not match`);
 

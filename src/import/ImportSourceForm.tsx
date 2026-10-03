@@ -4,10 +4,11 @@ import { BOOK_STATUS_LABELS } from '../books/status';
 import { BOOK_STATUSES, type BookStatus } from '../books/types';
 import type { ImportMode } from './importTypes';
 
-export function ImportSourceForm({ text, mode, defaultStatus, error, onTextChange, onModeChange, onStatusChange, onPickFile, onParse, onManualCandidate }: {
+export function ImportSourceForm({ text, mode, defaultStatus, error, onTextChange, onModeChange, onStatusChange, onPickFile, onPickTable, tableDelimiter, onTableDelimiterChange, onParse, onManualCandidate }: {
   text: string; mode: ImportMode; defaultStatus: BookStatus; error: string;
   onTextChange: (value: string) => void; onModeChange: (value: ImportMode) => void; onStatusChange: (value: BookStatus) => void;
-  onPickFile: () => void; onParse: () => void; onManualCandidate: () => void;
+  onPickFile: () => void; onPickTable?: () => void; tableDelimiter?: ',' | ';' | '\t'; onTableDelimiterChange?: (value: ',' | ';' | '\t') => void;
+  onParse: () => void; onManualCandidate: () => void;
 }) {
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={styles.heading}>追加旧记录</Text>
@@ -19,6 +20,7 @@ export function ImportSourceForm({ text, mode, defaultStatus, error, onTextChang
     <TextInput accessibilityLabel="要导入的文字" multiline value={text} onChangeText={onTextChange} placeholder="粘贴旧书单或摘记文字" style={styles.input} textAlignVertical="top" />
     {error ? <Text style={styles.error}>{error}</Text> : null}
     <Pressable accessibilityRole="button" onPress={onPickFile} style={styles.secondary}><Text style={styles.secondaryText}>选择 TXT 文件</Text></Pressable>
+    {onPickTable ? <><Text style={styles.label}>表格分隔符（CSV）</Text><View style={styles.row}>{([[';', '分号'], [',', '逗号'], ['\t', '制表符']] as const).map(([value, label]) => <Pressable key={label} onPress={() => onTableDelimiterChange?.(value)} style={[styles.chip, tableDelimiter === value && styles.selected]}><Text style={[styles.chipText, tableDelimiter === value && styles.selectedText]}>{label}</Text></Pressable>)}</View><Pressable accessibilityRole="button" onPress={onPickTable} style={styles.secondary}><Text style={styles.secondaryText}>选择 CSV / XLSX 文件</Text></Pressable></> : null}
     <Pressable accessibilityRole="button" onPress={onParse} style={styles.primary}><Text style={styles.primaryText}>生成导入预览</Text></Pressable>
     <Pressable accessibilityRole="button" onPress={onManualCandidate} style={styles.link}><Text style={styles.linkText}>没有可解析文字？手动添加一条</Text></Pressable>
   </ScrollView>;

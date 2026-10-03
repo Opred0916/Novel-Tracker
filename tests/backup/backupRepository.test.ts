@@ -65,13 +65,13 @@ describe('SqliteBackupRepository', () => {
     const snapshot = await repository.createSnapshot('1.2.3', '2026-10-02T12:00:00.000Z');
 
     expect(snapshot).toEqual({
-      formatVersion: 3,
+      formatVersion: 4,
       exportedAt: '2026-10-02T12:00:00.000Z',
       appVersion: '1.2.3',
       data: {
         books: [
-          { id: 'book-a', title: '第一本', author: '甲', status: 'finished', bookType: 'romance_male_male', ratingHalfStars: 10, legacyReadCount: 1, coverImageId: null, createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-03T00:00:00.000Z' },
-          { id: 'book-b', title: '第二本', author: '乙', status: 'want_to_read', bookType: 'other', ratingHalfStars: null, legacyReadCount: 0, coverImageId: null, createdAt: '2026-09-02T00:00:00.000Z', updatedAt: '2026-09-02T00:00:00.000Z' },
+          { id: 'book-a', title: '第一本', author: '甲', status: 'finished', bookType: 'romance_male_male', ratingHalfStars: 10, legacyReadCount: 1, coverImageId: null, whyWantToRead: null, platform: null, createdAt: '2026-09-01T00:00:00.000Z', updatedAt: '2026-09-03T00:00:00.000Z' },
+          { id: 'book-b', title: '第二本', author: '乙', status: 'want_to_read', bookType: 'other', ratingHalfStars: null, legacyReadCount: 0, coverImageId: null, whyWantToRead: null, platform: null, createdAt: '2026-09-02T00:00:00.000Z', updatedAt: '2026-09-02T00:00:00.000Z' },
         ],
         protagonists: [
           { bookId: 'book-a', position: 0, name: '主角一' },
@@ -138,7 +138,26 @@ describe('SqliteBackupRepository', () => {
     expect(await db.getAllAsync('SELECT id, local_path FROM image_assets')).toEqual([{ id: 'image-1', local_path: 'file:///restored/image-1.jpg' }]);
     expect(await db.getAllAsync('SELECT note_id, image_id FROM note_images')).toEqual([{ note_id: 'note-1', image_id: 'image-1' }]);
     expect(await db.getAllAsync('SELECT book_id, image_id FROM highlight_images')).toEqual([{ book_id: 'book-1', image_id: 'image-1' }]);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 9 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 10 });
+  });
+
+  test('round-trips optional book details through snapshot and restore', async () => {
+    await seedCompleteLibrary(db);
+    await db.runAsync('UPDATE books SET why_want_to_read = ?, platform = ? WHERE id = ?', '朋友推荐', '晋江文学城', 'book-b');
+    const snapshot = await repository.createSnapshot('1.2.3', '2026-10-02T12:00:00.000Z');
+    expect(snapshot.data.books.find(book => book.id === 'book-b')).toMatchObject({ whyWantToRead: '朋友推荐', platform: '晋江文学城' });
+    const counts = await repository.getOverview();
+    await repository.replaceAll({
+      formatVersion: 4,
+      exportedAt: snapshot.exportedAt,
+      appVersion: snapshot.appVersion,
+      counts,
+      ...snapshot.data,
+      images: snapshot.images.map(({ localPath: _localPath, ...image }) => ({ ...image, byteLength: 4 })),
+    } as any, new Map([['image-1', 'file:///restored/image-1.jpg']]));
+    expect(await db.getFirstAsync('SELECT why_want_to_read, platform FROM books WHERE id = ?', 'book-b')).toEqual({
+      why_want_to_read: '朋友推荐', platform: '晋江文学城',
+    });
   });
 
   test('rolls back every table when replacement fails in the middle', async () => {

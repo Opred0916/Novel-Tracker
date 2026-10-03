@@ -20,6 +20,13 @@ function normalizeRatingHalfStars(value: unknown): number | null {
   return value;
 }
 
+function normalizeOptionalText(value: unknown, label: string): string | null {
+  if (value == null) return null;
+  if (typeof value !== 'string') throw new Error(`${label}无效`);
+  const normalized = value.trim();
+  return normalized || null;
+}
+
 export function normalizeBookEdit(input: BookEditInput): BookEditInput {
   const title = typeof input.title === 'string' ? input.title.trim() : '';
   if (!title) throw new Error('请输入书名');
@@ -39,6 +46,8 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
     edited.ratingHalfStars = normalizeRatingHalfStars(input.ratingHalfStars);
   }
   if (input.bookType !== undefined) edited.bookType = normalizeType(input.bookType);
+  if (input.whyWantToRead !== undefined) edited.whyWantToRead = normalizeOptionalText(input.whyWantToRead, '想看理由');
+  if (input.platform !== undefined) edited.platform = normalizeOptionalText(input.platform, '阅读平台');
   if (input.readingDates !== undefined) {
     if (!input.readingDates || typeof input.readingDates !== 'object') throw new Error('阅读日期无效');
     edited.readingDates = normalizeReadingDates(input.status, input.readingDates.startedOn, input.readingDates.endedOn);
@@ -70,7 +79,7 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
 
 export function normalizeBookCreate(
   input: BookInput,
-): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars' | 'bookType'> & { tagIds: string[]; readingDates?: BookInput['readingDates']; coverSource?: BookInput['coverSource'] } {
+): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars' | 'bookType' | 'whyWantToRead' | 'platform'> & { tagIds: string[]; readingDates?: BookInput['readingDates']; coverSource?: BookInput['coverSource'] } {
   const normalized = normalizeBookEdit({
     title: input.title,
     author: input.author ?? null,
@@ -78,6 +87,8 @@ export function normalizeBookCreate(
     protagonists: input.protagonists ?? [],
     ratingHalfStars: input.ratingHalfStars ?? null,
     bookType: input.bookType ?? null,
+    whyWantToRead: input.whyWantToRead ?? null,
+    platform: input.platform ?? null,
     tagIds: input.tagIds ?? [],
     readingDates: input.readingDates,
   });
@@ -85,5 +96,13 @@ export function normalizeBookCreate(
   if (normalized.status !== 'finished' && ratingHalfStars !== null) {
     throw new Error('只有读完的小说才能新增评分');
   }
-  return { ...normalized, bookType: normalized.bookType ?? null, tagIds: normalized.tagIds ?? [], ratingHalfStars, coverSource: input.coverSource };
+  return {
+    ...normalized,
+    bookType: normalized.bookType ?? null,
+    tagIds: normalized.tagIds ?? [],
+    ratingHalfStars,
+    whyWantToRead: normalized.whyWantToRead ?? null,
+    platform: normalized.platform ?? null,
+    ...(input.coverSource ? { coverSource: input.coverSource } : {}),
+  };
 }

@@ -12,7 +12,7 @@ export type BackupImageSource = {
 };
 
 export type BackupSnapshot = {
-  formatVersion: typeof BACKUP_FORMAT_VERSION | 2 | typeof CURRENT_BACKUP_FORMAT_VERSION;
+  formatVersion: typeof BACKUP_FORMAT_VERSION | 2 | 3 | typeof CURRENT_BACKUP_FORMAT_VERSION;
   exportedAt: string;
   appVersion: string;
   data: BackupDataCollections;
@@ -24,6 +24,8 @@ type BookRow = {
   type: BackupManifestV1['books'][number]['bookType']; rating_half_stars: number | null; legacy_read_count: number;
   created_at: string; updated_at: string;
   cover_image_id: string | null;
+  why_want_to_read: string | null;
+  platform: string | null;
 };
 type ProtagonistRow = { book_id: string; position: number; name: string };
 type TagRow = { id: string; name: string; is_system: number };
@@ -81,6 +83,7 @@ export class SqliteBackupRepository {
             id: row.id, title: row.title, author: row.author, status: row.status, bookType: row.type,
             ratingHalfStars: row.rating_half_stars, legacyReadCount: row.legacy_read_count,
             createdAt: row.created_at, updatedAt: row.updated_at, coverImageId: row.cover_image_id,
+            whyWantToRead: row.why_want_to_read, platform: row.platform,
           })),
           protagonists: protagonists.map(row => ({ bookId: row.book_id, position: row.position, name: row.name })),
           tags: tags.map(row => ({ id: row.id, name: row.name, isSystem: row.is_system === 1 })),
@@ -118,8 +121,9 @@ export class SqliteBackupRepository {
         DELETE FROM book_protagonists; DELETE FROM books;
       `);
       for (const book of manifest.books) await txn.runAsync(
-        'INSERT INTO books (id, title, author, status, created_at, updated_at, rating_half_stars, type, legacy_read_count, cover_image_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)',
+        'INSERT INTO books (id, title, author, status, created_at, updated_at, rating_half_stars, type, legacy_read_count, why_want_to_read, platform, cover_image_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)',
         book.id, book.title, book.author, book.status, book.createdAt, book.updatedAt, book.ratingHalfStars, book.bookType, book.legacyReadCount,
+        book.whyWantToRead ?? null, book.platform ?? null,
       );
       for (const protagonist of manifest.protagonists) await txn.runAsync(
         'INSERT INTO book_protagonists (book_id, position, name) VALUES (?, ?, ?)', protagonist.bookId, protagonist.position, protagonist.name,
@@ -142,7 +146,7 @@ export class SqliteBackupRepository {
         image.id, image.bookId, restoredImagePaths.get(image.id)!, image.createdAt,
       );
       for (const book of manifest.books) {
-        if ((manifest as unknown as { formatVersion: number }).formatVersion === 2 && book.coverImageId !== undefined && book.coverImageId !== null) {
+        if ((manifest as unknown as { formatVersion: number }).formatVersion >= 2 && book.coverImageId !== undefined && book.coverImageId !== null) {
           await txn.runAsync('UPDATE books SET cover_image_id = ? WHERE id = ?', book.coverImageId, book.id);
         }
       }

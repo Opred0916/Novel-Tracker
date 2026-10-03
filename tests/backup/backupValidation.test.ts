@@ -24,7 +24,7 @@ describe('backup manifest validation', () => {
   test('accepts a complete version 1 manifest without mutating it', () => {
     const manifest = makeValidManifest();
     const before = clone(manifest);
-    expect(validateBackupManifest(manifest)).toEqual(before);
+    expect(validateBackupManifest(manifest)).toMatchObject(before);
     expect(manifest).toEqual(before);
     expect(countsFromManifest(manifest)).toEqual(manifest.counts);
   });
@@ -37,7 +37,7 @@ describe('backup manifest validation', () => {
     const value: any = makeValidManifest();
     value.formatVersion = 2;
     value.books[0].coverImageId = 'image-1';
-    expect(validateBackupManifest(value)).toEqual(value);
+    expect(validateBackupManifest(value)).toMatchObject(value);
     value.books[0].coverImageId = 'missing';
     expectCode(value, 'invalid_reference');
   });
@@ -51,12 +51,26 @@ describe('backup manifest validation', () => {
     value.notes[0].sourceKind = 'import';
     value.notes[0].originalRecordedOn = null;
     value.notes[0].originalRecordedTime = null;
+    expect(validateBackupManifest(value)).toMatchObject(value);
+  });
+
+  test('accepts version 4 book details and requires both nullable fields', () => {
+    const value: any = makeValidManifest();
+    value.formatVersion = 4;
+    value.books[0].coverImageId = null;
+    value.books[0].whyWantToRead = '朋友推荐';
+    value.books[0].platform = '晋江文学城';
+    value.notes[0].sourceKind = 'app';
+    value.notes[0].originalRecordedOn = null;
+    value.notes[0].originalRecordedTime = null;
     expect(validateBackupManifest(value)).toEqual(value);
+    delete value.books[0].platform;
+    expectCode(value, 'invalid_value');
   });
 
   test.each([
     ['non-object wrapper', null, 'invalid_manifest'],
-    ['newer version', { ...makeEmptyManifest(), formatVersion: 4 }, 'unsupported_version'],
+    ['newer version', { ...makeEmptyManifest(), formatVersion: 5 }, 'unsupported_version'],
     ['missing array', (() => { const value: any = clone(makeEmptyManifest()); delete value.notes; return value; })(), 'invalid_manifest'],
     ['empty book title', (() => { const value = makeValidManifest(); value.books[0].title = '  '; return value; })(), 'invalid_value'],
     ['empty note body', (() => { const value = makeValidManifest(); value.notes[0].body = ''; return value; })(), 'invalid_value'],
@@ -80,7 +94,7 @@ describe('backup manifest validation', () => {
   test('accepts a retained rating while a book is being reread', () => {
     const value = makeValidManifest();
     value.books[0].status = 'reading';
-    expect(validateBackupManifest(value)).toEqual(value);
+    expect(validateBackupManifest(value)).toMatchObject(value);
   });
 
   test.each([

@@ -19,6 +19,8 @@ type BookRow = {
   legacy_read_count: number;
   cover_image_id: string | null;
   cover_local_path: string | null;
+  why_want_to_read: string | null;
+  platform: string | null;
 };
 
 type ProtagonistRow = { book_id: string; position: number; name: string };
@@ -42,6 +44,8 @@ function fromRow(row: BookRow, protagonists: string[] = [], tags: Tag[] = []): B
     coverUri: row.cover_local_path,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    whyWantToRead: row.why_want_to_read,
+    platform: row.platform,
   };
 }
 
@@ -114,8 +118,9 @@ export class SqliteBookRepository implements BookRepository {
     try {
       await this.db.withExclusiveTransactionAsync(async txn => {
         await txn.runAsync(
-          'INSERT INTO books (id, title, author, status, rating_half_stars, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          id, normalized.title, normalized.author, normalized.status, normalized.ratingHalfStars, normalized.bookType, now, now,
+          'INSERT INTO books (id, title, author, status, rating_half_stars, type, why_want_to_read, platform, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          id, normalized.title, normalized.author, normalized.status, normalized.ratingHalfStars, normalized.bookType,
+          normalized.whyWantToRead, normalized.platform, now, now,
         );
         if (normalized.coverSource) {
           copied = await this.coverFiles.copyToBook(normalized.coverSource, id, this.idFactory());
@@ -200,15 +205,17 @@ export class SqliteBookRepository implements BookRepository {
       const ratingHalfStars = edited.ratingHalfStars === undefined
         ? existing.rating_half_stars
         : edited.ratingHalfStars;
+      const whyWantToRead = edited.whyWantToRead === undefined ? existing.why_want_to_read : edited.whyWantToRead;
+      const platform = edited.platform === undefined ? existing.platform : edited.platform;
       if (edited.status !== 'finished' && ratingHalfStars !== null && ratingHalfStars !== existing.rating_half_stars) {
         throw new Error('只有读完的小说才能新增或修改评分');
       }
       const now = new Date().toISOString();
       await this.applyStatusTransition(txn, id, existing, edited.status, edited.readingDates);
       await txn.runAsync(
-        'UPDATE books SET title = ?, author = ?, status = ?, rating_half_stars = ?, type = ?, cover_image_id = ?, updated_at = ? WHERE id = ?',
+        'UPDATE books SET title = ?, author = ?, status = ?, rating_half_stars = ?, type = ?, why_want_to_read = ?, platform = ?, cover_image_id = ?, updated_at = ? WHERE id = ?',
         edited.title, edited.author, edited.status, ratingHalfStars, edited.bookType === undefined ? existing.type : edited.bookType,
-        existing.cover_image_id, now, id,
+        whyWantToRead, platform, existing.cover_image_id, now, id,
       );
       if (edited.coverChange?.kind === 'remove') {
         await txn.runAsync('UPDATE books SET cover_image_id = NULL WHERE id = ?', id);

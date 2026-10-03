@@ -58,8 +58,9 @@ export class ImportCommitService {
 
   private async insertBook(txn: Database, id: string, candidate: ImportCandidate, now: string): Promise<void> {
     await txn.runAsync(
-      'INSERT INTO books (id, title, author, status, rating_half_stars, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      id, candidate.title.trim(), candidate.author, candidate.status, candidate.status === 'finished' ? candidate.ratingHalfStars : null, candidate.bookType, now, now,
+      'INSERT INTO books (id, title, author, status, rating_half_stars, type, why_want_to_read, platform, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      id, candidate.title.trim(), candidate.author, candidate.status, candidate.status === 'finished' ? candidate.ratingHalfStars : null, candidate.bookType,
+      candidate.whyWantToRead, candidate.platform, now, now,
     );
     for (const [position, protagonist] of candidate.protagonists.entries()) {
       await txn.runAsync('INSERT INTO book_protagonists (book_id, position, name) VALUES (?, ?, ?)', id, position, protagonist);

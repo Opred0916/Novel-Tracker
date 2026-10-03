@@ -9,6 +9,7 @@ import { chooseReadingDate } from './chooseReadingDate';
 const baseBook: Book = {
   id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [],
   legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',
+  whyWantToRead: null, platform: null,
 };
 
 test('edits a work type and tags from the full library', async () => {
@@ -59,7 +60,7 @@ test('adds another protagonist and sends trimmed, ordered names with the chosen 
   await fireEvent.press(screen.getByText('保存修改'));
 
   await waitFor(() => expect(onSave).toHaveBeenCalledWith({
-    title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青', '王五'], ratingHalfStars: null, bookType: null, tagIds: [],
+    title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青', '王五'], ratingHalfStars: null, bookType: null, tagIds: [], whyWantToRead: null, platform: null,
     readingDates: { startedOn: todayLocalDate(), endedOn: null },
   }));
 });
