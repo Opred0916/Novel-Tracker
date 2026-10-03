@@ -13,11 +13,11 @@ async function enqueue(db: ReturnType<typeof createInMemoryDatabase>, queue: Ima
   await db.withExclusiveTransactionAsync(async txn => queue.enqueue(txn, paths));
 }
 
-test('migration creates a durable image deletion queue at version 8', async () => {
+test('migration creates a durable image deletion queue at version 9', async () => {
   const db = createInMemoryDatabase();
   try {
     await migrateDatabase(db);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 8 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 9 });
     expect(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'pending_image_deletions'")).toEqual({
       name: 'pending_image_deletions',
     });
