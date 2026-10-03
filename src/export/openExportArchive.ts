@@ -10,6 +10,7 @@ import { OPEN_EXPORT_TEXT_NAMES, type OpenExportProgress } from './openExportTyp
 type Limits = { maxImages: number; maxJsonBytes: number; maxUncompressedBytes: number };
 const DEFAULT_LIMITS: Limits = { maxImages: 20_000, maxJsonBytes: 10 * 1024 * 1024, maxUncompressedBytes: 2 * 1024 * 1024 * 1024 };
 const CHUNK_SIZE = 256 * 1024;
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif']);
 
 const archivePathFor = (id: string, extension: string): string => `images/${encodeURIComponent(id)}.${extension}`;
 
@@ -23,10 +24,7 @@ export class OpenExportArchive {
   async write(snapshot: BackupSnapshot, destinationUri: string, onProgress?: (progress: OpenExportProgress) => void): Promise<void> {
     const unique = new Map<string, BackupSnapshot['images'][number]>();
     for (const image of snapshot.images) {
-      const previous = unique.get(image.id);
-      if (previous && (previous.localPath !== image.localPath || previous.bookId !== image.bookId || previous.extension !== image.extension)) {
-        throw new BackupValidationError('invalid_value', `图片 ID 冲突：${image.id}`);
-      }
+      if (unique.has(image.id)) throw new BackupValidationError('duplicate_id', `图片 ID 重复：${image.id}`);
       unique.set(image.id, image);
     }
     if (unique.size > this.limits.maxImages) throw new BackupValidationError('archive_too_large', '图片数量超过开放导出限制');
@@ -36,7 +34,7 @@ export class OpenExportArchive {
     for (const image of unique.values()) {
       const extension = image.extension.toLowerCase();
       const archivePath = archivePathFor(image.id, extension);
-      if (!/^[A-Za-z0-9]{1,10}$/.test(extension) || !isSafeArchivePath(archivePath)) {
+      if (!IMAGE_EXTENSIONS.has(extension) || !isSafeArchivePath(archivePath)) {
         throw new BackupValidationError('unsafe_path', `图片路径不安全：${image.id}`);
       }
       const stat = await this.files.stat(image.localPath);
@@ -44,6 +42,7 @@ export class OpenExportArchive {
       imageBytes += stat.size;
       imageEntries.push({ id: image.id, bookId: image.bookId, createdAt: image.createdAt, extension, byteLength: stat.size, archivePath });
     }
+    onProgress?.({ stage: 'checking_images', processedBytes: imageBytes, totalBytes: imageBytes });
 
     const manifestInput = {
       formatVersion: CURRENT_BACKUP_FORMAT_VERSION,
@@ -86,12 +85,15 @@ export class OpenExportArchive {
         const source = unique.get(image.id)!;
         const file = new ZipPassThrough(image.archivePath);
         zip.add(file);
+        let actualBytes = 0;
         for await (const chunk of this.files.readChunks(source.localPath, CHUNK_SIZE)) {
+          actualBytes += chunk.length;
           processedBytes += chunk.length;
           file.push(chunk, false);
           onProgress?.({ stage: 'packing', processedBytes, totalBytes });
         }
         file.push(new Uint8Array(), true);
+        if (actualBytes !== image.byteLength) throw new BackupValidationError('export_failed', `图片在导出过程中发生变化：${image.id}`);
       }
       zip.end();
       await finished;

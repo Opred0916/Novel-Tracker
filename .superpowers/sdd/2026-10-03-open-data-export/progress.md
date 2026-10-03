@@ -13,3 +13,5 @@ Task 3: complete — single-flight export lifecycle, timestamped output, tempora
 Task 4: complete — data-management entry, export page, Provider hook, Expo Router route, and iOS sharing adapter implemented; export-page and book-route tests passed (27/27), and TypeScript compilation passed after correcting the v3 validation cast in the archive layer.
 
 Task 5: complete for automated checks — README and plan status updated; full Jest passed (39 suites / 270 tests), TypeScript, Expo lint, and `git diff --check` passed. `expo-doctor` could not run because the package was not available in the offline npm cache; iPhone verification remains pending user-side.
+
+Review follow-up: corrected post-stat image byte-length verification, rejected all duplicate image IDs, limited archive extensions to supported image types, added differentiated export errors and immediate busy state, added success feedback, and expanded README field mappings. Focused export tests passed again (12/12); full-suite rerun remains required before completion.

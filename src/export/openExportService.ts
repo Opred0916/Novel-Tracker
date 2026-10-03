@@ -39,7 +39,11 @@ export class OpenExportService {
       await this.archive.write(snapshot, uri, progress => onProgress?.(progress));
       return { operationId, uri };
     } catch (error) {
-      if (operation) await this.storage.removeOperation(operationId).catch(() => undefined);
+      try {
+        await this.storage.removeOperation(operationId);
+      } catch {
+        throw new BackupValidationError('export_failed', '导出失败且临时文件清理失败，请稍后重试');
+      }
       throw error;
     } finally {
       this.busy = false;

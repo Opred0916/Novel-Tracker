@@ -50,7 +50,8 @@ function buildReadme(): string {
     '- images.csv：图片路径和用途索引。',
     '- images/：封面、精彩片段和摘记引用的原图。',
     '',
-    '未知日期在 JSON 中为 null，在 CSV 中为空。状态和作品类型使用稳定的英文代码，精确关系以 library.json 为准。',
+    '未知日期在 JSON 中为 null，在 CSV 中为空。状态英文代码对照：want_to_read=想读、reading=在读、finished=读完、dropped=弃读；作品类型代码对照：romance_male_male=耽美、romance_female_male=言情、romance_female_female=GL、no_romance=无CP、other=其他。',
+    '图片用途会在 images.csv 的 usages 列标为 cover（封面）、highlight（精彩片段）或 note（摘记），精确关系以 library.json 为准。',
     'CSV 中以 =、+、- 或 @ 开头的文字可能增加单引号，避免表格软件把它当作公式；JSON 保留原文。',
     '文件未加密，可能包含私人摘记和截图，请妥善保存。',
     '',
@@ -67,6 +68,7 @@ export function createOpenExportFiles(manifest: BackupManifestV3): OpenExportFil
   const noteImages = new Map<string, string[]>();
   for (const item of manifest.noteImages) noteImages.set(item.noteId, [...(noteImages.get(item.noteId) ?? []), item.imageId]);
   const uses = imageUses(manifest);
+  const imagePaths = new Map(manifest.images.map(image => [image.id, image.archivePath]));
 
   const document: OpenExportDocument = {
     exportFormat: OPEN_EXPORT_FORMAT,
@@ -91,7 +93,7 @@ export function createOpenExportFiles(manifest: BackupManifestV3): OpenExportFil
   ]];
   for (const book of manifest.books) booksRows.push([
     book.id, book.title, book.author, book.status, book.bookType, book.ratingHalfStars === null ? null : book.ratingHalfStars / 2,
-    (protagonists.get(book.id) ?? []).join('; '), (tags.get(book.id) ?? []).join('; '), book.coverImageId ? manifest.images.find(image => image.id === book.coverImageId)?.archivePath ?? '' : '',
+    (protagonists.get(book.id) ?? []).join('; '), (tags.get(book.id) ?? []).join('; '), book.coverImageId ? imagePaths.get(book.coverImageId) ?? '' : '',
     book.createdAt, book.updatedAt,
   ]);
 

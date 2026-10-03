@@ -33,6 +33,7 @@ test('shows open export counts and shares then releases the temporary ZIP', asyn
   await fireEvent.press(screen.getByText('生成并分享'));
   await waitFor(() => expect(shareOpenExport).toHaveBeenCalledWith('cache://NovelTracker-export.zip'));
   expect(service.releaseExport).toHaveBeenCalledWith('open-export-1');
+  expect(screen.getByText(/已生成，已打开分享面板/)).toBeTruthy();
 });
 
 test('reports a share failure without claiming that the file was saved', async () => {

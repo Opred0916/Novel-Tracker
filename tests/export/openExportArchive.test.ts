@@ -16,12 +16,14 @@ const concat = (chunks: Uint8Array[]): Uint8Array => {
 class MemoryFilePort implements BackupFilePort {
   readonly files = new Map<string, Uint8Array>();
   diskSpace = 10_000_000;
+  readOverride: ((uri: string, data: Uint8Array) => Uint8Array) | null = null;
 
   put(uri: string, data: Uint8Array): void { this.files.set(uri, data.slice()); }
   async stat(uri: string) { const data = this.files.get(uri); return { exists: data !== undefined, size: data?.length ?? 0 }; }
   async *readChunks(uri: string, chunkSize: number): AsyncIterable<Uint8Array> {
-    const data = this.files.get(uri);
-    if (!data) throw new Error(`missing ${uri}`);
+    const stored = this.files.get(uri);
+    if (!stored) throw new Error(`missing ${uri}`);
+    const data = this.readOverride ? this.readOverride(uri, stored.slice()) : stored;
     for (let offset = 0; offset < data.length; offset += chunkSize) yield data.slice(offset, offset + chunkSize);
   }
   async openChunkWriter(uri: string): Promise<BackupChunkWriter> {
@@ -60,18 +62,26 @@ test('writes one standard ZIP with text files and one copy of a shared image', a
   expect(strFromU8(entries['library.json'])).toContain('"exportFormat": "novel-tracker-open"');
 });
 
-test('deduplicates an identical shared image and rejects a missing image', async () => {
+test('rejects duplicate image IDs and missing images', async () => {
   const port = new MemoryFilePort();
   port.put('memory://source.jpg', new Uint8Array([1, 2, 3, 4]));
   const snapshot = makeSnapshot();
   snapshot.images.push({ ...snapshot.images[0] });
-  await new OpenExportArchive(port).write(snapshot, 'memory://export.zip');
-  expect(Object.keys(unzipSync(port.files.get('memory://export.zip')!)).filter(name => name.startsWith('images/'))).toHaveLength(1);
+  await expect(new OpenExportArchive(port).write(snapshot, 'memory://export.zip')).rejects.toMatchObject({ code: 'duplicate_id' });
+  expect(port.files.has('memory://export.zip')).toBe(false);
 
   const missing = makeSnapshot();
   missing.images[0].localPath = 'memory://missing-source.jpg';
   await expect(new OpenExportArchive(port).write(missing, 'memory://missing.zip')).rejects.toMatchObject<Partial<BackupValidationError>>({ code: 'image_missing' });
   expect(port.files.has('memory://missing.zip')).toBe(false);
+});
+
+test('rejects an image whose bytes change after the preflight stat', async () => {
+  const port = new MemoryFilePort();
+  port.put('memory://source.jpg', new Uint8Array([1, 2, 3, 4]));
+  port.readOverride = () => new Uint8Array([1, 2, 3]);
+  await expect(new OpenExportArchive(port).write(makeSnapshot(), 'memory://changed.zip')).rejects.toMatchObject({ code: 'export_failed' });
+  expect(port.files.has('memory://changed.zip')).toBe(false);
 });
 
 test('enforces injected image, JSON, total-size, and disk limits', async () => {
