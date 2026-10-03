@@ -51,6 +51,7 @@ export default function Bookshelf() {
       <Pressable accessibilityRole="button" onPress={clearFilters}><Text style={styles.link}>清除筛选</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={() => router.push('/settings/tags')}><Text style={styles.link}>快捷标签设置</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={() => router.push('/settings/data')}><Text style={styles.link}>数据管理</Text></Pressable>
+      <Pressable accessibilityRole="button" onPress={() => router.push('/settings/overview')}><Text style={styles.link}>书库概览</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={() => router.push('/settings/backup')}><Text style={styles.link}>备份与恢复</Text></Pressable>
     </View>
     <FlatList data={results} keyExtractor={item => item.book.id} contentContainerStyle={styles.list}
