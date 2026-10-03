@@ -3,7 +3,6 @@ import type { BackupManifestV3 } from '../backup/backupTypes';
 import {
   OPEN_EXPORT_FORMAT,
   OPEN_EXPORT_FORMAT_VERSION,
-  OPEN_EXPORT_TEXT_NAMES,
   type OpenExportDocument,
   type OpenExportFiles,
 } from './openExportTypes';

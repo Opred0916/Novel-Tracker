@@ -98,3 +98,11 @@
 - [ ] **步骤 4：提交收尾。** 有 README 或必要修正才提交；提交信息 `docs: explain open data export`。实施完成后按用户当时要求决定是否合并、上传，不自动声称真机通过。
 
 **SDK 57 依据：** [Expo FileSystem](https://docs.expo.dev/versions/v57.0.0/sdk/filesystem/) 提供 `File.readableStream()`、`File.writableStream()` 和 `Paths.availableDiskSpace`；[Expo Sharing](https://docs.expo.dev/versions/v57.0.0/sdk/sharing/) 提供本地文件 `shareAsync()` 与 `isAvailableAsync()`。实施任务 2、4 前按 `AGENTS.md` 再核对当前安装版本和真机行为。
+
+## Execution status / 执行状态
+
+- [x] Task 1 — 独立格式与易读文本文件
+- [x] Task 2 — 流式 ZIP 与图片完整性
+- [x] Task 3 — 只读导出服务与临时文件生命周期
+- [x] Task 4 — 手机入口与系统分享
+- [x] Task 5 — 使用说明与自动化回归检查（真机验收待用户执行）

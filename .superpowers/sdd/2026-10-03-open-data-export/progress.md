@@ -11,3 +11,5 @@ Task 2: complete — streaming ZIP archive with image deduplication, limits, and
 Task 3: complete — single-flight export lifecycle, timestamped output, temporary-operation cleanup, and sharing handoff result implemented; focused export-service and backup-service regression tests passed (12/12).
 
 Task 4: complete — data-management entry, export page, Provider hook, Expo Router route, and iOS sharing adapter implemented; export-page and book-route tests passed (27/27), and TypeScript compilation passed after correcting the v3 validation cast in the archive layer.
+
+Task 5: complete for automated checks — README and plan status updated; full Jest passed (39 suites / 270 tests), TypeScript, Expo lint, and `git diff --check` passed. `expo-doctor` could not run because the package was not available in the offline npm cache; iPhone verification remains pending user-side.
