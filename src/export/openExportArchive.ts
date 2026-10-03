@@ -37,7 +37,12 @@ export class OpenExportArchive {
       if (!IMAGE_EXTENSIONS.has(extension) || !isSafeArchivePath(archivePath)) {
         throw new BackupValidationError('unsafe_path', `图片路径不安全：${image.id}`);
       }
-      const stat = await this.files.stat(image.localPath);
+      let stat;
+      try {
+        stat = await this.files.stat(image.localPath);
+      } catch {
+        throw new BackupValidationError('image_unreadable', `无法读取图片：${image.id}`);
+      }
       if (!stat.exists) throw new BackupValidationError('image_missing', `找不到图片：${image.id}`);
       imageBytes += stat.size;
       imageEntries.push({ id: image.id, bookId: image.bookId, createdAt: image.createdAt, extension, byteLength: stat.size, archivePath });
@@ -86,11 +91,19 @@ export class OpenExportArchive {
         const file = new ZipPassThrough(image.archivePath);
         zip.add(file);
         let actualBytes = 0;
-        for await (const chunk of this.files.readChunks(source.localPath, CHUNK_SIZE)) {
-          actualBytes += chunk.length;
-          processedBytes += chunk.length;
-          file.push(chunk, false);
-          onProgress?.({ stage: 'packing', processedBytes, totalBytes });
+        try {
+          for await (const chunk of this.files.readChunks(source.localPath, CHUNK_SIZE)) {
+            actualBytes += chunk.length;
+            if (actualBytes > image.byteLength || textBytes + processedBytes + chunk.length > this.limits.maxUncompressedBytes) {
+              throw new BackupValidationError(actualBytes > image.byteLength ? 'export_failed' : 'archive_too_large', actualBytes > image.byteLength ? `图片在导出过程中发生变化：${image.id}` : '开放导出内容超过安全限制');
+            }
+            processedBytes += chunk.length;
+            file.push(chunk, false);
+            onProgress?.({ stage: 'packing', processedBytes, totalBytes });
+          }
+        } catch (error) {
+          if (error instanceof BackupValidationError) throw error;
+          throw new BackupValidationError('image_unreadable', `无法读取图片：${image.id}`);
         }
         file.push(new Uint8Array(), true);
         if (actualBytes !== image.byteLength) throw new BackupValidationError('export_failed', `图片在导出过程中发生变化：${image.id}`);

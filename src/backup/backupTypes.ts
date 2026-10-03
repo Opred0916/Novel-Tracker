@@ -113,6 +113,8 @@ export type BackupErrorCode =
   | 'archive_too_large'
   | 'storage_insufficient'
   | 'image_missing'
+  | 'image_unreadable'
   | 'export_failed'
+  | 'cleanup_failed'
   | 'restore_failed'
   | 'busy';

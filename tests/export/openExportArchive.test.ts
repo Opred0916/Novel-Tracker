@@ -17,12 +17,14 @@ class MemoryFilePort implements BackupFilePort {
   readonly files = new Map<string, Uint8Array>();
   diskSpace = 10_000_000;
   readOverride: ((uri: string, data: Uint8Array) => Uint8Array) | null = null;
+  readError: Error | null = null;
 
   put(uri: string, data: Uint8Array): void { this.files.set(uri, data.slice()); }
   async stat(uri: string) { const data = this.files.get(uri); return { exists: data !== undefined, size: data?.length ?? 0 }; }
   async *readChunks(uri: string, chunkSize: number): AsyncIterable<Uint8Array> {
     const stored = this.files.get(uri);
     if (!stored) throw new Error(`missing ${uri}`);
+    if (this.readError) throw this.readError;
     const data = this.readOverride ? this.readOverride(uri, stored.slice()) : stored;
     for (let offset = 0; offset < data.length; offset += chunkSize) yield data.slice(offset, offset + chunkSize);
   }
@@ -82,6 +84,14 @@ test('rejects an image whose bytes change after the preflight stat', async () =>
   port.readOverride = () => new Uint8Array([1, 2, 3]);
   await expect(new OpenExportArchive(port).write(makeSnapshot(), 'memory://changed.zip')).rejects.toMatchObject({ code: 'export_failed' });
   expect(port.files.has('memory://changed.zip')).toBe(false);
+});
+
+test('rejects an image that cannot be read after the preflight stat', async () => {
+  const port = new MemoryFilePort();
+  port.put('memory://source.jpg', new Uint8Array([1, 2, 3, 4]));
+  port.readError = new Error('read failed');
+  await expect(new OpenExportArchive(port).write(makeSnapshot(), 'memory://unreadable.zip')).rejects.toMatchObject({ code: 'image_unreadable' });
+  expect(port.files.has('memory://unreadable.zip')).toBe(false);
 });
 
 test('enforces injected image, JSON, total-size, and disk limits', async () => {

@@ -17,11 +17,14 @@ function exportErrorMessage(error: unknown): string {
   if (error instanceof BackupValidationError) {
     if (error.code === 'storage_insufficient') return '设备可用空间不足，无法生成开放导出；当前书库未发生变化。';
     if (error.code === 'image_missing') return '导出所需的图片已丢失，无法生成完整文件；当前书库未发生变化。';
+    if (error.code === 'image_unreadable') return '导出所需的图片无法读取，无法生成完整文件；当前书库未发生变化。';
     if (error.code === 'duplicate_id' || error.code === 'invalid_reference') return '书库图片关联异常，无法生成完整文件；当前书库未发生变化。';
     if (error.code === 'archive_too_large') return '导出内容超过当前安全限制；当前书库未发生变化。';
     if (error.code === 'export_failed') return '图片在导出过程中发生变化，请重试；当前书库未发生变化。';
+    if (error.code === 'cleanup_failed') return '导出失败，临时文件清理未完成；请稍后重启 App 后重试。';
   }
-  if (error instanceof Error && error.message === '当前设备不支持系统分享') return '当前设备不支持系统分享，请改用电脑端或先保存备份；当前书库未发生变化。';
+  if (error instanceof Error && error.name === 'OpenExportShareError' && error.message === '当前设备不支持系统分享') return '当前设备不支持系统分享，请改用电脑端或先保存备份；当前书库未发生变化。';
+  if (error instanceof Error && error.name === 'OpenExportShareError') return '无法打开系统分享面板，当前书库未发生变化。';
   return '导出或分享失败，当前书库未发生变化。';
 }
 
