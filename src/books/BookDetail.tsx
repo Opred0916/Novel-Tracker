@@ -39,7 +39,7 @@ export function BookDetail({ book, sessions = [], onEditReading }: {
       </View> : null}
       {ordered.map(session => <View key={session.id} style={styles.historyItem}>
         <Text style={styles.value}>第 {session.ordinal} 次阅读 · {BOOK_STATUS_LABELS[session.outcome]}</Text>
-        <Text style={styles.date}>{session.startedOn} — {session.endedOn ?? '在读中'}</Text>
+        <Text style={styles.date}>{session.startedOn ?? '日期未记录'} — {session.endedOn ?? (session.outcome === 'reading' ? '在读中' : '日期未记录')}</Text>
         {onEditReading ? <Pressable accessibilityRole="button" onPress={() => onEditReading(session.id)}>
           <Text style={styles.link}>编辑第 {session.ordinal} 次阅读</Text>
         </Pressable> : null}

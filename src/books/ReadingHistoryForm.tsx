@@ -1,17 +1,17 @@
 import React, { useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
-import { normalizeReadingDates, todayLocalDate } from './readingDates';
+import { normalizeHistoricalReadingDates, normalizeReadingDates, todayLocalDate } from './readingDates';
 import { ReadingDateFields } from './ReadingDateFields';
 import type { ReadingSession } from './types';
 
 export function ReadingHistoryForm({ session, legacy = false, onSave, onDelete }: {
   session?: ReadingSession;
   legacy?: boolean;
-  onSave: (startedOn: string, endedOn: string | null) => Promise<void>;
+  onSave: (startedOn: string | null, endedOn: string | null) => Promise<void>;
   onDelete?: () => Promise<void>;
 }) {
-  const [startedOn, setStartedOn] = useState(session?.startedOn ?? todayLocalDate);
-  const [endedOn, setEndedOn] = useState(session?.endedOn ?? todayLocalDate);
+  const [startedOn, setStartedOn] = useState<string | null>(session ? session.startedOn : todayLocalDate());
+  const [endedOn, setEndedOn] = useState<string | null>(session ? session.endedOn : todayLocalDate());
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -20,7 +20,11 @@ export function ReadingHistoryForm({ session, legacy = false, onSave, onDelete }
   async function save() {
     if (savingRef.current) return;
     let dates;
-    try { dates = normalizeReadingDates(outcome, startedOn, outcome === 'reading' ? null : endedOn); }
+    try {
+      dates = session
+        ? normalizeHistoricalReadingDates(outcome, startedOn, outcome === 'reading' ? null : endedOn)
+        : normalizeReadingDates(outcome, startedOn ?? '', outcome === 'reading' ? null : endedOn);
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : '日期无效'); return; }
     savingRef.current = true;
     setSaving(true);

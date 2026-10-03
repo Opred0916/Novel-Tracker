@@ -12,7 +12,7 @@ export type ReadingSession = {
   id: string;
   bookId: string;
   ordinal: number;
-  startedOn: string;
+  startedOn: string | null;
   endedOn: string | null;
   outcome: Exclude<BookStatus, 'want_to_read'>;
 };

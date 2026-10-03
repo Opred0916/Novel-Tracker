@@ -1,13 +1,13 @@
 import { randomUUID } from 'expo-crypto';
 import type { Database } from '../storage/database';
-import { normalizeReadingDates } from './readingDates';
+import { normalizeHistoricalReadingDates, normalizeReadingDates } from './readingDates';
 import type { BookStatus, ReadingSession } from './types';
 
 type SessionRow = {
   id: string;
   book_id: string;
   ordinal: number;
-  started_on: string;
+  started_on: string | null;
   ended_on: string | null;
   outcome: ReadingSession['outcome'];
 };
@@ -54,12 +54,22 @@ export class SqliteReadingHistoryRepository {
   }
 
   async updateDates(bookId: string, sessionId: string, startedOn: string, endedOn: string | null): Promise<void> {
+    await this.updateDatesInternal(bookId, sessionId, startedOn, endedOn, false);
+  }
+
+  async updateHistoricalDates(bookId: string, sessionId: string, startedOn: string | null, endedOn: string | null): Promise<void> {
+    await this.updateDatesInternal(bookId, sessionId, startedOn, endedOn, true);
+  }
+
+  private async updateDatesInternal(bookId: string, sessionId: string, startedOn: string | null, endedOn: string | null, historical: boolean): Promise<void> {
     await this.db.withExclusiveTransactionAsync(async txn => {
       const session = await txn.getFirstAsync<SessionRow>(
         'SELECT * FROM reading_sessions WHERE book_id = ? AND id = ?', bookId, sessionId,
       );
       if (!session) throw new Error('找不到这次阅读');
-      const dates = normalizeReadingDates(session.outcome, startedOn, endedOn);
+      const dates = historical
+        ? normalizeHistoricalReadingDates(session.outcome, startedOn, endedOn)
+        : normalizeReadingDates(session.outcome, startedOn as string, endedOn);
       await txn.runAsync(
         'UPDATE reading_sessions SET started_on = ?, ended_on = ? WHERE book_id = ? AND id = ?',
         dates.startedOn, dates.endedOn, bookId, sessionId,

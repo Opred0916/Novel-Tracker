@@ -2,7 +2,7 @@ import type { ReadingSession } from './types';
 
 export function findReadingSessionForNote(noteDate: string, sessions: ReadingSession[]): string | null {
   const matches = sessions.filter(session => {
-    if (session.startedOn > noteDate) return false;
+    if (session.startedOn === null || session.startedOn > noteDate) return false;
     if (session.outcome === 'reading') return true;
     return session.endedOn !== null && noteDate <= session.endedOn;
   });

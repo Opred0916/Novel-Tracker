@@ -97,11 +97,11 @@ export async function migrateDatabase(db: Database): Promise<void> {
       id TEXT PRIMARY KEY NOT NULL,
       book_id TEXT NOT NULL,
       ordinal INTEGER NOT NULL CHECK (ordinal > 0),
-      started_on TEXT NOT NULL,
+      started_on TEXT,
       ended_on TEXT,
       outcome TEXT NOT NULL CHECK (outcome IN ('reading', 'finished', 'dropped')),
       UNIQUE (book_id, ordinal),
-      CHECK ((outcome = 'reading' AND ended_on IS NULL) OR (outcome != 'reading' AND ended_on IS NOT NULL)),
+      CHECK (outcome = 'reading' OR ended_on IS NULL OR ended_on >= started_on),
       FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
     );
     CREATE UNIQUE INDEX IF NOT EXISTS one_active_reading_per_book
@@ -123,6 +123,9 @@ export async function migrateDatabase(db: Database): Promise<void> {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       reading_session_id TEXT,
+      source_kind TEXT NOT NULL DEFAULT 'app',
+      original_recorded_on TEXT,
+      original_recorded_time TEXT,
       FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
       FOREIGN KEY (reading_session_id) REFERENCES reading_sessions(id) ON DELETE SET NULL
     );
@@ -157,7 +160,44 @@ export async function migrateDatabase(db: Database): Promise<void> {
   if (version < 5) {
     await db.runAsync("UPDATE books SET legacy_read_count = 1 WHERE status = 'finished'");
   }
-  await db.execAsync('PRAGMA user_version = 8');
+
+  // v9: imported historical records may not contain dates. Existing v8
+  // databases need a table rebuild because SQLite cannot drop NOT NULL.
+  const sessionColumns = await db.getAllAsync<{ name: string; notnull: number }>('PRAGMA table_info(reading_sessions)');
+  if (sessionColumns.some(column => (column.name === 'started_on' || column.name === 'ended_on') && column.notnull === 1)) {
+    await db.execAsync(`
+      PRAGMA foreign_keys = OFF;
+      CREATE TABLE reading_sessions_v9 (
+        id TEXT PRIMARY KEY NOT NULL,
+        book_id TEXT NOT NULL,
+        ordinal INTEGER NOT NULL CHECK (ordinal > 0),
+        started_on TEXT,
+        ended_on TEXT,
+        outcome TEXT NOT NULL CHECK (outcome IN ('reading', 'finished', 'dropped')),
+        UNIQUE (book_id, ordinal),
+        CHECK (outcome = 'reading' OR ended_on IS NULL OR ended_on >= started_on),
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE
+      );
+      INSERT INTO reading_sessions_v9 (id, book_id, ordinal, started_on, ended_on, outcome)
+        SELECT id, book_id, ordinal, started_on, ended_on, outcome FROM reading_sessions;
+      DROP TABLE reading_sessions;
+      ALTER TABLE reading_sessions_v9 RENAME TO reading_sessions;
+      CREATE UNIQUE INDEX IF NOT EXISTS one_active_reading_per_book
+        ON reading_sessions(book_id) WHERE outcome = 'reading';
+      PRAGMA foreign_keys = ON;
+    `);
+  }
+  const noteColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(notes)');
+  if (!noteColumns.some(column => column.name === 'source_kind')) {
+    await db.execAsync("ALTER TABLE notes ADD COLUMN source_kind TEXT NOT NULL DEFAULT 'app'");
+  }
+  if (!noteColumns.some(column => column.name === 'original_recorded_on')) {
+    await db.execAsync('ALTER TABLE notes ADD COLUMN original_recorded_on TEXT');
+  }
+  if (!noteColumns.some(column => column.name === 'original_recorded_time')) {
+    await db.execAsync('ALTER TABLE notes ADD COLUMN original_recorded_time TEXT');
+  }
+  await db.execAsync('PRAGMA user_version = 9');
 }
 
 export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {

@@ -48,7 +48,11 @@ export default function ReadingHistoryPage() {
 
   return <ReadingHistoryForm key={sessionId} session={session} legacy={sessionId === 'first'}
     onSave={async (start, end) => {
-      if (sessionId === 'first') await history.backfillFirst(id, start, end!);
+      if (sessionId === 'first') {
+        if (!start || !end) throw new Error('补记首刷日期需要完整日期');
+        await history.backfillFirst(id, start, end);
+      }
+      else if (start === null || session?.startedOn === null) await history.updateHistoricalDates(id, sessionId, start, end);
       else await history.updateDates(id, sessionId, start, end);
       router.back();
     }}

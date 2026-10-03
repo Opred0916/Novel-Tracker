@@ -5,7 +5,8 @@ import { todayLocalDate } from './readingDates';
 
 type DateField = 'start' | 'end';
 
-function dateFromLocalDay(value: string): Date {
+function dateFromLocalDay(value: string | null): Date {
+  if (value === null) return new Date();
   const [year, month, day] = value.split('-').map(Number);
   const date = new Date(0);
   date.setFullYear(year, month - 1, day);
@@ -14,8 +15,8 @@ function dateFromLocalDay(value: string): Date {
 }
 
 export function ReadingDateFields({ startedOn, endedOn, showEnd, onStartChange, onEndChange }: {
-  startedOn: string;
-  endedOn: string;
+  startedOn: string | null;
+  endedOn: string | null;
   showEnd: boolean;
   onStartChange: (value: string) => void;
   onEndChange: (value: string) => void;
@@ -49,10 +50,10 @@ export function ReadingDateFields({ startedOn, endedOn, showEnd, onStartChange, 
     return <View style={styles.group}>
       <Text style={styles.help}>日期格式：YYYY-MM-DD</Text>
       <Text style={styles.label}>开始日期</Text>
-      <TextInput accessibilityLabel="开始日期" value={startedOn} onChangeText={onStartChange} style={styles.input} />
+      <TextInput accessibilityLabel="开始日期" value={startedOn ?? ''} onChangeText={onStartChange} style={styles.input} />
       {showEnd ? <>
         <Text style={styles.label}>结束日期</Text>
-        <TextInput accessibilityLabel="结束日期" value={endedOn} onChangeText={onEndChange} style={styles.input} />
+        <TextInput accessibilityLabel="结束日期" value={endedOn ?? ''} onChangeText={onEndChange} style={styles.input} />
       </> : null}
     </View>;
   }
@@ -61,12 +62,12 @@ export function ReadingDateFields({ startedOn, endedOn, showEnd, onStartChange, 
     <Text style={styles.help}>{Platform.OS === 'ios' ? '轻点日期，滑动选择年、月、日。' : '轻点日期，选择年、月、日。'}</Text>
     <Text style={styles.label}>开始日期</Text>
     <Pressable accessibilityRole="button" accessibilityLabel="开始日期" onPress={() => open('start')} style={styles.input}>
-      <Text style={styles.dateText}>{startedOn}</Text>
+      <Text style={styles.dateText}>{startedOn ?? '日期未记录'}</Text>
     </Pressable>
     {showEnd ? <>
       <Text style={styles.label}>结束日期</Text>
       <Pressable accessibilityRole="button" accessibilityLabel="结束日期" onPress={() => open('end')} style={styles.input}>
-        <Text style={styles.dateText}>{endedOn}</Text>
+        <Text style={styles.dateText}>{endedOn ?? '日期未记录'}</Text>
       </Pressable>
     </> : null}
     {Platform.OS === 'ios' ? <Modal visible={activeField !== null} transparent animationType="slide" onRequestClose={() => setActiveField(null)}>

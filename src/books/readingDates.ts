@@ -1,6 +1,7 @@
 import type { BookStatus } from './types';
 
 export type ReadingDates = { startedOn: string; endedOn: string | null };
+export type HistoricalReadingDates = { startedOn: string | null; endedOn: string | null };
 
 export function todayLocalDate(now: Date = new Date()): string {
   const year = String(now.getFullYear()).padStart(4, '0');
@@ -26,5 +27,27 @@ export function normalizeReadingDates(status: BookStatus, startedOn: string, end
   }
   if (typeof endedOn !== 'string' || !validCalendarDate(endedOn)) throw new Error('结束日期无效，请使用 YYYY-MM-DD');
   if (endedOn < startedOn) throw new Error('结束日期不能早于开始日期');
+  return { startedOn, endedOn };
+}
+
+/**
+ * Normalize dates from an imported historical record. Missing dates are
+ * intentionally preserved instead of being replaced with today's date.
+ */
+export function normalizeHistoricalReadingDates(
+  status: Exclude<BookStatus, 'want_to_read'>,
+  startedOn: string | null,
+  endedOn: string | null,
+): HistoricalReadingDates {
+  if (status === 'reading' && endedOn !== null) throw new Error('在读记录不能填写结束日期');
+  if (startedOn !== null && (typeof startedOn !== 'string' || !validCalendarDate(startedOn))) {
+    throw new Error('开始日期无效，请使用 YYYY-MM-DD');
+  }
+  if (endedOn !== null && (typeof endedOn !== 'string' || !validCalendarDate(endedOn))) {
+    throw new Error('结束日期无效，请使用 YYYY-MM-DD');
+  }
+  if (startedOn !== null && endedOn !== null && endedOn < startedOn) {
+    throw new Error('结束日期不能早于开始日期');
+  }
   return { startedOn, endedOn };
 }
