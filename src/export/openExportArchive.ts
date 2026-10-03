@@ -1,6 +1,6 @@
 import { Zip, ZipDeflate, ZipPassThrough } from 'fflate';
 import type { BackupChunkWriter, BackupFilePort } from '../backup/backupFilePort';
-import type { BackupImageEntry, BackupManifestV1, BackupManifestV3 } from '../backup/backupTypes';
+import type { BackupImageEntry, BackupManifestV1, BackupManifestV4 } from '../backup/backupTypes';
 import type { BackupSnapshot } from '../backup/backupRepository';
 import { BackupValidationError, countsFromManifest, isSafeArchivePath, validateBackupManifest } from '../backup/backupValidation';
 import { CURRENT_BACKUP_FORMAT_VERSION } from '../backup/backupTypes';
@@ -55,9 +55,9 @@ export class OpenExportArchive {
       appVersion: snapshot.appVersion,
       ...snapshot.data,
       images: imageEntries,
-    } as unknown as BackupManifestV3;
+    } as unknown as BackupManifestV4;
     manifestInput.counts = countsFromManifest(manifestInput as unknown as BackupManifestV1);
-    const manifest = validateBackupManifest(manifestInput) as unknown as BackupManifestV3;
+    const manifest = validateBackupManifest(manifestInput) as unknown as BackupManifestV4;
     const textFiles = createOpenExportFiles(manifest);
     const jsonBytes = textFiles['library.json'].length;
     const textBytes = OPEN_EXPORT_TEXT_NAMES.reduce((sum, name) => sum + textFiles[name].length, 0);

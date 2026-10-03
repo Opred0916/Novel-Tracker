@@ -39,14 +39,14 @@ class MemoryFilePort implements BackupFilePort {
 function makeSnapshot(): BackupSnapshot {
   const manifest = makeValidManifest();
   const data = {
-    books: [{ ...manifest.books[0], coverImageId: 'image-1' }], protagonists: manifest.protagonists, tags: manifest.tags,
+    books: [{ ...manifest.books[0], coverImageId: 'image-1', whyWantToRead: null, platform: null }], protagonists: manifest.protagonists, tags: manifest.tags,
     bookTags: manifest.bookTags, quickTags: manifest.quickTags,
     readingSessions: [{ ...manifest.readingSessions[0], startedOn: null, endedOn: null }],
     notes: [{ ...manifest.notes[0], sourceKind: 'import' as const, originalRecordedOn: null, originalRecordedTime: null }],
     noteImages: manifest.noteImages, highlightImages: manifest.highlightImages,
   };
   return {
-    formatVersion: 3, exportedAt: manifest.exportedAt, appVersion: manifest.appVersion, data,
+    formatVersion: 4, exportedAt: manifest.exportedAt, appVersion: manifest.appVersion, data,
     images: [{ id: 'image-1', bookId: 'book-1', createdAt: '2026-09-02T01:30:00.000Z', extension: 'jpg', localPath: 'memory://source.jpg', archivePath: 'images/image-1.jpg' }],
   };
 }
