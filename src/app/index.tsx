@@ -4,10 +4,18 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, Vi
 import { TagPicker } from '../books/TagPicker';
 import { BOOK_TYPE_LABELS } from '../books/TypePicker';
 import { BOOK_STATUSES, BOOK_TYPES, type BookStatus, type BookType, type Tag } from '../books/types';
+import type { BookSortOrder } from '../books/bookSearch';
 import { BookCard } from '../books/BookCard';
 import { useBookSearch } from '../books/useBookSearch';
 import { BOOK_STATUS_LABELS } from '../books/status';
 import { useBookSearchRepository, useTags } from '../storage/AppProvider';
+
+const BOOK_SORT_OPTIONS: { value: BookSortOrder; label: string }[] = [
+  { value: 'recently_updated', label: '最近修改' },
+  { value: 'recently_finished', label: '最近读完' },
+  { value: 'recently_added', label: '最近添加' },
+  { value: 'rating_high', label: '评分从高到低' },
+];
 
 export default function Bookshelf() {
   const searchRepo = useBookSearchRepository();
@@ -17,10 +25,12 @@ export default function Bookshelf() {
   const [status, setStatus] = useState<BookStatus | null>(null);
   const [bookType, setBookType] = useState<BookType | null>(null);
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [sortOrder, setSortOrder] = useState<BookSortOrder>('recently_updated');
+  const [showSortOptions, setShowSortOptions] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [tagError, setTagError] = useState('');
   const hasFocused = useRef(false);
-  const { results, loading, error: searchError, retry } = useBookSearch(searchRepo, { query, status, bookType, tagIds });
+  const { results, loading, error: searchError, retry } = useBookSearch(searchRepo, { query, status, bookType, tagIds, sortOrder });
   useFocusEffect(useCallback(() => {
     let active = true;
     if (hasFocused.current) retry();
@@ -46,6 +56,16 @@ export default function Bookshelf() {
     {searchError ? <View style={styles.errorRow}><Text style={styles.error}>{searchError}</Text><Pressable accessibilityRole="button" onPress={retry}><Text style={styles.link}>重试</Text></Pressable></View> : null}
     {loading && results.length ? <ActivityIndicator accessibilityLabel="正在搜索" color="#593f72" style={styles.inlineLoading} /> : null}
     <TextInput placeholder="搜索书名、作者、主角、摘记或图片文字" value={query} onChangeText={setQuery} style={styles.search} />
+    <View style={styles.sortRow}>
+      <Pressable accessibilityRole="button" onPress={() => setShowSortOptions(value => !value)}>
+        <Text style={styles.link}>排序：{BOOK_SORT_OPTIONS.find(option => option.value === sortOrder)?.label}</Text>
+      </Pressable>
+      {showSortOptions ? <View style={styles.sortOptions}>{BOOK_SORT_OPTIONS.map(option => <Pressable key={option.value}
+        accessibilityRole="radio" accessibilityState={{ checked: sortOrder === option.value }} onPress={() => { setSortOrder(option.value); setShowSortOptions(false); }}
+        style={[styles.sortOption, sortOrder === option.value && styles.sortOptionSelected]}>
+        <Text style={[styles.sortOptionText, sortOrder === option.value && styles.sortOptionSelectedText]}>{option.label}</Text>
+      </Pressable>)}</View> : null}
+    </View>
     <View style={styles.actions}>
       <Pressable accessibilityRole="button" onPress={() => setShowFilters(value => !value)}><Text style={styles.link}>筛选条件{activeFilterCount ? `（${activeFilterCount}）` : ''}</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={clearFilters}><Text style={styles.link}>清除筛选</Text></Pressable>
@@ -84,6 +104,9 @@ const styles = StyleSheet.create({
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
   inlineLoading: { alignSelf: 'flex-start', marginTop: 8 },
   search: { marginTop: 14, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, backgroundColor: '#fff', padding: 12, fontSize: 16 },
+  sortRow: { marginTop: 12 }, sortOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  sortOption: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' },
+  sortOptionSelected: { backgroundColor: '#593f72', borderColor: '#593f72' }, sortOptionText: { color: '#302a25' }, sortOptionSelectedText: { color: '#fff', fontWeight: '700' },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 12 }, link: { color: '#593f72', fontWeight: '600' },
   filters: { gap: 10, paddingBottom: 20 }, filterTitle: { color: '#302a25', fontWeight: '600', marginTop: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' },

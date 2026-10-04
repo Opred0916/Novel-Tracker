@@ -1,11 +1,13 @@
 import type { Database } from '../storage/database';
 import type { BookRepository } from './repository';
 import { buildNoteSnippet, escapeLikeTerm, normalizeSearchTerms, type BookSearchFilters, type BookSearchResult } from './bookSearch';
+import { isValidFinishedDate, sortBookSearchResults } from './bookSearchSort';
 import type { Book } from './types';
 
 type SearchRow = { id: string };
 type NoteRow = { body: string };
 type ImageMatchRow = { image_id: string; recognized_text: string; source: 'highlight' | 'note' };
+type FinishedSessionRow = { book_id: string; ended_on: string | null };
 
 function termsMissingFromMetadata(book: Book, terms: string[]): string[] {
   const values = [book.title, book.author ?? '', ...book.protagonists].map(value => value.toLocaleLowerCase());
@@ -83,6 +85,22 @@ export class SqliteBookSearchRepository {
       }
       results.push({ book, matchedNoteSnippet, matchedImage });
     }
-    return results;
+
+    const sortOrder = filters.sortOrder ?? 'recently_updated';
+    const latestFinishedOnByBookId = new Map<string, string>();
+    if (sortOrder === 'recently_finished' && results.length) {
+      const placeholders = results.map(() => '?').join(', ');
+      const finishedRows = await this.db.getAllAsync<FinishedSessionRow>(
+        `SELECT book_id, ended_on FROM reading_sessions WHERE outcome = 'finished' AND ended_on IS NOT NULL AND book_id IN (${placeholders})`,
+        ...results.map(result => result.book.id),
+      );
+      for (const row of finishedRows) {
+        if (!isValidFinishedDate(row.ended_on)) continue;
+        const previous = latestFinishedOnByBookId.get(row.book_id);
+        if (!previous || row.ended_on > previous) latestFinishedOnByBookId.set(row.book_id, row.ended_on);
+      }
+    }
+
+    return sortBookSearchResults(results, sortOrder, latestFinishedOnByBookId);
   }
 }

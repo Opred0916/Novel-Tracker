@@ -1,10 +1,13 @@
 import type { Book, BookStatus, BookType } from './types';
 
+export type BookSortOrder = 'recently_updated' | 'recently_finished' | 'recently_added' | 'rating_high';
+
 export type BookSearchFilters = {
   query: string;
   status: BookStatus | null;
   bookType: BookType | null;
   tagIds: string[];
+  sortOrder?: BookSortOrder;
 };
 
 export type BookSearchResult = {
