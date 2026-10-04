@@ -14,7 +14,11 @@ function compareDescending(left: string, right: string): number {
 }
 
 function compareStable(left: BookSearchResult, right: BookSearchResult): number {
-  return compareDescending(left.book.updatedAt, right.book.updatedAt) || left.book.id.localeCompare(right.book.id);
+  return compareDescending(left.book.updatedAt, right.book.updatedAt) || compareOrdinal(left.book.id, right.book.id);
+}
+
+function compareOrdinal(left: string, right: string): number {
+  return left === right ? 0 : left < right ? -1 : 1;
 }
 
 export function sortBookSearchResults(

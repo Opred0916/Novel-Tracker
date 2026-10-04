@@ -140,10 +140,23 @@ test('bookshelf changes sort order and keeps it when filters are cleared', async
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   await fireEvent.press(screen.getByText('排序：最近修改'));
+  expect(screen.getByRole('radio', { name: '最近读完' }).props.accessibilityState).toEqual({ checked: false });
   await fireEvent.press(screen.getByText('最近读完'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
   expect(screen.getByText('排序：最近读完')).toBeTruthy();
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '长夜');
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '长夜', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
   await fireEvent.press(screen.getByText('清除筛选'));
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
+});
+
+test('bookshelf refreshes a nondefault sort after returning from detail', async () => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getByText('排序：最近修改'));
+  await fireEvent.press(screen.getByText('最近读完'));
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith(expect.objectContaining({ sortOrder: 'recently_finished' })));
+  await act(async () => { mockFocusCallback?.(); });
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
 });
 

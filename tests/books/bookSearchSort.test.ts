@@ -54,6 +54,15 @@ test('sorts recent finished dates, puts missing dates last, and uses stable tie 
   expect(sortBookSearchResults(items, 'recently_finished', finishedDates).map(item => item.book.id)).toEqual(['latest', 'same-new', 'same-old', 'missing']);
 });
 
+test('uses the SQLite-style ordinal ID order for a complete tie', () => {
+  const items = [
+    result('a', { updatedAt: '2026-01-01T00:00:00.000Z', ratingHalfStars: 8 }),
+    result('B', { updatedAt: '2026-01-01T00:00:00.000Z', ratingHalfStars: 8 }),
+  ];
+
+  expect(sortBookSearchResults(items, 'rating_high', new Map()).map(item => item.book.id)).toEqual(['B', 'a']);
+});
+
 test('validates finished dates as real four digit calendar dates', () => {
   expect(isValidFinishedDate('2026-02-28')).toBe(true);
   expect(isValidFinishedDate('2026-02-30')).toBe(false);
