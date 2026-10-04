@@ -116,7 +116,7 @@ test('sorts filtered results by addition and rating while preserving the result 
   try {
     await db.runAsync("UPDATE books SET created_at = ?, rating_half_stars = ? WHERE id = ?", '2026-12-01T00:00:00.000Z', 4, 'same-a');
     await db.runAsync("UPDATE books SET created_at = ?, rating_half_stars = ? WHERE id = ?", '2026-11-01T00:00:00.000Z', 10, 'same-b');
-    const filters = { query: '', status: null, bookType: null, tagIds: [] } as const;
+    const filters: BookSearchFilters = { query: '', status: null, bookType: null, tagIds: [] };
 
     expect((await repo.search({ ...filters, sortOrder: 'recently_added' })).map(result => result.book.id)).toEqual(['same-a', 'same-b', 'one', 'two', 'special']);
     expect((await repo.search({ ...filters, sortOrder: 'rating_high' })).map(result => result.book.id)).toEqual(['same-b', 'same-a', 'one', 'two', 'special']);
