@@ -21,6 +21,7 @@ import { OpenExportArchive } from '../export/openExportArchive';
 import { OpenExportService } from '../export/openExportService';
 import { SqliteLibraryOverviewRepository } from '../books/libraryOverviewRepository';
 import { SqliteAnnualRecapRepository } from '../books/annualRecapRepository';
+import { SqliteThemedRecapRepository } from '../books/themedRecapRepository';
 import { SqliteImageOcrRepository, type ImageOcrProgress, type ImageOcrRecord } from '../books/imageOcrRepository';
 import { ImageOcrWorker } from '../books/imageOcrWorker';
 import { getLocalImageTextRecognizer } from '../books/localImageTextRecognizer';
@@ -36,6 +37,7 @@ const ImportCommitServiceContext = createContext<ImportCommitService | null>(nul
 const OpenExportServiceContext = createContext<OpenExportService | null>(null);
 const LibraryOverviewRepositoryContext = createContext<SqliteLibraryOverviewRepository | null>(null);
 const AnnualRecapRepositoryContext = createContext<SqliteAnnualRecapRepository | null>(null);
+const ThemedRecapRepositoryContext = createContext<SqliteThemedRecapRepository | null>(null);
 type ImageOcrContextValue = {
   isAvailable: boolean;
   schedule(): Promise<void>;
@@ -59,6 +61,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [openExportService, setOpenExportService] = useState<OpenExportService | null>(null);
   const [libraryOverviewRepository, setLibraryOverviewRepository] = useState<SqliteLibraryOverviewRepository | null>(null);
   const [annualRecapRepository, setAnnualRecapRepository] = useState<SqliteAnnualRecapRepository | null>(null);
+  const [themedRecapRepository, setThemedRecapRepository] = useState<SqliteThemedRecapRepository | null>(null);
   const [imageOcrRepository, setImageOcrRepository] = useState<SqliteImageOcrRepository | null>(null);
   const [imageOcrWorker, setImageOcrWorker] = useState<ImageOcrWorker | null>(null);
   const [imageOcrAvailable, setImageOcrAvailable] = useState(false);
@@ -94,6 +97,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         ));
         setLibraryOverviewRepository(new SqliteLibraryOverviewRepository(db));
         setAnnualRecapRepository(new SqliteAnnualRecapRepository(db));
+        setThemedRecapRepository(new SqliteThemedRecapRepository(db));
         const imageOcr = new SqliteImageOcrRepository(db);
         const recognizer = getLocalImageTextRecognizer();
         const imageOcrWorker = new ImageOcrWorker(imageOcr, recognizer);
@@ -124,7 +128,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [imageOcrRepository, imageOcrWorker]);
 
   if (error) return <View style={{ padding: 24 }}><Text>无法打开书架：{error}</Text></View>;
-  if (!repository || !tagRepository || !readingHistory || !notesRepository || !bookSearchRepository || !bulkOrganizeRepository || !backupService || !importCommitService || !openExportService || !libraryOverviewRepository || !annualRecapRepository || !imageOcrRepository || !imageOcrWorker) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
+  if (!repository || !tagRepository || !readingHistory || !notesRepository || !bookSearchRepository || !bulkOrganizeRepository || !backupService || !importCommitService || !openExportService || !libraryOverviewRepository || !annualRecapRepository || !themedRecapRepository || !imageOcrRepository || !imageOcrWorker) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
   const imageOcrContext: ImageOcrContextValue = {
     isAvailable: imageOcrAvailable,
     schedule: async () => { await imageOcrRepository.reconcile(false); imageOcrWorker.kick(); },
@@ -134,7 +138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     get: imageId => imageOcrRepository.get(imageId),
     progress: bookId => imageOcrRepository.progress(bookId),
   };
-  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}><NotesRepositoryContext.Provider value={notesRepository}><BookSearchRepositoryContext.Provider value={bookSearchRepository}><BulkOrganizeRepositoryContext.Provider value={bulkOrganizeRepository}><BackupServiceContext.Provider value={backupService}><OpenExportServiceContext.Provider value={openExportService}><ImportCommitServiceContext.Provider value={importCommitService}><LibraryOverviewRepositoryContext.Provider value={libraryOverviewRepository}><AnnualRecapRepositoryContext.Provider value={annualRecapRepository}><ImageOcrContext.Provider value={imageOcrContext}>{children}</ImageOcrContext.Provider></AnnualRecapRepositoryContext.Provider></LibraryOverviewRepositoryContext.Provider></ImportCommitServiceContext.Provider></OpenExportServiceContext.Provider></BackupServiceContext.Provider></BulkOrganizeRepositoryContext.Provider></BookSearchRepositoryContext.Provider></NotesRepositoryContext.Provider></ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;
+  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}><NotesRepositoryContext.Provider value={notesRepository}><BookSearchRepositoryContext.Provider value={bookSearchRepository}><BulkOrganizeRepositoryContext.Provider value={bulkOrganizeRepository}><BackupServiceContext.Provider value={backupService}><OpenExportServiceContext.Provider value={openExportService}><ImportCommitServiceContext.Provider value={importCommitService}><LibraryOverviewRepositoryContext.Provider value={libraryOverviewRepository}><AnnualRecapRepositoryContext.Provider value={annualRecapRepository}><ThemedRecapRepositoryContext.Provider value={themedRecapRepository}><ImageOcrContext.Provider value={imageOcrContext}>{children}</ImageOcrContext.Provider></ThemedRecapRepositoryContext.Provider></AnnualRecapRepositoryContext.Provider></LibraryOverviewRepositoryContext.Provider></ImportCommitServiceContext.Provider></OpenExportServiceContext.Provider></BackupServiceContext.Provider></BulkOrganizeRepositoryContext.Provider></BookSearchRepositoryContext.Provider></NotesRepositoryContext.Provider></ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;
 }
 
 export function useBooks(): SqliteBookRepository {
@@ -200,6 +204,12 @@ export function useLibraryOverviewRepository(): SqliteLibraryOverviewRepository 
 export function useAnnualRecapRepository(): SqliteAnnualRecapRepository {
   const repository = useContext(AnnualRecapRepositoryContext);
   if (!repository) throw new Error('Annual recap repository is not ready');
+  return repository;
+}
+
+export function useThemedRecapRepository(): SqliteThemedRecapRepository {
+  const repository = useContext(ThemedRecapRepositoryContext);
+  if (!repository) throw new Error('Themed recap repository is not ready');
   return repository;
 }
 

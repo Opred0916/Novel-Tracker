@@ -16,6 +16,8 @@ function RootNavigator() {
     <Stack.Screen name="settings/data" options={{ title: '数据管理' }} />
     <Stack.Screen name="settings/import" options={{ title: '追加旧记录' }} />
     <Stack.Screen name="settings/overview" options={{ title: '书库概览' }} />
+    <Stack.Screen name="settings/annual-recap" options={{ title: '年度阅读回顾' }} />
+    <Stack.Screen name="settings/themed-recap" options={{ title: '主题回顾卡片' }} />
   </Stack>;
 }
 
