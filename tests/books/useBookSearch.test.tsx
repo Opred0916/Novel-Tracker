@@ -40,6 +40,22 @@ test('does not let an older slow request replace newer results', async () => {
   expect(hook.current.results[0].book.id).toBe('new');
 });
 
+test('marks results stale during a new query and only current success enables select all', async () => {
+  jest.useFakeTimers();
+  const first = deferred<BookSearchResult[]>();
+  const second = deferred<BookSearchResult[]>();
+  const repository = { search: jest.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise) };
+  const { result: hook, rerender } = await renderHook<HookResult, HookProps>(({ query }) => useBookSearch(repository, filters(query), { debounceMs: 0 }), { initialProps: { query: '旧' } });
+  await act(async () => { jest.runOnlyPendingTimers(); await Promise.resolve(); });
+  await act(async () => { first.resolve([result('old')]); await Promise.resolve(); });
+  await waitFor(() => expect(hook.current.resultsCurrent).toBe(true));
+  await rerender({ query: '新' });
+  expect(hook.current.resultsCurrent).toBe(false);
+  await act(async () => { jest.runOnlyPendingTimers(); await Promise.resolve(); });
+  await act(async () => { second.resolve([result('new')]); await Promise.resolve(); });
+  await waitFor(() => expect(hook.current.resultsCurrent).toBe(true));
+});
+
 test('keeps previous results on failure and retries current filters', async () => {
   jest.useFakeTimers();
   const repository = { search: jest.fn().mockResolvedValueOnce([result('first')]).mockRejectedValueOnce(new Error('failed')).mockResolvedValueOnce([result('recovered')]) };
@@ -50,6 +66,7 @@ test('keeps previous results on failure and retries current filters', async () =
   await act(async () => { jest.runOnlyPendingTimers(); await Promise.resolve(); });
   await waitFor(() => expect(hook.current.error).toBe('搜索失败，请重试'));
   expect(hook.current.results[0].book.id).toBe('first');
+  expect(hook.current.resultsCurrent).toBe(false);
   await act(async () => { hook.current.retry(); jest.runOnlyPendingTimers(); await Promise.resolve(); });
   await waitFor(() => expect(hook.current.results[0].book.id).toBe('recovered'));
 });
