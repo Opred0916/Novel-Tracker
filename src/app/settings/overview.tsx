@@ -23,6 +23,7 @@ export default function LibraryOverviewPage() {
     {error ? <View style={styles.errorRow}><Text style={styles.error}>{error}</Text><Pressable accessibilityRole="button" onPress={refresh}><Text style={styles.link}>重试</Text></Pressable></View> : null}
     {!overview && !error ? <ActivityIndicator accessibilityLabel="正在读取概览" color="#593f72" /> : null}
     {overview ? <><View style={styles.highlight}><Text style={styles.highlightTitle}>今年读完 {overview.finishedBooksThisYear} 本</Text><Text style={styles.muted}>{overview.year} 年 · 按不同书籍去重</Text></View><View style={styles.card}><Text style={styles.cardTitle}>当前书架</Text><Text style={styles.total}>共 {overview.totalBooks} 本</Text>{(Object.keys(BOOK_STATUS_LABELS) as (keyof typeof BOOK_STATUS_LABELS)[]).map(status => <View key={status} style={styles.statusRow}><Text style={styles.statusLabel}>{BOOK_STATUS_LABELS[status]}：{overview.byStatus[status]}</Text></View>)}</View></> : null}
+    <Pressable accessibilityRole="button" onPress={() => router.push('/settings/annual-recap')} style={styles.secondary}><Text style={styles.secondaryText}>年度阅读回顾</Text></Pressable>
     <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.secondary}><Text style={styles.secondaryText}>返回书架</Text></Pressable>
   </ScrollView>;
 }
