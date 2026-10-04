@@ -219,7 +219,7 @@ export default function Bookshelf() {
       renderItem={({ item }) => <BookCard book={item.book} matchedNoteSnippet={item.matchedNoteSnippet} matchedImage={item.matchedImage} onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book.id, ...(item.matchedImage ? { focusImageId: item.matchedImage.imageId } : {}) } })}
         selection={bulkMode ? { checked: selectedBooks.has(item.book.id), onToggle: () => toggleSelected(item.book) } : undefined} />}
     />
-    <Link href="/book/new" asChild><Pressable accessibilityRole="button" style={[styles.add, { bottom: insets.bottom + 8, backgroundColor: theme.primary }]}><Text style={styles.addText}>＋ 添加小说</Text></Pressable></Link>
+    <Link href="/book/new" asChild><Pressable accessibilityRole="button" style={StyleSheet.flatten([styles.add, { bottom: insets.bottom + 8, backgroundColor: theme.primary }])}><Text style={styles.addText}>＋ 添加小说</Text></Pressable></Link>
     <Modal visible={randomVisible} transparent animationType="slide" onRequestClose={closeRandomSheet}>
       <View style={styles.modalBackdrop}><Pressable accessibilityRole="button" accessibilityLabel="关闭随机抽取" style={styles.modalDismiss} onPress={closeRandomSheet} /><View style={styles.modalSheet}><RandomWantToReadSheet book={randomPick?.book ?? null} candidateCount={randomPick?.candidateCount ?? 0} loading={randomBusy} error={randomError || null} onClose={closeRandomSheet} onReroll={() => { void pickRandomWantToRead(); }} onRetry={() => { void pickRandomWantToRead(); }} onAddBook={() => { closeRandomSheet(); router.push('/book/new'); }} onOpenBook={id => { closeRandomSheet(); router.push({ pathname: '/book/[id]', params: { id } }); }} /></View></View>
     </Modal>

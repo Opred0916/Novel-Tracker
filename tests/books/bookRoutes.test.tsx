@@ -22,7 +22,10 @@ jest.mock('expo-router', () => ({
   },
   useLocalSearchParams: jest.fn(),
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
-  Link: ({ children }: { children: React.ReactNode }) => children,
+  Link: ({ children }: { children: React.ReactNode }) => {
+    const { Slot } = require('../../node_modules/expo-router/build/ui/Slot');
+    return require('react').createElement(Slot, null, children);
+  },
 }));
 jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useBookSearchRepository: jest.fn(), useBulkOrganizeRepository: jest.fn(), useLibraryOverviewRepository: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn(), useNotes: jest.fn(), useImageOcr: jest.fn() }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'new-tag-id') }));
@@ -139,6 +142,11 @@ test('bookshelf opens the tapped novel detail page', async () => {
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   await fireEvent.press(screen.getAllByText('长夜')[0]);
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: book.id } });
+});
+
+test('bookshelf add button renders through the Expo Router slot', async () => {
+  const screen = await render(<Bookshelf />);
+  expect(screen.getByRole('button', { name: '＋ 添加小说' })).toBeTruthy();
 });
 
 test('bookshelf searches with recent update sorting by default', async () => {
