@@ -104,13 +104,15 @@ test('quick tag settings save the chosen tags without deleting the library', asy
   expect(tagRepo.list).toHaveBeenCalled();
 });
 
-test('book card shows author, rating, and an optional matching note snippet', async () => {
+test('book card shows author, rating, and optional note and image matches', async () => {
   const onPress = jest.fn();
-  const screen = await render(<BookCard book={{ ...book, ratingHalfStars: 9 }} matchedNoteSnippet="这是命中的摘记内容" onPress={onPress} />);
+  const screen = await render(<BookCard book={{ ...book, ratingHalfStars: 9 }} matchedNoteSnippet="这是命中的摘记内容" matchedImage={{ imageId: 'image-1', source: 'highlight', snippet: '这是图片里的命中文字' }} onPress={onPress} />);
   expect(screen.getByText('某作者')).toBeTruthy();
   expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
   expect(screen.getByText('匹配摘记')).toBeTruthy();
   expect(screen.getByText('这是命中的摘记内容')).toBeTruthy();
+  expect(screen.getByText('匹配图片文字')).toBeTruthy();
+  expect(screen.getByText('这是图片里的命中文字')).toBeTruthy();
   expect(screen.queryByText('在读')).toBeNull();
   await fireEvent.press(screen.getAllByText('长夜')[0]);
   expect(onPress).toHaveBeenCalledTimes(1);
@@ -130,11 +132,19 @@ test('bookshelf filters by search and clears the filter', async () => {
     : [{ book, matchedNoteSnippet: null }, { book: other, matchedNoteSnippet: null }]);
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
-  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角或摘记'), '长夜');
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '长夜');
   await waitFor(() => expect(screen.queryByText('归途')).toBeNull());
   expect(screen.getByText('匹配摘记')).toBeTruthy();
   await fireEvent.press(screen.getByText('清除筛选'));
   await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
+});
+
+test('bookshelf passes the matched image to the detail page for preview', async () => {
+  searchRepo.search.mockResolvedValueOnce([{ book, matchedNoteSnippet: null, matchedImage: { imageId: 'image-1', source: 'highlight', snippet: '图片文字' } }]);
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('匹配图片文字')).toBeTruthy());
+  await fireEvent.press(screen.getAllByText('长夜')[0]);
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: book.id, focusImageId: 'image-1' } });
 });
 
 test('bookshelf opens backup and restore settings', async () => {
@@ -185,7 +195,7 @@ test('bookshelf keeps old results visible while a new search is loading', async 
   searchRepo.search.mockResolvedValueOnce([{ book, matchedNoteSnippet: null }]).mockReturnValueOnce(pending);
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
-  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角或摘记'), '新条件');
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '新条件');
   await waitFor(() => expect(screen.getByLabelText('正在搜索')).toBeTruthy());
   expect(screen.getAllByText('长夜').length).toBeGreaterThan(0);
   await act(async () => { resolveSearch([{ book, matchedNoteSnippet: null }]); });

@@ -10,6 +10,11 @@ export type BookSearchFilters = {
 export type BookSearchResult = {
   book: Book;
   matchedNoteSnippet: string | null;
+  matchedImage: {
+    imageId: string;
+    source: 'highlight' | 'note';
+    snippet: string;
+  } | null;
 };
 
 export function normalizeSearchTerms(query: string): string[] {
