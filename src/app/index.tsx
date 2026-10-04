@@ -6,9 +6,10 @@ import { BOOK_TYPE_LABELS } from '../books/TypePicker';
 import { BOOK_STATUSES, BOOK_TYPES, type BookStatus, type BookType, type Tag } from '../books/types';
 import type { BookSortOrder } from '../books/bookSearch';
 import { BookCard } from '../books/BookCard';
+import { BulkOrganizePanel } from '../books/BulkOrganizePanel';
 import { useBookSearch } from '../books/useBookSearch';
 import { BOOK_STATUS_LABELS } from '../books/status';
-import { useBookSearchRepository, useTags } from '../storage/AppProvider';
+import { useBookSearchRepository, useBulkOrganizeRepository, useTags } from '../storage/AppProvider';
 
 const BOOK_SORT_OPTIONS: { value: BookSortOrder; label: string }[] = [
   { value: 'recently_updated', label: '最近修改' },
@@ -19,6 +20,7 @@ const BOOK_SORT_OPTIONS: { value: BookSortOrder; label: string }[] = [
 
 export default function Bookshelf() {
   const searchRepo = useBookSearchRepository();
+  const bulkOrganizeRepository = useBulkOrganizeRepository();
   const tagRepo = useTags();
   const [tags, setTags] = useState<Tag[]>([]);
   const [query, setQuery] = useState('');
@@ -29,6 +31,7 @@ export default function Bookshelf() {
   const [showSortOptions, setShowSortOptions] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [showSelected, setShowSelected] = useState(false);
+  const [showBulkPanel, setShowBulkPanel] = useState(false);
   const [selectedBooks, setSelectedBooks] = useState<Map<string, { title: string; author: string | null }>>(new Map());
   const [showFilters, setShowFilters] = useState(false);
   const [tagError, setTagError] = useState('');
@@ -89,6 +92,31 @@ export default function Bookshelf() {
     });
   }
 
+  async function completeBulkOrganize() {
+    setShowBulkPanel(false);
+    setBulkMode(false);
+    setShowSelected(false);
+    setSelectedBooks(new Map());
+    retry();
+    try {
+      setTags(await tagRepo.list());
+    } catch {
+      setTagError('读取标签失败');
+    }
+  }
+
+  if (showBulkPanel) {
+    return <View style={styles.page}>
+      <BulkOrganizePanel
+        selectedBooks={selectedBooks}
+        tags={tags}
+        repository={bulkOrganizeRepository}
+        onComplete={() => { void completeBulkOrganize(); }}
+        onCancel={() => setShowBulkPanel(false)}
+      />
+    </View>;
+  }
+
   return <View style={styles.page}>
     <Text style={styles.heading}>把喜欢的故事留在这里</Text>
     <Text style={styles.subheading}>想读 · 在读 · 读完 · 弃读</Text>
@@ -120,7 +148,7 @@ export default function Bookshelf() {
       <View style={styles.bulkActions}>
         <Pressable accessibilityRole="button" disabled={!resultsCurrent || loading || Boolean(searchError)} onPress={selectAllCurrentResults}><Text style={styles.link}>全选当前结果</Text></Pressable>
         <Pressable accessibilityRole="button" disabled={!selectedBooks.size} onPress={() => setShowSelected(value => !value)}><Text style={styles.link}>查看已选</Text></Pressable>
-        <Pressable accessibilityRole="button" disabled={!selectedBooks.size} onPress={() => setShowSelected(true)}><Text style={styles.link}>继续整理</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={!selectedBooks.size} onPress={() => setShowBulkPanel(true)}><Text style={styles.link}>继续整理</Text></Pressable>
         <Pressable accessibilityRole="button" onPress={cancelBulkMode}><Text style={styles.link}>取消整理</Text></Pressable>
       </View>
       {showSelected ? <View style={styles.selectedList}>{[...selectedBooks.entries()].map(([id, selected]) => <View key={id} style={styles.selectedRow}>
