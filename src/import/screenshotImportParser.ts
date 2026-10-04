@@ -96,8 +96,7 @@ function addBlockNote(candidate: ImportCandidate, line: SourceLine, body: string
   const note: ImportNoteDraft = { id: `${candidate.id}-note-${candidate.notes.length + 1}`, body: body.trim(), originalRecordedOn: null, originalRecordedTime: null, sourceText: line.raw, sourceRef: sourceRef(line), ...(hint ? { recordedAtHint: hint } : {}) };
   candidate.notes.push(note);
 }
-function parseBlocksGroup(pages: ScreenshotPageDraft[], status: BookStatus, result: ImportParseResult, nextCandidateId: () => string): void {
-  const lines = pages.flatMap(splitLines);
+function parseFieldBlock(lines: SourceLine[], status: BookStatus, result: ImportParseResult, nextCandidateId: () => string): void {
   if (!lines.length) return;
   const candidate = addCandidate(result, emptyCandidate(nextCandidateId(), lines[0], lines[0].text, status));
   let hint: string | null = null;
@@ -119,6 +118,17 @@ function parseBlocksGroup(pages: ScreenshotPageDraft[], status: BookStatus, resu
     else if (key === '状态' || key === 'status') candidate.status = STATUS_LABELS[value.trim()] ?? candidate.status;
     else if (key === '摘记' || key === '想法' || key === '我的想法' || key === '备注') addBlockNote(candidate, line, value, hint);
   }
+}
+function parseBlocksGroup(pages: ScreenshotPageDraft[], status: BookStatus, result: ImportParseResult, nextCandidateId: () => string): void {
+  const lines = pages.flatMap(splitLines);
+  const blocks: SourceLine[][] = [];
+  for (const line of lines) {
+    const previous = blocks.at(-1)?.at(-1);
+    const startsNewBook = Boolean(previous && (line.pageId === previous.pageId && line.line > previous.line + 1) && field(line.text)?.[0] === '书名');
+    if (!blocks.length || startsNewBook) blocks.push([]);
+    blocks.at(-1)!.push(line);
+  }
+  for (const block of blocks) parseFieldBlock(block, status, result, nextCandidateId);
 }
 
 function parseLinesGroup(pages: ScreenshotPageDraft[], status: BookStatus, result: ImportParseResult, nextCandidateId: () => string): void {

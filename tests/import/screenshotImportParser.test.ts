@@ -44,6 +44,12 @@ test('supports explicit line and field-block modes without inventing dates', () 
   expect(blocks.candidates[0].notes[0]).toMatchObject({ body: '完整日期也先待确认', originalRecordedOn: null, recordedAtHint: '2024-01-02', sourceRef: { pageId: 'page-1', line: 3 } });
 });
 
+test('keeps blank-line separated field blocks as separate candidates', () => {
+  const result = parseScreenshotImport(pages(['书名：第一本\n作者：作者甲\n\n书名：第二本\n作者：作者乙']).pages, 'blocks', 'want_to_read');
+
+  expect(result.candidates.map(candidate => [candidate.title, candidate.author])).toEqual([['第一本', '作者甲'], ['第二本', '作者乙']]);
+});
+
 test('rejects oversized batches and more than 500 candidates', () => {
   expect(() => parseScreenshotImport(pages(['x'.repeat(1_048_577)]).pages, 'lines', 'want_to_read')).toThrow('1 MiB');
   const many = Array.from({ length: 501 }, (_, index) => `书${index + 1}`).join('\n');

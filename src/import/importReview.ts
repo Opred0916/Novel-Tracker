@@ -33,6 +33,13 @@ export function normalizeDuplicateKey(title: string): string {
 }
 
 function noteKey(body: string): string { return body.normalize('NFKC').trim().replace(/\s+/gu, ' '); }
+function validOriginalDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(0); date.setUTCFullYear(year, month - 1, day);
+  return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
+}
+function validOriginalTime(value: string): boolean { return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value); }
 
 export function findImportDuplicates(review: ImportReview, existingBooks: ExistingBookSummary[], existingNotes: ExistingNoteSummary[]): DuplicateHint[] {
   const hints: DuplicateHint[] = [];
@@ -87,7 +94,11 @@ export function validateImportReview(review: ImportReview): ImportValidationIssu
     if (candidate.ratingHalfStars !== null && candidate.status !== 'finished') issues.push(issue('rating_requires_finished', '只有已读书籍可以填写评分', candidate.id));
     if (item.action === 'append_notes' && !item.targetBookId) issues.push(issue('append_target_required', '追加摘记必须选择目标书籍', candidate.id));
     if (item.action === 'append_notes' && candidate.notes.length === 0) issues.push(issue('append_notes_required', '追加摘记操作至少需要一条摘记', candidate.id));
-    for (const note of candidate.notes) if (!note.body.trim()) issues.push(issue('empty_note', '摘记正文不能为空', candidate.id));
+    for (const note of candidate.notes) {
+      if (!note.body.trim()) issues.push(issue('empty_note', '摘记正文不能为空', candidate.id));
+      if (note.originalRecordedOn !== null && !validOriginalDate(note.originalRecordedOn)) issues.push(issue('invalid_note_date', '摘记原记录日期无效，请使用有效的四位 YYYY-MM-DD', candidate.id));
+      if (note.originalRecordedTime !== null && !validOriginalTime(note.originalRecordedTime)) issues.push(issue('invalid_note_time', '摘记原记录时间无效，请使用 HH:MM', candidate.id));
+    }
     const ordinals = new Set<number>();
     for (const session of candidate.sessions) {
       if (ordinals.has(session.ordinal)) issues.push(issue('duplicate_session_ordinal', `第 ${session.ordinal} 次阅读重复`, candidate.id));

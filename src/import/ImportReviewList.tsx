@@ -6,8 +6,8 @@ import { BOOK_TYPE_LABELS } from '../books/TypePicker';
 import type { DuplicateHint, ImportReview, ImportReviewItem } from './importReview';
 import { applyImportReviewAction } from './importReviewActions';
 
-export function ImportReviewList({ review, hints, busy, onChange, onConfirm, onCancel }: {
-  review: ImportReview; hints: DuplicateHint[]; busy: boolean; onChange: (next: ImportReview) => void; onConfirm: () => void; onCancel: () => void;
+export function ImportReviewList({ review, hints, busy, error, onChange, onConfirm, onCancel }: {
+  review: ImportReview; hints: DuplicateHint[]; busy: boolean; error?: string; onChange: (next: ImportReview) => void; onConfirm: () => void; onCancel: () => void;
 }) {
   function updateItem(index: number, update: Partial<ImportReviewItem>) {
     const items = [...review.items]; items[index] = { ...items[index], ...update }; onChange({ ...review, items });
@@ -18,6 +18,7 @@ export function ImportReviewList({ review, hints, busy, onChange, onConfirm, onC
   return <View style={styles.container}>
     <Text style={styles.heading}>导入预览</Text>
     <Text style={styles.help}>重复书目不会自动合并；请逐项选择新增、跳过或追加摘记。未处理原文会阻止确认。</Text>
+    {error ? <Text style={styles.warning}>{error}</Text> : null}
     {review.warnings?.map((warning, index) => <Text key={`warning-${index}`} style={styles.warning}>提示：{warning}</Text>)}
     <FlatList data={review.items} keyExtractor={item => item.candidate.id} contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled" renderItem={({ item, index }) => {
       const itemHints = hints.filter(hint => hint.candidateId === item.candidate.id);
@@ -33,7 +34,8 @@ export function ImportReviewList({ review, hints, busy, onChange, onConfirm, onC
         {item.candidate.sessions.map((session, sessionIndex) => <View key={`${item.candidate.id}-session-${session.ordinal}`} style={styles.session}><Text style={styles.source}>第 {session.ordinal} 次阅读日期（可留空）</Text><TextInput accessibilityLabel={`第${index + 1}条第${session.ordinal}次开始日期`} value={session.startedOn ?? ''} onChangeText={value => updateItem(index, { candidate: { ...item.candidate, sessions: item.candidate.sessions.map((entry, position) => position === sessionIndex ? { ...entry, startedOn: value || null } : entry) } })} placeholder="开始日期 YYYY-MM-DD" style={styles.input} /><TextInput accessibilityLabel={`第${index + 1}条第${session.ordinal}次结束日期`} value={session.endedOn ?? ''} onChangeText={value => updateItem(index, { candidate: { ...item.candidate, sessions: item.candidate.sessions.map((entry, position) => position === sessionIndex ? { ...entry, endedOn: value || null } : entry) } })} placeholder="结束日期 YYYY-MM-DD" style={styles.input} /></View>)}
         {item.candidate.notes.map((note, noteIndex) => <View key={note.id} style={styles.noteGroup}>
           <TextInput accessibilityLabel={`第${index + 1}条摘记${noteIndex + 1}`} value={note.body} onChangeText={body => updateItem(index, { candidate: { ...item.candidate, notes: item.candidate.notes.map((entry, position) => position === noteIndex ? { ...entry, body } : entry) } })} style={styles.note} multiline />
-          <TextInput accessibilityLabel={`第${index + 1}条摘记${noteIndex + 1}原记录日期`} value={note.originalRecordedOn ?? ''} onChangeText={date => { if (!date || /^\d{4}-\d{2}-\d{2}$/.test(date)) apply({ type: 'set_note_date', noteId: note.id, date: date || null, time: note.originalRecordedTime }); }} placeholder={note.recordedAtHint ? `原文时间：${note.recordedAtHint}，请输入四位日期` : '原记录日期 YYYY-MM-DD（可留空）'} style={styles.input} />
+          <TextInput accessibilityLabel={`第${index + 1}条摘记${noteIndex + 1}原记录日期`} value={note.originalRecordedOn ?? ''} onChangeText={date => updateItem(index, { candidate: { ...item.candidate, notes: item.candidate.notes.map((entry, position) => position === noteIndex ? { ...entry, originalRecordedOn: date || null } : entry) } })} placeholder={note.recordedAtHint ? `原文时间：${note.recordedAtHint}，请输入四位日期` : '原记录日期 YYYY-MM-DD（可留空）'} style={styles.input} />
+          <TextInput accessibilityLabel={`第${index + 1}条摘记${noteIndex + 1}原记录时间`} value={note.originalRecordedTime ?? ''} onChangeText={time => updateItem(index, { candidate: { ...item.candidate, notes: item.candidate.notes.map((entry, position) => position === noteIndex ? { ...entry, originalRecordedTime: time || null } : entry) } })} placeholder="原记录时间 HH:MM（可留空）" style={styles.input} />
           <View style={styles.row}>{review.items.filter(target => target.candidate.id !== item.candidate.id && target.action !== 'skip').map(target => <Pressable key={target.candidate.id} onPress={() => apply({ type: 'move_note', noteId: note.id, targetCandidateId: target.candidate.id })} style={styles.action}><Text>移动到《{target.candidate.title || '未命名'}》</Text></Pressable>)}<Pressable onPress={() => apply({ type: 'delete_note', noteId: note.id })} style={styles.action}><Text>删除摘记</Text></Pressable></View>
         </View>)}
         {itemHints.map((hint, hintIndex) => <View key={`${hint.candidateId}-${hintIndex}`}><Text style={styles.warning}>{hint.message}</Text>{hint.kind === 'book' && hint.existingBookId && !item.acknowledgedDuplicateBookIds.includes(hint.existingBookId) ? <Pressable onPress={() => updateItem(index, { acknowledgedDuplicateBookIds: [...item.acknowledgedDuplicateBookIds, hint.existingBookId!] })}><Text style={styles.link}>确认仍新增</Text></Pressable> : null}{hint.kind === 'note' && hint.existingNoteId && !item.acknowledgedDuplicateNoteIds.includes(hint.existingNoteId) ? <Pressable onPress={() => updateItem(index, { acknowledgedDuplicateNoteIds: [...item.acknowledgedDuplicateNoteIds, hint.existingNoteId!] })}><Text style={styles.link}>确认仍追加</Text></Pressable> : null}</View>)}
