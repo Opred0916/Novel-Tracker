@@ -57,3 +57,18 @@ export function setScreenshotContinuation(draft: ScreenshotImportDraft, pageId: 
   pages[index] = { ...pages[index], continuesPrevious: value };
   return changed(draft, pages);
 }
+
+export function applyScreenshotOcrResult(draft: ScreenshotImportDraft, pageId: string, revision: number, result: { text?: string; error?: string }): ScreenshotImportDraft {
+  const index = draft.pages.findIndex(page => page.id === pageId);
+  if (index < 0) return draft;
+  const page = draft.pages[index];
+  if (page.revision !== revision || page.edited) return draft;
+
+  const text = result.text ?? '';
+  const ocrState = result.error
+    ? result.error === '本地图片文字识别不可用' ? 'unavailable' : 'failed'
+    : text.trim() ? 'recognized' : 'empty';
+  const pages = [...draft.pages];
+  pages[index] = { ...page, text, ocrState };
+  return changed(draft, pages);
+}
