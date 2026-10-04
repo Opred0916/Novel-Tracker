@@ -10,8 +10,10 @@ import { BOOK_STATUSES, type BookInput, type BookStatus, type BookType, type Tag
 import { normalizeBookCreate } from './validation';
 import { BookCoverField } from './BookCoverField';
 import type { StagedCover } from './bookCoverFiles';
+import { useTheme } from '../theme/ThemeProvider';
 
 export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookInput) => Promise<void>; quickTags?: Tag[] }) {
+  const { theme } = useTheme();
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [whyWantToRead, setWhyWantToRead] = useState('');
@@ -55,43 +57,43 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
   }
 
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    <Text style={styles.label}>书名 *</Text>
-    <TextInput placeholder="输入小说书名" value={title} onChangeText={setTitle} style={styles.input} autoFocus />
-    <Text style={styles.help}>只填书名也能保存，其他资料可以现在填写或以后补充。</Text>
-    <Text style={styles.label}>作者</Text>
-    <TextInput placeholder="作者名字" value={author} onChangeText={setAuthor} style={styles.input} />
-    <Text style={styles.label}>为什么想看</Text>
+    <Text style={[styles.label, { color: theme.text }]}>书名 *</Text>
+    <TextInput placeholder="输入小说书名" placeholderTextColor={theme.mutedText} value={title} onChangeText={setTitle} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} autoFocus />
+    <Text style={[styles.help, { color: theme.mutedText }]}>只填书名也能保存，其他资料可以现在填写或以后补充。</Text>
+    <Text style={[styles.label, { color: theme.text }]}>作者</Text>
+    <TextInput placeholder="作者名字" placeholderTextColor={theme.mutedText} value={author} onChangeText={setAuthor} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />
+    <Text style={[styles.label, { color: theme.text }]}>为什么想看</Text>
     <TextInput placeholder="为什么想看（可选）" value={whyWantToRead} onChangeText={setWhyWantToRead}
-      style={[styles.input, styles.multiline]} multiline textAlignVertical="top" />
-    <Text style={styles.label}>阅读平台</Text>
-    <TextInput placeholder="阅读平台（可选）" value={platform} onChangeText={setPlatform} style={styles.input} />
-    <Text style={styles.label}>阅读状态</Text>
+      style={[styles.input, styles.multiline, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} multiline textAlignVertical="top" />
+    <Text style={[styles.label, { color: theme.text }]}>阅读平台</Text>
+    <TextInput placeholder="阅读平台（可选）" placeholderTextColor={theme.mutedText} value={platform} onChangeText={setPlatform} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />
+    <Text style={[styles.label, { color: theme.text }]}>阅读状态</Text>
     <View style={styles.statusGroup}>
       {BOOK_STATUSES.map(choice => <Pressable key={choice} accessibilityRole="radio"
         accessibilityState={{ checked: status === choice }} onPress={() => setStatus(choice)}
-        style={[styles.statusOption, status === choice && styles.statusSelected]}>
-        <Text style={[styles.statusText, status === choice && styles.statusSelectedText]}>{BOOK_STATUS_LABELS[choice]}</Text>
+        style={[styles.statusOption, { borderColor: status === choice ? theme.primary : theme.border, backgroundColor: status === choice ? theme.primary : theme.card }]}>
+        <Text style={{ color: status === choice ? theme.card : theme.text, fontWeight: status === choice ? '700' : '500' }}>{BOOK_STATUS_LABELS[choice]}</Text>
       </Pressable>)}
     </View>
     {status !== 'want_to_read' ? <ReadingDateFields startedOn={startedOn} endedOn={endedOn}
       showEnd={status !== 'reading'} onStartChange={setStartedOn} onEndChange={setEndedOn} /> : null}
-    <Text style={styles.label}>作品类型</Text>
+    <Text style={[styles.label, { color: theme.text }]}>作品类型</Text>
     <TypePicker value={bookType} onChange={setBookType} />
-    <Text style={styles.label}>快捷标签</Text>
+    <Text style={[styles.label, { color: theme.text }]}>快捷标签</Text>
     <TagPicker tags={quickTags} selectedIds={tagIds} onChange={setTagIds} />
-    <Text style={styles.label}>主角名字</Text>
+    <Text style={[styles.label, { color: theme.text }]}>主角名字</Text>
     {protagonists.map((name, index) => <View key={index} style={styles.nameRow}>
-      <Text style={styles.nameLabel}>主角 {index + 1}</Text>
-      <TextInput accessibilityLabel={`主角 ${index + 1}`} placeholder="主角名字" value={name}
-        onChangeText={value => changeProtagonist(index, value)} style={styles.input} />
+      <Text style={[styles.nameLabel, { color: theme.mutedText }]}>主角 {index + 1}</Text>
+      <TextInput accessibilityLabel={`主角 ${index + 1}`} placeholder="主角名字" placeholderTextColor={theme.mutedText} value={name}
+        onChangeText={value => changeProtagonist(index, value)} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />
     </View>)}
     <Pressable accessibilityRole="button" onPress={() => setProtagonists(current => [...current, ''])} style={styles.addName}>
-      <Text style={styles.addNameText}>＋ 添加主角</Text>
+      <Text style={[styles.addNameText, { color: theme.primary }]}>＋ 添加主角</Text>
     </Pressable>
     {status === 'finished' ? <RatingField value={ratingHalfStars} onChange={setRatingHalfStars} allowNewValue /> : null}
     <BookCoverField title={title} onChange={value => setCoverSource(value ?? undefined)} />
-    {error ? <Text style={styles.error}>{error}</Text> : null}
-    <Pressable accessibilityRole="button" disabled={saving} onPress={save} style={styles.button}>
+    {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+    <Pressable accessibilityRole="button" disabled={saving} onPress={save} style={[styles.button, { backgroundColor: theme.primary }]}>
       <Text style={styles.buttonText}>{saving ? '保存中…' : '保存小说'}</Text>
     </Pressable>
   </ScrollView>;
@@ -105,14 +107,14 @@ const styles = StyleSheet.create({
   help: { color: '#766f68', fontSize: 13 },
   statusGroup: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   statusOption: { borderColor: '#d6cec4', borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: '#fff' },
-  statusSelected: { backgroundColor: '#593f72', borderColor: '#593f72' },
+  statusSelected: { backgroundColor: '#28584E', borderColor: '#28584E' },
   statusText: { color: '#302a25' },
   statusSelectedText: { color: '#fff', fontWeight: '700' },
   nameRow: { gap: 6 },
   nameLabel: { color: '#766f68' },
   addName: { padding: 12, alignSelf: 'flex-start' },
-  addNameText: { color: '#593f72', fontWeight: '600' },
+  addNameText: { color: '#28584E', fontWeight: '600' },
   error: { color: '#b52626' },
-  button: { backgroundColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 12 },
+  button: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 12 },
   buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });

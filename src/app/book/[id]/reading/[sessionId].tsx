@@ -4,11 +4,13 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { ReadingHistoryForm } from '../../../../books/ReadingHistoryForm';
 import type { Book, ReadingSession } from '../../../../books/types';
 import { useBooks, useReadingHistory } from '../../../../storage/AppProvider';
+import { useTheme } from '../../../../theme/ThemeProvider';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
 export default function ReadingHistoryPage() {
   const { id, sessionId } = useLocalSearchParams<{ id: string; sessionId: string }>();
+  const { theme } = useTheme();
   const books = useBooks();
   const history = useReadingHistory();
   const [book, setBook] = useState<Book | null>(null);
@@ -35,14 +37,14 @@ export default function ReadingHistoryPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, sessionId, books, history, retry]));
 
-  if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator /></View>;
+  if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator color={theme.primary} /></View>;
   if (loadState === 'missing') return <View style={styles.center}>
-    <Text style={styles.message}>找不到这次阅读</Text>
-    <Pressable accessibilityRole="button" onPress={() => router.back()}><Text style={styles.link}>返回</Text></Pressable>
+    <Text style={[styles.message, { color: theme.text }]}>找不到这次阅读</Text>
+    <Pressable accessibilityRole="button" onPress={() => router.back()}><Text style={[styles.link, { color: theme.primary }]}>返回</Text></Pressable>
   </View>;
   if (loadState === 'error') return <View style={styles.center}>
-    <Text style={styles.message}>读取阅读记录失败，请重试</Text>
-    <Pressable accessibilityRole="button" onPress={() => setRetry(value => value + 1)}><Text style={styles.link}>重试</Text></Pressable>
+    <Text style={[styles.message, { color: theme.text }]}>读取阅读记录失败，请重试</Text>
+    <Pressable accessibilityRole="button" onPress={() => setRetry(value => value + 1)}><Text style={[styles.link, { color: theme.primary }]}>重试</Text></Pressable>
   </View>;
   if (!book || typeof id !== 'string' || typeof sessionId !== 'string') return null;
 
@@ -65,5 +67,5 @@ export default function ReadingHistoryPage() {
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 14, padding: 24 },
   message: { fontSize: 17, color: '#302a25' },
-  link: { fontSize: 16, color: '#593f72', fontWeight: '600' },
+  link: { fontSize: 16, color: '#28584E', fontWeight: '600' },
 });

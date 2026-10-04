@@ -3,6 +3,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { normalizeHistoricalReadingDates, normalizeReadingDates, todayLocalDate } from './readingDates';
 import { ReadingDateFields } from './ReadingDateFields';
 import type { ReadingSession } from './types';
+import { useTheme } from '../theme/ThemeProvider';
 
 export function ReadingHistoryForm({ session, legacy = false, onSave, onDelete }: {
   session?: ReadingSession;
@@ -10,6 +11,7 @@ export function ReadingHistoryForm({ session, legacy = false, onSave, onDelete }
   onSave: (startedOn: string | null, endedOn: string | null) => Promise<void>;
   onDelete?: () => Promise<void>;
 }) {
+  const { theme } = useTheme();
   const [startedOn, setStartedOn] = useState<string | null>(session ? session.startedOn : todayLocalDate());
   const [endedOn, setEndedOn] = useState<string | null>(session ? session.endedOn : todayLocalDate());
   const [error, setError] = useState('');
@@ -51,15 +53,15 @@ export function ReadingHistoryForm({ session, legacy = false, onSave, onDelete }
   }
 
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    <Text style={styles.heading}>{legacy ? '补记首刷日期' : `编辑第 ${session?.ordinal} 次阅读`}</Text>
+    <Text style={[styles.heading, { color: theme.text }]}>{legacy ? '补记首刷日期' : `编辑第 ${session?.ordinal} 次阅读`}</Text>
     <ReadingDateFields startedOn={startedOn} endedOn={endedOn} showEnd={outcome !== 'reading'}
       onStartChange={setStartedOn} onEndChange={setEndedOn} />
-    {error ? <Text style={styles.error}>{error}</Text> : null}
-    <Pressable accessibilityRole="button" disabled={saving} onPress={() => { void save(); }} style={styles.save}>
+    {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+    <Pressable accessibilityRole="button" disabled={saving} onPress={() => { void save(); }} style={[styles.save, { backgroundColor: theme.primary }]}>
       <Text style={styles.saveText}>{saving ? '保存中…' : '保存日期'}</Text>
     </Pressable>
     {session && onDelete ? <Pressable accessibilityRole="button" disabled={saving} onPress={confirmDelete} style={styles.delete}>
-      <Text style={styles.deleteText}>删除本次阅读</Text>
+      <Text style={[styles.deleteText, { color: theme.danger }]}>删除本次阅读</Text>
     </Pressable> : null}
   </ScrollView>;
 }
@@ -68,7 +70,7 @@ const styles = StyleSheet.create({
   container: { padding: 24, gap: 16, paddingBottom: 50 },
   heading: { fontSize: 22, fontWeight: '700', color: '#302a25' },
   error: { color: '#b52626' },
-  save: { backgroundColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center' },
+  save: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center' },
   saveText: { color: '#fff', fontWeight: '700' },
   delete: { padding: 14, alignItems: 'center' },
   deleteText: { color: '#b52626', fontWeight: '600' },

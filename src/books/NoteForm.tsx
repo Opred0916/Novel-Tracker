@@ -4,10 +4,12 @@ import { ImageStorage } from './imageStorage';
 import { pickImages } from './imagePicker';
 import type { ImageAsset, Note, NoteInput } from './types';
 import type { SqliteNotesRepository } from './notesRepository';
+import { useTheme } from '../theme/ThemeProvider';
 
 export function NoteForm({ bookId, note, highlights, repository, onSaved, onCancel }: {
   bookId: string; note?: Note; highlights: ImageAsset[]; repository: SqliteNotesRepository; onSaved: () => void; onCancel: () => void;
 }) {
+  const { theme } = useTheme();
   const [body, setBody] = useState(note?.body ?? '');
   const [images, setImages] = useState<ImageAsset[]>(note?.images ?? []);
   const [error, setError] = useState('');
@@ -31,15 +33,15 @@ export function NoteForm({ bookId, note, highlights, repository, onSaved, onCanc
     catch (cause) { setError(cause instanceof Error ? cause.message : '保存失败，请重试'); }
   }
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    <Text style={styles.title}>{note ? '编辑摘记' : '新增摘记'}</Text>
-    <Text style={styles.label}>我的想法 *</Text>
-    <TextInput multiline value={body} onChangeText={setBody} placeholder="写下这次阅读的想法" style={styles.input} textAlignVertical="top" />
-    <View style={styles.actions}><Pressable onPress={addHighlightImages} style={styles.secondary}><Text>从精彩片段选择</Text></Pressable><Pressable onPress={() => void addAlbumImages()} style={styles.secondary}><Text>从相册添加</Text></Pressable></View>
-    {images.length ? <View style={styles.grid}>{images.map(image => <Image key={image.id} source={{ uri: image.localPath }} style={styles.image} />)}</View> : <Text style={styles.hint}>图片可选</Text>}
-    {error ? <Text style={styles.error}>{error}</Text> : null}
-    <Pressable onPress={() => void save()} style={styles.save}><Text style={styles.saveText}>保存摘记</Text></Pressable>
+    <Text style={[styles.title, { color: theme.text }]}>{note ? '编辑摘记' : '新增摘记'}</Text>
+    <Text style={[styles.label, { color: theme.text }]}>我的想法 *</Text>
+    <TextInput multiline value={body} onChangeText={setBody} placeholder="写下这次阅读的想法" placeholderTextColor={theme.mutedText} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} textAlignVertical="top" />
+    <View style={styles.actions}><Pressable onPress={addHighlightImages} style={[styles.secondary, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={{ color: theme.text }}>从精彩片段选择</Text></Pressable><Pressable onPress={() => void addAlbumImages()} style={[styles.secondary, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={{ color: theme.text }}>从相册添加</Text></Pressable></View>
+    {images.length ? <View style={styles.grid}>{images.map(image => <Image key={image.id} source={{ uri: image.localPath }} style={styles.image} />)}</View> : <Text style={[styles.hint, { color: theme.mutedText }]}>图片可选</Text>}
+    {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+    <Pressable onPress={() => void save()} style={[styles.save, { backgroundColor: theme.primary }]}><Text style={styles.saveText}>保存摘记</Text></Pressable>
     <Pressable onPress={onCancel} style={styles.cancel}><Text>取消</Text></Pressable>
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({ container: { padding: 24, gap: 12, paddingBottom: 48 }, title: { fontSize: 25, fontWeight: '700', color: '#302a25' }, label: { fontWeight: '700', color: '#302a25' }, input: { minHeight: 160, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, backgroundColor: '#fff', padding: 14, fontSize: 17 }, actions: { flexDirection: 'row', gap: 8 }, secondary: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 10, backgroundColor: '#fff' }, grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, image: { width: 86, height: 86, borderRadius: 8 }, hint: { color: '#766f68' }, error: { color: '#b52626' }, save: { backgroundColor: '#593f72', borderRadius: 12, padding: 16, alignItems: 'center' }, saveText: { color: '#fff', fontWeight: '700' }, cancel: { alignItems: 'center', padding: 10 }, });
+const styles = StyleSheet.create({ container: { padding: 24, gap: 12, paddingBottom: 48 }, title: { fontSize: 25, fontWeight: '700', color: '#302a25' }, label: { fontWeight: '700', color: '#302a25' }, input: { minHeight: 160, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, backgroundColor: '#fff', padding: 14, fontSize: 17 }, actions: { flexDirection: 'row', gap: 8 }, secondary: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 10, backgroundColor: '#fff' }, grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, image: { width: 86, height: 86, borderRadius: 8 }, hint: { color: '#766f68' }, error: { color: '#b52626' }, save: { backgroundColor: '#28584E', borderRadius: 12, padding: 16, alignItems: 'center' }, saveText: { color: '#fff', fontWeight: '700' }, cancel: { alignItems: 'center', padding: 10 }, });
