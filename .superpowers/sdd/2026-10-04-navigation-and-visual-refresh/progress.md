@@ -6,3 +6,4 @@ Ruling: Execute inline in the existing isolated `codex/v1-gaps` worktree because
 
 Task 1: complete (tests: npm.cmd test -- --runInBand tests/theme -> 3 suites, 5 tests passed).
 Task 2: complete (tests: npm.cmd test -- --runInBand tests/navigation/tabs.test.tsx tests/books/bookRoutes.test.tsx tests/books/annualRecapPage.test.tsx -> 3 suites, 43 tests passed).
+Task 3: complete (tests: npm.cmd test -- --runInBand tests/books/BookshelfToolbar.test.tsx tests/books/bookRoutes.test.tsx tests/books/useBookSearch.test.tsx -> 3 suites, 42 tests passed; npx.cmd tsc --noEmit -> exit 0).
