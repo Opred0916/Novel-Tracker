@@ -29,6 +29,7 @@ export class ImportCommitService {
       const existingBooks = await txn.getAllAsync<ExistingBookRow>('SELECT id, title, status FROM books');
       const booksById = new Map(existingBooks.map(book => [book.id, book]));
       const booksByTitle = new Map(existingBooks.map(book => [duplicateKey(book.title), book]));
+      const createdCandidatesByTitle = new Map<string, string[]>();
       for (const item of review.items) {
         if (item.action === 'skip') continue;
         let bookId: string;
@@ -36,12 +37,15 @@ export class ImportCommitService {
           if (!item.targetBookId || !booksById.has(item.targetBookId)) throw new Error('追加摘记的目标书籍不存在');
           bookId = item.targetBookId;
         } else {
-          const duplicate = booksByTitle.get(duplicateKey(item.candidate.title));
+          const titleKey = duplicateKey(item.candidate.title);
+          const duplicate = booksByTitle.get(titleKey);
           if (duplicate && !item.acknowledgedDuplicateBookIds.includes(duplicate.id)) throw new Error(`书籍重复：${item.candidate.title}`);
+          const priorCandidates = createdCandidatesByTitle.get(titleKey) ?? [];
+          if (priorCandidates.some(id => !(item.acknowledgedDuplicateCandidateIds ?? []).includes(id))) throw new Error(`书籍重复：${item.candidate.title}`);
           bookId = this.idFactory();
           await this.insertBook(txn, bookId, item.candidate, now);
           booksById.set(bookId, { id: bookId, title: item.candidate.title, status: item.candidate.status });
-          booksByTitle.set(duplicateKey(item.candidate.title), booksById.get(bookId)!);
+          createdCandidatesByTitle.set(titleKey, [...priorCandidates, item.candidate.id]);
         }
         const sessionIds = item.action === 'create' ? await this.insertSessions(txn, bookId, item.candidate) : await this.listSessions(txn, bookId);
         const existingNotes = await txn.getAllAsync<ExistingNoteRow>('SELECT id, body FROM notes WHERE book_id = ?', bookId);

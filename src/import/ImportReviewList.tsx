@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, Modal, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { BOOK_STATUS_LABELS } from '../books/status';
 import { BOOK_STATUSES, BOOK_TYPES } from '../books/types';
 import { BOOK_TYPE_LABELS } from '../books/TypePicker';
@@ -13,6 +13,8 @@ export function ImportReviewList({ review, hints, busy, error, sourcePages = [],
   review: ImportReview; hints: DuplicateHint[]; busy: boolean; error?: string; sourcePages?: SourcePage[]; onChange: (next: ImportReview) => void; onConfirm: () => void; onCancel: () => void;
 }) {
   const [actionError, setActionError] = useState('');
+  const [previewPage, setPreviewPage] = useState<SourcePage | null>(null);
+  const { width, height } = useWindowDimensions();
   function updateItem(index: number, update: Partial<ImportReviewItem>) {
     const items = [...review.items]; items[index] = { ...items[index], ...update }; onChange({ ...review, items });
   }
@@ -29,7 +31,10 @@ export function ImportReviewList({ review, hints, busy, error, sourcePages = [],
     if (!ref) return null;
     const pageIndex = sourcePages.findIndex(page => page.id === ref.pageId);
     if (pageIndex < 0) return null;
-    return <Image accessibilityLabel={`第${pageIndex + 1}张截图`} source={{ uri: sourcePages[pageIndex].uri }} style={styles.sourceImage} resizeMode="contain" />;
+    const page = sourcePages[pageIndex];
+    return <Pressable accessibilityRole="button" accessibilityLabel={`查看第${pageIndex + 1}张截图原图`} onPress={() => setPreviewPage(page)}>
+      <Image accessibilityLabel={`第${pageIndex + 1}张截图`} source={{ uri: page.uri }} style={styles.sourceImage} resizeMode="contain" />
+    </Pressable>;
   }
   function splitNote(candidateId: string, noteId: string) {
     let nextId = `split-${noteId}`;
@@ -49,7 +54,7 @@ export function ImportReviewList({ review, hints, busy, error, sourcePages = [],
       return <View style={styles.card}>
         <Text style={styles.source}>{sourceLabel(item.candidate.sourceRef, item.candidate.sourceLine)}</Text>
         {sourceImage(item.candidate.sourceRef)}
-        <TextInput accessibilityLabel={`第${index + 1}条书名`} value={item.candidate.title} onChangeText={title => updateItem(index, { candidate: { ...item.candidate, title } })} style={styles.input} />
+        <TextInput accessibilityLabel={`第${index + 1}条书名`} value={item.candidate.title} onChangeText={title => updateItem(index, { candidate: { ...item.candidate, title }, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateCandidateIds: [] })} style={styles.input} />
         <TextInput accessibilityLabel={`第${index + 1}条作者`} value={item.candidate.author ?? ''} onChangeText={author => updateItem(index, { candidate: { ...item.candidate, author: author || null } })} placeholder="作者（选填）" style={styles.input} />
         <TextInput accessibilityLabel={`第${index + 1}条主角`} value={item.candidate.protagonists.join('、')} onChangeText={value => updateItem(index, { candidate: { ...item.candidate, protagonists: value.split(/[、,，]+/).map(name => name.trim()).filter(Boolean) } })} placeholder="主角（选填，多个用顿号分隔）" style={styles.input} />
         <TextInput accessibilityLabel={`第${index + 1}条标签`} value={item.candidate.tagIds.join('、')} onChangeText={value => updateItem(index, { candidate: { ...item.candidate, tagIds: value.split(/[、,，]+/).map(tag => tag.trim()).filter(Boolean) } })} placeholder="标签（选填）" style={styles.input} />
@@ -66,7 +71,7 @@ export function ImportReviewList({ review, hints, busy, error, sourcePages = [],
           <View style={styles.row}>{review.items.filter(target => target.candidate.id !== item.candidate.id && target.action !== 'skip').map(target => <Pressable key={target.candidate.id} onPress={() => apply({ type: 'move_note', noteId: note.id, targetCandidateId: target.candidate.id })} style={styles.action}><Text>移动到《{target.candidate.title || '未命名'}》</Text></Pressable>)}<Pressable accessibilityRole="button" accessibilityLabel={`拆出第${noteIndex + 1}条摘记为新书`} onPress={() => splitNote(item.candidate.id, note.id)} style={styles.action}><Text>拆出为新书</Text></Pressable><Pressable onPress={() => apply({ type: 'delete_note', noteId: note.id })} style={styles.action}><Text>删除摘记</Text></Pressable></View>
         </View>)}
         <View style={styles.row}>{review.items.filter(target => target.candidate.id !== item.candidate.id && target.action !== 'skip').map(target => <Pressable key={target.candidate.id} accessibilityRole="button" accessibilityLabel={`将第${index + 1}条候选合并到《${target.candidate.title || '未命名'}》`} onPress={() => apply({ type: 'merge_candidates', sourceCandidateId: item.candidate.id, targetCandidateId: target.candidate.id })} style={styles.action}><Text>合并到《{target.candidate.title || '未命名'}》</Text></Pressable>)}</View>
-        {itemHints.map((hint, hintIndex) => <View key={`${hint.candidateId}-${hintIndex}`}><Text style={styles.warning}>{hint.message}</Text>{hint.kind === 'book' && hint.existingBookId && !item.acknowledgedDuplicateBookIds.includes(hint.existingBookId) ? <Pressable onPress={() => updateItem(index, { acknowledgedDuplicateBookIds: [...item.acknowledgedDuplicateBookIds, hint.existingBookId!] })}><Text style={styles.link}>确认仍新增</Text></Pressable> : null}{hint.kind === 'note' && hint.existingNoteId && !item.acknowledgedDuplicateNoteIds.includes(hint.existingNoteId) ? <Pressable onPress={() => updateItem(index, { acknowledgedDuplicateNoteIds: [...item.acknowledgedDuplicateNoteIds, hint.existingNoteId!] })}><Text style={styles.link}>确认仍追加</Text></Pressable> : null}</View>)}
+        {itemHints.map((hint, hintIndex) => <View key={`${hint.candidateId}-${hintIndex}`}><Text style={styles.warning}>{hint.message}</Text>{hint.kind === 'book' && hint.existingBookId && !item.acknowledgedDuplicateBookIds.includes(hint.existingBookId) ? <Pressable onPress={() => updateItem(index, { acknowledgedDuplicateBookIds: [...item.acknowledgedDuplicateBookIds, hint.existingBookId!] })}><Text style={styles.link}>确认仍新增</Text></Pressable> : null}{hint.kind === 'book' && hint.otherCandidateId && !(item.acknowledgedDuplicateCandidateIds ?? []).includes(hint.otherCandidateId) ? <Pressable accessibilityRole="button" accessibilityLabel="确认仍新增本批同名书" onPress={() => updateItem(index, { acknowledgedDuplicateCandidateIds: [...(item.acknowledgedDuplicateCandidateIds ?? []), hint.otherCandidateId!] })}><Text style={styles.link}>确认仍新增本批同名书</Text></Pressable> : null}{hint.kind === 'note' && hint.existingNoteId && !item.acknowledgedDuplicateNoteIds.includes(hint.existingNoteId) ? <Pressable onPress={() => updateItem(index, { acknowledgedDuplicateNoteIds: [...item.acknowledgedDuplicateNoteIds, hint.existingNoteId!] })}><Text style={styles.link}>确认仍追加</Text></Pressable> : null}</View>)}
         <View style={styles.row}><Pressable onPress={() => updateItem(index, { action: 'create', targetBookId: null })} style={[styles.action, item.action === 'create' && styles.selected]}><Text style={[styles.chipText, item.action === 'create' && styles.selectedText]}>新增</Text></Pressable><Pressable onPress={() => updateItem(index, { action: 'append_notes', targetBookId: hintTarget(itemHints) })} style={[styles.action, item.action === 'append_notes' && styles.selected]}><Text style={[styles.chipText, item.action === 'append_notes' && styles.selectedText]}>追加摘记</Text></Pressable><Pressable onPress={() => updateItem(index, { action: 'skip' })} style={[styles.action, item.action === 'skip' && styles.selected]}><Text style={[styles.chipText, item.action === 'skip' && styles.selectedText]}>跳过</Text></Pressable></View>
       </View>;
     }} ListFooterComponent={<View style={styles.footer}>
@@ -79,10 +84,16 @@ export function ImportReviewList({ review, hints, busy, error, sourcePages = [],
       <Pressable accessibilityRole="button" disabled={busy} onPress={onConfirm} style={[styles.primary, busy && styles.disabled]}><Text style={styles.primaryText}>{busy ? '正在导入…' : '确认导入'}</Text></Pressable>
       <Pressable accessibilityRole="button" disabled={busy} onPress={onCancel} style={styles.link}><Text style={styles.linkText}>返回修改文字</Text></Pressable>
     </View>} />
+    <Modal visible={Boolean(previewPage)} transparent animationType="fade" onRequestClose={() => setPreviewPage(null)}>
+      <View style={styles.previewBackdrop}>
+        <Pressable accessibilityRole="button" accessibilityLabel="关闭截图原图" onPress={() => setPreviewPage(null)} style={styles.previewClose}><Text style={styles.previewCloseText}>关闭原图</Text></Pressable>
+        {previewPage ? <Image accessibilityLabel="放大截图" source={{ uri: previewPage.uri }} style={{ width: width - 24, height: height * 0.78 }} resizeMode="contain" /> : null}
+      </View>
+    </Modal>
   </View>;
 }
 
 function hintTarget(hints: DuplicateHint[]): string | null { return hints.find(hint => hint.targetBookId)?.targetBookId ?? null; }
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 18 }, heading: { fontSize: 24, fontWeight: '700', color: '#302a25' }, help: { color: '#766f68', lineHeight: 20, marginVertical: 8 }, list: { gap: 14, paddingBottom: 20 }, card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 }, source: { color: '#817871', fontSize: 13 }, sourceImage: { width: '100%', height: 180, backgroundColor: '#f5f1ec', borderRadius: 10 }, input: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 11, color: '#302a25' }, noteGroup: { gap: 8 }, note: { minHeight: 60, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 11, color: '#302a25' }, session: { gap: 8, padding: 10, backgroundColor: '#faf7f2', borderRadius: 10 }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 }, action: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 }, selected: { backgroundColor: '#593f72', borderColor: '#593f72' }, chipText: { color: '#302a25' }, selectedText: { color: '#fff', fontWeight: '700' }, warning: { color: '#9a5719', lineHeight: 20 }, done: { color: '#2f7d45' }, fragment: { backgroundColor: '#fff7e9', borderRadius: 12, padding: 12, gap: 8 }, summary: { color: '#302a25', fontWeight: '600' }, footer: { gap: 12, paddingVertical: 18 }, primary: { backgroundColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center' }, primaryText: { color: '#fff', fontWeight: '700' }, link: { alignItems: 'center', padding: 10 }, linkText: { color: '#593f72', fontWeight: '600' }, disabled: { opacity: 0.5 },
+  container: { flex: 1, padding: 18 }, heading: { fontSize: 24, fontWeight: '700', color: '#302a25' }, help: { color: '#766f68', lineHeight: 20, marginVertical: 8 }, list: { gap: 14, paddingBottom: 20 }, card: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10 }, source: { color: '#817871', fontSize: 13 }, sourceImage: { width: '100%', height: 180, backgroundColor: '#f5f1ec', borderRadius: 10 }, input: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 11, color: '#302a25' }, noteGroup: { gap: 8 }, note: { minHeight: 60, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 11, color: '#302a25' }, session: { gap: 8, padding: 10, backgroundColor: '#faf7f2', borderRadius: 10 }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8 }, action: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 }, selected: { backgroundColor: '#593f72', borderColor: '#593f72' }, chipText: { color: '#302a25' }, selectedText: { color: '#fff', fontWeight: '700' }, warning: { color: '#9a5719', lineHeight: 20 }, done: { color: '#2f7d45' }, fragment: { backgroundColor: '#fff7e9', borderRadius: 12, padding: 12, gap: 8 }, summary: { color: '#302a25', fontWeight: '600' }, footer: { gap: 12, paddingVertical: 18 }, primary: { backgroundColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center' }, primaryText: { color: '#fff', fontWeight: '700' }, link: { alignItems: 'center', padding: 10 }, linkText: { color: '#593f72', fontWeight: '600' }, disabled: { opacity: 0.5 }, previewBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', justifyContent: 'center', alignItems: 'center' }, previewClose: { position: 'absolute', top: 56, right: 20, zIndex: 1, padding: 12 }, previewCloseText: { color: '#fff', fontWeight: '700', fontSize: 17 },
 });

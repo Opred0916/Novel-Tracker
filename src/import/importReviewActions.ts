@@ -83,6 +83,10 @@ export function applyImportReviewAction(review: ImportReview, action: ImportRevi
     if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return review;
     const source = review.items[sourceIndex];
     const target = review.items[targetIndex];
+    if (review.fragments.some(fragment => {
+      const decision = review.fragmentDecisions[fragment.id];
+      return decision?.kind === 'book' && decision.candidateId === source.candidate.id && fragment.text !== target.candidate.title;
+    })) throw new Error('原文片段已设为新书且文字与目标书名不同，请返回修改文字后再合并');
     if (source.action !== target.action || source.targetBookId !== target.targetBookId) throw new Error('请先统一两条候选的导入方式和目标书籍');
     if (source.candidate.status !== target.candidate.status) throw new Error('请先统一两条候选的阅读状态');
     if (source.candidate.sessions.length && target.candidate.sessions.length && JSON.stringify(source.candidate.sessions) !== JSON.stringify(target.candidate.sessions)) throw new Error('阅读记录不同，请先核对后再合并');
@@ -103,7 +107,7 @@ export function applyImportReviewAction(review: ImportReview, action: ImportRevi
     };
     const items = review.items.filter((_, index) => index !== sourceIndex).map(item => item.candidate.id === target.candidate.id ? {
       ...item, candidate: merged,
-      acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [],
+      acknowledgedDuplicateBookIds: [], acknowledgedDuplicateCandidateIds: [], acknowledgedDuplicateNoteIds: [],
     } : item);
     const decisions = Object.fromEntries(Object.entries(review.fragmentDecisions).map(([id, decision]) => decision.kind === 'book' && decision.candidateId === source.candidate.id ? [id, { kind: 'book', candidateId: target.candidate.id }] : [id, decision]));
     return withItems(review, items, decisions);

@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { ImportReviewList } from '../../src/import/ImportReviewList';
 import { parseTextImport } from '../../src/import/textImportParser';
-import type { ImportReview } from '../../src/import/importReview';
+import { findImportDuplicates, type ImportReview } from '../../src/import/importReview';
 
 function review(): ImportReview {
   const candidate = parseTextImport('书名：残次品\n摘记：一条想法', 'blocks', 'finished').candidates[0];
@@ -28,6 +28,10 @@ test('shows screenshot and line for the candidate and its note', async () => {
   expect(screen.getByText('来源：第 2 张截图 · 第 5 行')).toBeTruthy();
   expect(screen.getByLabelText('第1张截图').props.source).toEqual({ uri: 'file:///record.jpg' });
   expect(screen.getByLabelText('第2张截图').props.source).toEqual({ uri: 'file:///reply.jpg' });
+  await fireEvent.press(screen.getByRole('button', { name: '查看第1张截图原图' }));
+  expect(screen.getByLabelText('放大截图').props.source).toEqual({ uri: 'file:///record.jpg' });
+  await fireEvent.press(screen.getByRole('button', { name: '关闭截图原图' }));
+  expect(screen.queryByLabelText('放大截图')).toBeNull();
 });
 
 test('can split one thought into a new book and merge candidates back', async () => {
@@ -62,4 +66,19 @@ test('preview summary counts appended thoughts and explicitly ignored fragments'
   await waitFor(() => expect(screen.getByText(/追加想法 2 条/)).toBeTruthy());
   expect(screen.getByText(/忽略片段 1 条/)).toBeTruthy();
   expect(screen.getByText(/未处理片段 0 条/)).toBeTruthy();
+});
+
+test('allows explicitly keeping two same-title books in one import batch', async () => {
+  const value = review();
+  const second = { ...value.items[0].candidate, id: 'other-candidate', notes: [] };
+  value.items.push({ candidate: second, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] });
+  const hints = findImportDuplicates(value, [], []);
+  let current = value;
+  const screen = await render(<ImportReviewList review={value} hints={hints} busy={false} onChange={next => { current = next; }} onConfirm={jest.fn()} onCancel={jest.fn()} />);
+
+  await fireEvent.press(screen.getByRole('button', { name: '确认仍新增本批同名书' }));
+  expect(current.items[1].acknowledgedDuplicateCandidateIds).toEqual([value.items[0].candidate.id]);
+  await screen.rerender(<ImportReviewList review={current} hints={hints} busy={false} onChange={next => { current = next; }} onConfirm={jest.fn()} onCancel={jest.fn()} />);
+  await fireEvent.changeText(screen.getByLabelText('第2条书名'), '另一本书');
+  expect(current.items[1].acknowledgedDuplicateCandidateIds).toEqual([]);
 });

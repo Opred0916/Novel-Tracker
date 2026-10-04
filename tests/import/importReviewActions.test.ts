@@ -93,3 +93,11 @@ test('merging candidates requires duplicate acknowledgements to be checked again
   expect(merged.items[0].acknowledgedDuplicateBookIds).toEqual([]);
   expect(merged.items[0].acknowledgedDuplicateNoteIds).toEqual([]);
 });
+
+test('cannot merge away a fragment that was explicitly assigned as a new book', () => {
+  const withBook = applyImportReviewAction(review(), { type: 'fragment_to_book', fragmentId: 'fragment-1', candidateId: 'candidate-3', title: 'top1' });
+  withBook.items.find(item => item.candidate.id === 'candidate-3')!.candidate.status = 'finished';
+
+  expect(() => applyImportReviewAction(withBook, { type: 'merge_candidates', sourceCandidateId: 'candidate-3', targetCandidateId: 'candidate-1' })).toThrow('原文片段');
+  expect(withBook.fragmentDecisions['fragment-1']).toEqual({ kind: 'book', candidateId: 'candidate-3' });
+});

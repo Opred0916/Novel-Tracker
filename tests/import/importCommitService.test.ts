@@ -54,3 +54,23 @@ test('rolls back all imported rows when a later candidate fails', async () => {
     expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM books')).toEqual({ count: 0 });
   } finally { db.close(); }
 });
+
+test('requires explicit acknowledgment before creating two same-title books in one batch', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    const first = parseTextImport('书名：同名书', 'blocks', 'want_to_read').candidates[0];
+    const second = { ...first, id: 'second-candidate', notes: [] };
+    const review: ImportReview = { items: [
+      { candidate: first, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] },
+      { candidate: second, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] },
+    ], fragments: [], fragmentDecisions: {} };
+    const service = new ImportCommitService(db, randomUUID, () => '2026-10-03T10:00:00.000Z');
+    await expect(service.commit(review)).rejects.toThrow('书籍重复');
+    expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM books')).toEqual({ count: 0 });
+
+    review.items[1].acknowledgedDuplicateCandidateIds = [first.id];
+    await expect(service.commit(review)).resolves.toEqual({ createdBooks: 2, createdNotes: 0, appendedNotes: 0, skippedItems: 0 });
+    expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM books')).toEqual({ count: 2 });
+  } finally { db.close(); }
+});

@@ -6,6 +6,7 @@ export type ImportReviewItem = {
   action: 'create' | 'skip' | 'append_notes';
   targetBookId: string | null;
   acknowledgedDuplicateBookIds: string[];
+  acknowledgedDuplicateCandidateIds?: string[];
   acknowledgedDuplicateNoteIds: string[];
 };
 
