@@ -18,6 +18,7 @@ function RootNavigator() {
     <Stack.Screen name="settings/overview" options={{ title: '书库概览' }} />
     <Stack.Screen name="settings/annual-recap" options={{ title: '年度阅读回顾' }} />
     <Stack.Screen name="settings/themed-recap" options={{ title: '主题回顾卡片' }} />
+    <Stack.Screen name="settings/recap-share" options={{ title: '回顾图片预览' }} />
   </Stack>;
 }
 

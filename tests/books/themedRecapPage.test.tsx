@@ -37,3 +37,12 @@ test('shows all three themed cards and opens a book', async () => {
   await fireEvent.press(screen.getByText('弃读之书'));
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: 'book-2' } });
 });
+
+test('image action appears only for nonempty themes', async () => {
+  repository.getYear.mockResolvedValue({ ...recap, dropped: [] });
+  const screen = await render(<ThemedRecapPage />);
+  await waitFor(() => expect(screen.getByLabelText('制作五星书图片')).toBeTruthy());
+  expect(screen.queryByLabelText('制作弃读书图片')).toBeNull();
+  await fireEvent.press(screen.getByLabelText('制作五星书图片'));
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/settings/recap-share', params: { year: '2026', theme: 'fiveStar' } });
+});
