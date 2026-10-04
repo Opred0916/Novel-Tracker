@@ -18,7 +18,7 @@ export function ImportCompletionView({ summary, onBookshelf, onAnnualRecap }: { 
         <Stat label="五星小说" value={`${summary.fiveStarBooks} 本`} theme={theme} />
         <Stat label="跳过项" value={`${summary.skippedItems} 条`} theme={theme} />
       </View>
-      {summary.earliestRecordedOn ? <Text style={[styles.earliest, { color: theme.mutedText }]}>最早记录日期：{summary.earliestRecordedOn}</Text> : null}
+      <Text style={[styles.earliest, { color: theme.mutedText }]}>最早记录日期：{summary.earliestRecordedOn ?? '日期未记录'}</Text>
     </View>
     <View style={styles.actions}><Pressable accessibilityRole="button" onPress={onBookshelf} style={[styles.primary, { backgroundColor: theme.primary }]}><Text style={styles.primaryText}>打开书库</Text></Pressable><Pressable accessibilityRole="button" onPress={onAnnualRecap} style={[styles.secondary, { borderColor: theme.border }]}><Text style={{ color: theme.primary, fontWeight: '700' }}>查看年度回顾</Text></Pressable></View>
   </ScrollView>;

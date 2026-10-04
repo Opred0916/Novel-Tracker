@@ -42,11 +42,12 @@ export class SqliteThemedRecapRepository {
       grouped.set(row.book_id, book);
     }
     const books = [...grouped.values()].map(book => ({ ...book, sessions: book.sessions.sort((left, right) => right.endedOn.localeCompare(left.endedOn) || right.ordinal - left.ordinal) }));
+    const withSessions = (book: ThemeRecapBook, sessions: ThemeRecapSession[]): ThemeRecapBook => ({ ...book, sessions });
     return {
       year,
-      rereadSuccess: books.filter(book => book.sessions.some(session => session.outcome === 'finished' && session.ordinal >= 2)).sort(compareBook),
-      fiveStar: books.filter(book => book.ratingHalfStars === 10 && book.sessions.some(session => session.outcome === 'finished')).sort(compareBook),
-      dropped: books.filter(book => book.sessions.some(session => session.outcome === 'dropped')).sort(compareBook),
+      rereadSuccess: books.filter(book => book.sessions.some(session => session.outcome === 'finished' && session.ordinal >= 2)).map(book => withSessions(book, book.sessions.filter(session => session.outcome === 'finished' && session.ordinal >= 2))).sort(compareBook),
+      fiveStar: books.filter(book => book.ratingHalfStars === 10 && book.sessions.some(session => session.outcome === 'finished')).map(book => withSessions(book, book.sessions.filter(session => session.outcome === 'finished'))).sort(compareBook),
+      dropped: books.filter(book => book.sessions.some(session => session.outcome === 'dropped')).map(book => withSessions(book, book.sessions.filter(session => session.outcome === 'dropped'))).sort(compareBook),
     };
   }
 }

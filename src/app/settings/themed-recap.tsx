@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookCover } from '../../books/BookCover';
 import type { ThemeRecapBook, ThemedRecap } from '../../books/themedRecapRepository';
-import { useThemedRecapRepository } from '../../storage/AppProvider';
+import { useAnnualRecapRepository, useThemedRecapRepository } from '../../storage/AppProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 
 function ThemeBook({ book, onPress }: { book: ThemeRecapBook; onPress(): void }) {
@@ -21,6 +21,7 @@ function ThemeCard({ title, description, books, onBook }: { title: string; descr
 
 export default function ThemedRecapPage() {
   const { theme } = useTheme();
+  const annualRepository = useAnnualRecapRepository();
   const repository = useThemedRecapRepository();
   const params = useLocalSearchParams<{ year?: string | string[] }>();
   const initialYear = typeof params.year === 'string' && /^\d{4}$/.test(params.year) ? Number(params.year) : new Date().getFullYear();
@@ -35,10 +36,10 @@ export default function ThemedRecapPage() {
     let active = true;
     const request = ++version.current;
     setLoading(true); setError(''); setRecap(null);
-    void repository.availableYears(new Date().getFullYear()).then(available => { if (active && version.current === request) setYears(available); }).catch(() => undefined);
+    void Promise.all([repository.availableYears(new Date().getFullYear()), annualRepository.availableYears(new Date().getFullYear())]).then(([themedYears, annualYears]) => { if (active && version.current === request) setYears([...new Set([...themedYears, ...annualYears])].sort((left, right) => right - left)); }).catch(() => undefined);
     void repository.getYear(year).then(value => { if (active && version.current === request) { setRecap(value); setLoading(false); } }).catch(() => { if (active && version.current === request) { setError('读取主题回顾失败，请重试'); setLoading(false); } });
     return () => { active = false; };
-  }, [repository, year]);
+  }, [annualRepository, repository, year]);
   useFocusEffect(refresh);
 
   return <ScrollView contentContainerStyle={[styles.page, { backgroundColor: theme.background }]}>

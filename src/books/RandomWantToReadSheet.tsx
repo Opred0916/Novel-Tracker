@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import type { Book } from './types';
 import { BookCover } from './BookCover';
@@ -7,21 +7,25 @@ import { BookCover } from './BookCover';
 export type RandomWantToReadSheetProps = {
   book: Book | null;
   candidateCount: number;
-  onOpen(id: string): void;
+  loading: boolean;
+  error: string | null;
+  onOpenBook(id: string): void;
   onClose(): void;
-  onPickAgain(): void;
+  onReroll(): void;
+  onRetry(): void;
+  onAddBook(): void;
 };
 
-export function RandomWantToReadSheet({ book, candidateCount, onOpen, onClose, onPickAgain }: RandomWantToReadSheetProps) {
+export function RandomWantToReadSheet({ book, candidateCount, loading, error, onOpenBook, onClose, onReroll, onRetry, onAddBook }: RandomWantToReadSheetProps) {
   const { theme } = useTheme();
   return <View accessibilityViewIsModal style={[styles.sheet, { backgroundColor: theme.card }]}>
     <View style={styles.handle} />
     <View style={styles.headingRow}><Text style={[styles.title, { color: theme.text }]}>随机抽到</Text><Pressable accessibilityRole="button" onPress={onClose}><Text style={[styles.close, { color: theme.mutedText }]}>关闭</Text></Pressable></View>
     <Text style={[styles.count, { color: theme.mutedText }]}>候选书目 {candidateCount} 本</Text>
-    {book ? <>
+    {loading ? <ActivityIndicator accessibilityLabel="正在随机抽取" color={theme.primary} /> : error ? <View style={styles.empty}><Text style={[styles.emptyTitle, { color: theme.text }]}>{error}</Text><Pressable accessibilityRole="button" onPress={onRetry}><Text style={{ color: theme.primary, fontWeight: '700' }}>重试</Text></Pressable></View> : book ? <>
       <View style={styles.bookRow}><BookCover uri={book.coverUri} title={book.title} size="medium" /><View style={styles.bookInfo}><Text style={[styles.bookTitle, { color: theme.text }]}>{book.title}</Text>{book.author ? <Text style={[styles.meta, { color: theme.mutedText }]}>{book.author}</Text> : null}{book.protagonists.length ? <Text style={[styles.meta, { color: theme.mutedText }]}>主角：{book.protagonists.join('、')}</Text> : null}{book.whyWantToRead ? <Text style={[styles.reason, { color: theme.text }]}>想读理由：{book.whyWantToRead}</Text> : null}</View></View>
-      <View style={styles.actions}><Pressable accessibilityRole="button" onPress={() => onOpen(book.id)} style={[styles.primary, { backgroundColor: theme.primary }]}><Text style={styles.primaryText}>查看小说</Text></Pressable><Pressable accessibilityRole="button" onPress={onPickAgain} style={[styles.secondary, { borderColor: theme.border }]}><Text style={{ color: theme.primary, fontWeight: '700' }}>再抽一本</Text></Pressable></View>
-    </> : <View style={styles.empty}><Text style={[styles.emptyTitle, { color: theme.text }]}>暂时没有想读的小说</Text><Text style={[styles.meta, { color: theme.mutedText }]}>先在书架里添加几本想读的小说吧。</Text></View>}
+      <View style={styles.actions}><Pressable accessibilityRole="button" onPress={() => onOpenBook(book.id)} style={[styles.primary, { backgroundColor: theme.primary }]}><Text style={styles.primaryText}>查看小说</Text></Pressable><Pressable accessibilityRole="button" onPress={onReroll} style={[styles.secondary, { borderColor: theme.border }]}><Text style={{ color: theme.primary, fontWeight: '700' }}>再抽一本</Text></Pressable></View>
+    </> : <View style={styles.empty}><Text style={[styles.emptyTitle, { color: theme.text }]}>暂时没有想读的小说</Text><Text style={[styles.meta, { color: theme.mutedText }]}>先在书架里添加几本想读的小说吧。</Text><Pressable accessibilityRole="button" onPress={onAddBook}><Text style={{ color: theme.primary, fontWeight: '700' }}>去添加小说</Text></Pressable></View>}
   </View>;
 }
 

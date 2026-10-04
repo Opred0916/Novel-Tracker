@@ -20,3 +20,9 @@ test('avoids the previous pick when another candidate exists', () => {
 test('returns null when there are no want-to-read books', () => {
   expect(selectWantToReadBook([book('reading', 'reading')], null, () => 0)).toBeNull();
 });
+
+test('rejects a random source outside the half-open range', () => {
+  expect(() => selectWantToReadBook([book('a')], null, () => Number.NaN)).toThrow('随机数');
+  expect(() => selectWantToReadBook([book('a')], null, () => 1)).toThrow('随机数');
+  expect(() => selectWantToReadBook([book('a')], null, () => -0.1)).toThrow('随机数');
+});

@@ -14,7 +14,7 @@ const picked: Book = {
 
 test('shows the random pick and opens its detail page', async () => {
   const onOpen = jest.fn();
-  const screen = await render(<RandomWantToReadSheet book={picked} candidateCount={3} onOpen={onOpen} onClose={jest.fn()} onPickAgain={jest.fn()} />);
+  const screen = await render(<RandomWantToReadSheet book={picked} candidateCount={3} loading={false} error={null} onOpenBook={onOpen} onClose={jest.fn()} onReroll={jest.fn()} onRetry={jest.fn()} onAddBook={jest.fn()} />);
   expect(screen.getByText('随机抽到')).toBeTruthy();
   expect(screen.getAllByText('长夜').length).toBeGreaterThan(0);
   expect(screen.getByText('候选书目 3 本')).toBeTruthy();
@@ -23,6 +23,7 @@ test('shows the random pick and opens its detail page', async () => {
 });
 
 test('shows an empty state when there is no want-to-read candidate', async () => {
-  const screen = await render(<RandomWantToReadSheet book={null} candidateCount={0} onOpen={jest.fn()} onClose={jest.fn()} onPickAgain={jest.fn()} />);
+  const screen = await render(<RandomWantToReadSheet book={null} candidateCount={0} loading={false} error={null} onOpenBook={jest.fn()} onClose={jest.fn()} onReroll={jest.fn()} onRetry={jest.fn()} onAddBook={jest.fn()} />);
   expect(screen.getByText('暂时没有想读的小说')).toBeTruthy();
+  expect(screen.getByText('去添加小说')).toBeTruthy();
 });

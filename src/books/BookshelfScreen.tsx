@@ -47,9 +47,11 @@ export default function Bookshelf() {
   const [overview, setOverview] = useState<LibraryOverview | null>(null);
   const [overviewError, setOverviewError] = useState('');
   const [randomPick, setRandomPick] = useState<{ book: import('./types').Book | null; candidateCount: number } | null>(null);
+  const [randomVisible, setRandomVisible] = useState(false);
   const [randomBusy, setRandomBusy] = useState(false);
   const [randomError, setRandomError] = useState('');
   const previousRandomId = useRef<string | null>(null);
+  const randomRequest = useRef(0);
   const hasFocused = useRef(false);
   const { results, loading, error: searchError, resultsCurrent, retry } = useBookSearch(searchRepo, { query, status, bookType, tagIds, sortOrder });
   useFocusEffect(useCallback(() => {
@@ -73,19 +75,28 @@ export default function Bookshelf() {
 
   async function pickRandomWantToRead() {
     if (randomBusy) return;
+    const request = ++randomRequest.current;
+    setRandomVisible(true);
     setRandomBusy(true);
     setRandomError('');
     try {
       const books = await booksRepo.list();
+      if (randomRequest.current !== request) return;
       const candidates = books.filter(book => book.status === 'want_to_read');
       const selected = selectWantToReadBook(books, previousRandomId.current);
       previousRandomId.current = selected?.id ?? previousRandomId.current;
       setRandomPick({ book: selected, candidateCount: candidates.length });
     } catch {
-      setRandomError('随机抽取失败，请重试');
+      if (randomRequest.current === request) setRandomError('随机抽取失败，请重试');
     } finally {
-      setRandomBusy(false);
+      if (randomRequest.current === request) setRandomBusy(false);
     }
+  }
+
+  function closeRandomSheet() {
+    randomRequest.current += 1;
+    setRandomVisible(false);
+    setRandomBusy(false);
   }
 
   function enterBulkMode() {
@@ -209,8 +220,8 @@ export default function Bookshelf() {
         selection={bulkMode ? { checked: selectedBooks.has(item.book.id), onToggle: () => toggleSelected(item.book) } : undefined} />}
     />
     <Link href="/book/new" asChild><Pressable accessibilityRole="button" style={[styles.add, { bottom: insets.bottom + 8, backgroundColor: theme.primary }]}><Text style={styles.addText}>＋ 添加小说</Text></Pressable></Link>
-    <Modal visible={randomPick !== null} transparent animationType="slide" onRequestClose={() => setRandomPick(null)}>
-      <View style={styles.modalBackdrop}><Pressable accessibilityRole="button" accessibilityLabel="关闭随机抽取" style={styles.modalDismiss} onPress={() => setRandomPick(null)} /><View style={styles.modalSheet}><RandomWantToReadSheet book={randomPick?.book ?? null} candidateCount={randomPick?.candidateCount ?? 0} onClose={() => setRandomPick(null)} onPickAgain={() => { void pickRandomWantToRead(); }} onOpen={id => { setRandomPick(null); router.push({ pathname: '/book/[id]', params: { id } }); }} /></View></View>
+    <Modal visible={randomVisible} transparent animationType="slide" onRequestClose={closeRandomSheet}>
+      <View style={styles.modalBackdrop}><Pressable accessibilityRole="button" accessibilityLabel="关闭随机抽取" style={styles.modalDismiss} onPress={closeRandomSheet} /><View style={styles.modalSheet}><RandomWantToReadSheet book={randomPick?.book ?? null} candidateCount={randomPick?.candidateCount ?? 0} loading={randomBusy} error={randomError || null} onClose={closeRandomSheet} onReroll={() => { void pickRandomWantToRead(); }} onRetry={() => { void pickRandomWantToRead(); }} onAddBook={() => { closeRandomSheet(); router.push('/book/new'); }} onOpenBook={id => { closeRandomSheet(); router.push({ pathname: '/book/[id]', params: { id } }); }} /></View></View>
     </Modal>
   </View>;
 }

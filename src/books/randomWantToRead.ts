@@ -9,6 +9,8 @@ export function selectWantToReadBook(
   if (!candidates.length) return null;
   const withoutPrevious = previousId ? candidates.filter(book => book.id !== previousId) : candidates;
   const pool = withoutPrevious.length ? withoutPrevious : candidates;
-  const index = Math.min(pool.length - 1, Math.max(0, Math.floor(random() * pool.length)));
+  const source = random();
+  if (!Number.isFinite(source) || source < 0 || source >= 1) throw new Error('随机数必须在 [0, 1) 范围内');
+  const index = Math.floor(source * pool.length);
   return pool[index] ?? null;
 }

@@ -21,4 +21,6 @@ test('shows the committed import stats and actions', async () => {
   fireEvent.press(screen.getByText('查看年度回顾'));
   expect(onBookshelf).toHaveBeenCalled();
   expect(onRecap).toHaveBeenCalled();
+  await screen.rerender(<ImportCompletionView summary={{ ...summary, earliestRecordedOn: null }} onBookshelf={jest.fn()} onAnnualRecap={jest.fn()} />);
+  expect(screen.getByText('最早记录日期：日期未记录')).toBeTruthy();
 });
