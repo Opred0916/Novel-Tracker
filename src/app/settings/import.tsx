@@ -8,7 +8,7 @@ import { ImportSourceForm } from '../../import/ImportSourceForm';
 import { ScreenshotImportSource } from '../../import/ScreenshotImportSource';
 import { TableImportMapping } from '../../import/TableImportMappingView';
 import { TableImportSource } from '../../import/TableImportSource';
-import { findImportDuplicates, type DuplicateHint, type ImportReview } from '../../import/importReview';
+import { findImportDuplicates, type DuplicateHint, type ExistingBookSummary, type ExistingNoteSummary, type ImportReview } from '../../import/importReview';
 import { decodeImportUtf8, parseTextImport } from '../../import/textImportParser';
 import type { ImportMode, ImportParseResult } from '../../import/importTypes';
 import { pickImportTable, pickImportTxt } from '../../import/importPlatform';
@@ -42,6 +42,12 @@ export default function ImportPage() {
   const [screenshotError, setScreenshotError] = useState('');
   const screenshotId = useRef(0);
   const screenshotRun = useRef(0);
+  const existingSummaries = useRef<{ books: ExistingBookSummary[]; notes: ExistingNoteSummary[] }>({ books: [], notes: [] });
+
+  function updateReview(next: ImportReview) {
+    setReview(next);
+    setHints(findImportDuplicates(next, existingSummaries.current.books, existingSummaries.current.notes));
+  }
 
   async function buildReview(result: ImportParseResult) {
     const existingBooks = await books.list();
@@ -50,8 +56,11 @@ export default function ImportPage() {
       items: result.candidates.map(candidate => ({ candidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] })),
       fragments: result.fragments, fragmentDecisions: {}, warnings: result.warnings,
     };
-    setReview(next);
-    setHints(findImportDuplicates(next, existingBooks.map(book => ({ id: book.id, title: book.title, author: book.author })), existingNotes.map(note => ({ id: note.id, bookId: note.bookId, body: note.body }))));
+    existingSummaries.current = {
+      books: existingBooks.map(book => ({ id: book.id, title: book.title, author: book.author })),
+      notes: existingNotes.map(note => ({ id: note.id, bookId: note.bookId, body: note.body })),
+    };
+    updateReview(next);
   }
 
   function nextScreenshotId(): string { screenshotId.current += 1; return `page-${screenshotId.current}`; }
@@ -142,8 +151,7 @@ export default function ImportPage() {
       id: `manual-${Date.now()}`, sourceLine: 0, sourceText: '', title: '', author: null, protagonists: [], status: defaultStatus,
       ratingHalfStars: null, bookType: null, tagIds: [], sessions: [], notes: [], whyWantToRead: null, platform: null,
     };
-    setReview({ items: [{ candidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] }], fragments: [], fragmentDecisions: {} });
-    setHints([]);
+    updateReview({ items: [{ candidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] }], fragments: [], fragmentDecisions: {} });
   }
 
   async function confirm() {
@@ -154,7 +162,7 @@ export default function ImportPage() {
     finally { setBusy(false); }
   }
 
-  if (review) return <ImportReviewList review={review} hints={hints} busy={busy} error={error} onChange={setReview} onConfirm={() => { void confirm(); }} onCancel={() => { if (!busy) setReview(null); }} />;
+  if (review) return <ImportReviewList review={review} hints={hints} busy={busy} error={error} sourcePages={screenshotDraft?.pages} onChange={updateReview} onConfirm={() => { void confirm(); }} onCancel={() => { if (!busy) setReview(null); }} />;
   if (screenshotDraft) return <ScreenshotImportSource draft={screenshotDraft} done={screenshotDraft.pages.filter(page => page.ocrState !== 'pending').length} total={screenshotDraft.pages.length} error={screenshotError} onPick={() => { void chooseScreenshots(); }} onMove={(from, to) => changeScreenshot(moveScreenshot(screenshotDraft, from, to))} onRemove={pageId => { const page = screenshotDraft.pages.find(entry => entry.id === pageId); if (page) void cleanupImportScreenshotCopies([page.uri]); changeScreenshot(removeScreenshot(screenshotDraft, pageId)); }} onRetry={retryScreenshot} onTextChange={(pageId, value) => changeScreenshot(updateScreenshotText(screenshotDraft, pageId, value))} onContinuationChange={(pageId, value) => changeScreenshot(setScreenshotContinuation(screenshotDraft, pageId, value))} onParse={() => { void parseScreenshots(); }} />;
   if (tableStep === 'sheet') return <TableImportSource fileName={tableFileName} sheets={tableSheets} onSelect={index => { setTableSheetIndex(index); setTableStep('mapping'); }} onCancel={() => { setTableStep('source'); setTableSheets([]); }} />;
   if (tableStep === 'mapping' && tableSheets[tableSheetIndex]) return <TableImportMapping sheet={tableSheets[tableSheetIndex]} defaultStatus={defaultStatus} tagIdsByName={availableTags} onMapped={result => { setTableStep('source'); void buildReview(result); }} onBack={() => { setTableStep(tableSheets.length > 1 ? 'sheet' : 'source'); }} />;

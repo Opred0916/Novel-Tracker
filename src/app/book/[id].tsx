@@ -131,7 +131,7 @@ export default function BookPage() {
       pathname: '/book/[id]/reading/[sessionId]', params: { id, sessionId },
     })} />
     <View testID="notes-section-container" onLayout={event => { setNotesSectionY(event.nativeEvent.layout.y); setNotesSectionLaidOut(true); }}>
-      <NotesSection bookId={id} repository={notesRepo} highlights={highlights} focusNoteId={focusNoteId} onFocusResult={handleNoteFocus} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} />
+      <NotesSection bookId={id} repository={notesRepo} highlights={highlights} sessions={sessions} focusNoteId={focusNoteId} onFocusResult={handleNoteFocus} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} />
     </View>
     {focusNoteError ? <Text style={styles.focusNoteError}>{focusNoteError}</Text> : null}
     <HighlightsSection bookId={id} repository={notesRepo} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} />

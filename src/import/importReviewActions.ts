@@ -68,10 +68,14 @@ export function applyImportReviewAction(review: ImportReview, action: ImportRevi
     const moved = source.candidate.notes.filter(note => action.noteIds.includes(note.id));
     if (!moved.length) return review;
     const nextSource = { ...source, candidate: { ...source.candidate, notes: source.candidate.notes.filter(note => !action.noteIds.includes(note.id)) } };
-    const newCandidate: ImportCandidate = { ...source.candidate, id: action.newCandidateId, title: '', notes: moved };
-    const items = [...review.items]; items[sourceIndex] = nextSource; items.push({ ...source, candidate: newCandidate });
-    const decisions = Object.fromEntries(Object.entries(review.fragmentDecisions).map(([id, decision]) => decision.kind === 'note' && action.noteIds.includes(decision.noteId) ? [id, decision] : [id, decision]));
-    return withItems(review, items, decisions);
+    const newCandidate: ImportCandidate = {
+      ...source.candidate, id: action.newCandidateId, title: '', author: null, protagonists: [], ratingHalfStars: null,
+      bookType: null, tagIds: [], sessions: [], whyWantToRead: null, platform: null, notes: moved,
+      sourceLine: moved[0].sourceRef?.line ?? source.candidate.sourceLine,
+      sourceText: moved[0].sourceText, sourceRef: moved[0].sourceRef,
+    };
+    const items = [...review.items]; items[sourceIndex] = nextSource; items.push({ candidate: newCandidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] });
+    return withItems(review, items);
   }
   if (action.type === 'merge_candidates') {
     const sourceIndex = review.items.findIndex(item => item.candidate.id === action.sourceCandidateId);
@@ -79,7 +83,28 @@ export function applyImportReviewAction(review: ImportReview, action: ImportRevi
     if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return review;
     const source = review.items[sourceIndex];
     const target = review.items[targetIndex];
-    const items = review.items.filter((_, index) => index !== sourceIndex).map(item => item.candidate.id === target.candidate.id ? { ...item, candidate: { ...item.candidate, notes: [...item.candidate.notes, ...source.candidate.notes] } } : item);
+    if (source.action !== target.action || source.targetBookId !== target.targetBookId) throw new Error('请先统一两条候选的导入方式和目标书籍');
+    if (source.candidate.status !== target.candidate.status) throw new Error('请先统一两条候选的阅读状态');
+    if (source.candidate.sessions.length && target.candidate.sessions.length && JSON.stringify(source.candidate.sessions) !== JSON.stringify(target.candidate.sessions)) throw new Error('阅读记录不同，请先核对后再合并');
+    for (const field of ['author', 'bookType', 'ratingHalfStars', 'whyWantToRead', 'platform'] as const) {
+      if (source.candidate[field] != null && target.candidate[field] != null && source.candidate[field] !== target.candidate[field]) throw new Error('候选资料不同，请先核对后再合并');
+    }
+    const merged: ImportCandidate = {
+      ...target.candidate,
+      author: target.candidate.author ?? source.candidate.author,
+      protagonists: [...new Set([...target.candidate.protagonists, ...source.candidate.protagonists])],
+      ratingHalfStars: target.candidate.ratingHalfStars ?? source.candidate.ratingHalfStars,
+      bookType: target.candidate.bookType ?? source.candidate.bookType,
+      tagIds: [...new Set([...target.candidate.tagIds, ...source.candidate.tagIds])],
+      sessions: target.candidate.sessions.length ? target.candidate.sessions : source.candidate.sessions,
+      whyWantToRead: target.candidate.whyWantToRead ?? source.candidate.whyWantToRead,
+      platform: target.candidate.platform ?? source.candidate.platform,
+      notes: [...target.candidate.notes, ...source.candidate.notes],
+    };
+    const items = review.items.filter((_, index) => index !== sourceIndex).map(item => item.candidate.id === target.candidate.id ? {
+      ...item, candidate: merged,
+      acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [],
+    } : item);
     const decisions = Object.fromEntries(Object.entries(review.fragmentDecisions).map(([id, decision]) => decision.kind === 'book' && decision.candidateId === source.candidate.id ? [id, { kind: 'book', candidateId: target.candidate.id }] : [id, decision]));
     return withItems(review, items, decisions);
   }

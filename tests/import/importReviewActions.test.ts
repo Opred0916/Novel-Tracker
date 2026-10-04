@@ -61,3 +61,35 @@ test('deleting a fragment note removes its decision instead of leaving a false p
   expect(deleted.fragmentDecisions['fragment-1']).toBeUndefined();
   expect(validateImportReview(deleted).map(issue => issue.code)).toContain('unacknowledged_fragment');
 });
+
+test('splitting a thought does not duplicate the original book reading history or rating', () => {
+  const current = review();
+  const original = current.items[0].candidate;
+  original.sessions = [{ ordinal: 1, outcome: 'finished', startedOn: '2024-01-01', endedOn: '2024-01-02' }];
+  original.ratingHalfStars = 9;
+  original.notes[0].sourceRef = { kind: 'screenshot', pageId: 'page-1', line: 7 };
+
+  const split = applyImportReviewAction(current, { type: 'split_candidate', sourceCandidateId: 'candidate-1', newCandidateId: 'candidate-3', noteIds: [original.notes[0].id] });
+  const separated = split.items.find(item => item.candidate.id === 'candidate-3')?.candidate;
+  expect(separated?.sessions).toEqual([]);
+  expect(separated?.ratingHalfStars).toBeNull();
+  expect(separated?.sourceRef).toEqual({ kind: 'screenshot', pageId: 'page-1', line: 7 });
+});
+
+test('merging candidates does not silently discard conflicting reading histories', () => {
+  const current = review();
+  current.items[0].candidate.sessions = [{ ordinal: 1, outcome: 'finished', startedOn: '2024-01-01', endedOn: '2024-01-02' }];
+  current.items[1].candidate.sessions = [{ ordinal: 1, outcome: 'finished', startedOn: '2025-01-01', endedOn: '2025-01-02' }];
+
+  expect(() => applyImportReviewAction(current, { type: 'merge_candidates', sourceCandidateId: 'candidate-2', targetCandidateId: 'candidate-1' })).toThrow('阅读记录');
+});
+
+test('merging candidates requires duplicate acknowledgements to be checked again', () => {
+  const current = review();
+  current.items[0].acknowledgedDuplicateBookIds = ['existing-book'];
+  current.items[0].acknowledgedDuplicateNoteIds = ['existing-note'];
+  const merged = applyImportReviewAction(current, { type: 'merge_candidates', sourceCandidateId: 'candidate-2', targetCandidateId: 'candidate-1' });
+
+  expect(merged.items[0].acknowledgedDuplicateBookIds).toEqual([]);
+  expect(merged.items[0].acknowledgedDuplicateNoteIds).toEqual([]);
+});

@@ -9,7 +9,8 @@ import { BookCard } from '../books/BookCard';
 import { BulkOrganizePanel } from '../books/BulkOrganizePanel';
 import { useBookSearch } from '../books/useBookSearch';
 import { BOOK_STATUS_LABELS } from '../books/status';
-import { useBookSearchRepository, useBulkOrganizeRepository, useTags } from '../storage/AppProvider';
+import type { LibraryOverview } from '../books/libraryOverviewRepository';
+import { useBookSearchRepository, useBulkOrganizeRepository, useLibraryOverviewRepository, useTags } from '../storage/AppProvider';
 
 const BOOK_SORT_OPTIONS: { value: BookSortOrder; label: string }[] = [
   { value: 'recently_updated', label: '最近修改' },
@@ -21,6 +22,7 @@ const BOOK_SORT_OPTIONS: { value: BookSortOrder; label: string }[] = [
 export default function Bookshelf() {
   const searchRepo = useBookSearchRepository();
   const bulkOrganizeRepository = useBulkOrganizeRepository();
+  const overviewRepository = useLibraryOverviewRepository();
   const tagRepo = useTags();
   const [tags, setTags] = useState<Tag[]>([]);
   const [query, setQuery] = useState('');
@@ -35,6 +37,8 @@ export default function Bookshelf() {
   const [selectedBooks, setSelectedBooks] = useState<Map<string, { title: string; author: string | null }>>(new Map());
   const [showFilters, setShowFilters] = useState(false);
   const [tagError, setTagError] = useState('');
+  const [overview, setOverview] = useState<LibraryOverview | null>(null);
+  const [overviewError, setOverviewError] = useState('');
   const hasFocused = useRef(false);
   const { results, loading, error: searchError, resultsCurrent, retry } = useBookSearch(searchRepo, { query, status, bookType, tagIds, sortOrder });
   useFocusEffect(useCallback(() => {
@@ -42,11 +46,12 @@ export default function Bookshelf() {
     if (hasFocused.current) retry();
     else hasFocused.current = true;
     tagRepo.list().then(items => { if (active) { setTags(items); setTagError(''); } }).catch(() => { if (active) setTagError('读取标签失败'); });
+    overviewRepository.getOverview(new Date().getFullYear()).then(value => { if (active) { setOverview(value); setOverviewError(''); } }).catch(() => { if (active) setOverviewError('状态数量暂时无法读取'); });
     return () => { active = false; };
-  }, [retry, tagRepo]));
+  }, [overviewRepository, retry, tagRepo]));
 
-  const activeFilterCount = (status ? 1 : 0) + (bookType ? 1 : 0) + tagIds.length;
-  const hasConditions = query.trim().length > 0 || activeFilterCount > 0;
+  const activeFilterCount = (bookType ? 1 : 0) + tagIds.length;
+  const hasConditions = query.trim().length > 0 || Boolean(status) || activeFilterCount > 0;
 
   function clearFilters() {
     setQuery('');
@@ -98,6 +103,8 @@ export default function Bookshelf() {
     setShowSelected(false);
     setSelectedBooks(new Map());
     retry();
+    try { setOverview(await overviewRepository.getOverview(new Date().getFullYear())); setOverviewError(''); }
+    catch { setOverviewError('状态数量暂时无法读取'); }
     try {
       setTags(await tagRepo.list());
     } catch {
@@ -120,6 +127,12 @@ export default function Bookshelf() {
   return <View style={styles.page}>
     <Text style={styles.heading}>把喜欢的故事留在这里</Text>
     <Text style={styles.subheading}>想读 · 在读 · 读完 · 弃读</Text>
+    <View style={styles.statusFilters}>{[null, ...BOOK_STATUSES].map(value => <Pressable key={value ?? 'all'}
+      accessibilityRole="radio" accessibilityState={{ checked: status === value }} onPress={() => setStatus(value)}
+      style={[styles.chip, status === value && styles.chipSelected]}>
+      <Text style={[styles.chipText, status === value && styles.chipSelectedText]}>{value === null ? '全部' : BOOK_STATUS_LABELS[value]}{overview ? ` ${value === null ? overview.totalBooks : overview.byStatus[value]} 本` : ''}</Text>
+    </Pressable>)}</View>
+    {overviewError ? <Text style={styles.error}>{overviewError}</Text> : null}
     {tagError ? <Text style={styles.error}>{tagError}</Text> : null}
     {searchError ? <View style={styles.errorRow}><Text style={styles.error}>{searchError}</Text><Pressable accessibilityRole="button" onPress={retry}><Text style={styles.link}>重试</Text></Pressable></View> : null}
     {loading && results.length ? <ActivityIndicator accessibilityLabel="正在搜索" color="#593f72" style={styles.inlineLoading} /> : null}
@@ -158,12 +171,6 @@ export default function Bookshelf() {
     </View> : null}
     <FlatList data={results} keyExtractor={item => item.book.id} contentContainerStyle={styles.list}
       ListHeaderComponent={showFilters ? <View style={styles.filters}>
-        <Text style={styles.filterTitle}>阅读状态</Text>
-        <View style={styles.chips}>{[null, ...BOOK_STATUSES].map(value => <Pressable key={value ?? 'all'}
-          accessibilityRole="radio" accessibilityState={{ checked: status === value }} onPress={() => setStatus(value)}
-          style={[styles.chip, status === value && styles.chipSelected]}>
-          <Text style={[styles.chipText, status === value && styles.chipSelectedText]}>{value === null ? '全部状态' : BOOK_STATUS_LABELS[value]}</Text>
-        </Pressable>)}</View>
         <Text style={styles.filterTitle}>作品类型</Text>
         <View style={styles.chips}>{[null, ...BOOK_TYPES].map(value => <Pressable key={value ?? 'all'}
           accessibilityRole="radio" accessibilityState={{ checked: bookType === value }} onPress={() => setBookType(value)}
@@ -194,7 +201,7 @@ const styles = StyleSheet.create({
   bulkBar: { marginTop: 12, padding: 14, borderRadius: 14, backgroundColor: '#f3edf7', gap: 10 }, bulkCount: { color: '#302a25', fontWeight: '700' }, bulkActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   selectedList: { gap: 8 }, selectedRow: { flexDirection: 'row', alignItems: 'center', gap: 10 }, selectedName: { flex: 1, color: '#655e58' },
   filters: { gap: 10, paddingBottom: 20 }, filterTitle: { color: '#302a25', fontWeight: '600', marginTop: 8 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' },
+  statusFilters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' },
   chipSelected: { backgroundColor: '#593f72', borderColor: '#593f72' }, chipText: { color: '#302a25' }, chipSelectedText: { color: '#fff', fontWeight: '700' },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' }, emptyTitle: { fontSize: 20, fontWeight: '600', color: '#302a25' },
   add: { backgroundColor: '#593f72', padding: 18, borderRadius: 16, alignItems: 'center' }, addText: { color: 'white', fontWeight: '700', fontSize: 17 },
