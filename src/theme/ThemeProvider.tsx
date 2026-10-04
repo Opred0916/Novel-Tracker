@@ -1,9 +1,9 @@
-import { getItem, setItem } from 'expo-sqlite/kv-store';
+import Storage from 'expo-sqlite/kv-store';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { getThemePalette, THEME_STORAGE_KEY, type ThemeId, type ThemePalette } from './theme';
 
 export type ThemeStorage = { getItem(key: string): Promise<string | null>; setItem(key: string, value: string): Promise<void> };
-const defaultStorage: ThemeStorage = { getItem, setItem };
+const defaultStorage: ThemeStorage = { getItem: key => Storage.getItem(key), setItem: (key, value) => Storage.setItem(key, value) };
 
 type ThemeContextValue = {
   theme: ThemePalette;
@@ -12,6 +12,10 @@ type ThemeContextValue = {
   saveError: string | null;
 };
 const ThemeContext = createContext<ThemeContextValue | null>(null);
+const FALLBACK_THEME: ThemeContextValue = {
+  theme: getThemePalette('forest'), themeId: 'forest', saveError: null,
+  setTheme: async () => undefined,
+};
 
 export function ThemeProvider({ children, storage = defaultStorage }: { children: React.ReactNode; storage?: ThemeStorage }) {
   const [themeId, setThemeId] = useState<ThemeId>('forest');
@@ -47,6 +51,5 @@ export function ThemeProvider({ children, storage = defaultStorage }: { children
 
 export function useTheme(): ThemeContextValue {
   const value = useContext(ThemeContext);
-  if (!value) throw new Error('ThemeProvider is not ready');
-  return value;
+  return value ?? FALLBACK_THEME;
 }
