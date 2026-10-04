@@ -72,3 +72,11 @@ export function applyScreenshotOcrResult(draft: ScreenshotImportDraft, pageId: s
   pages[index] = { ...page, text, ocrState };
   return changed(draft, pages);
 }
+
+export function resetScreenshotForRetry(draft: ScreenshotImportDraft, pageId: string): ScreenshotImportDraft {
+  const index = draft.pages.findIndex(page => page.id === pageId);
+  if (index < 0) return draft;
+  const pages = [...draft.pages];
+  pages[index] = { ...pages[index], text: '', edited: false, ocrState: 'pending', revision: pages[index].revision + 1 };
+  return changed(draft, pages);
+}

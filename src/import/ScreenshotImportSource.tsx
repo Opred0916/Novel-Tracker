@@ -6,6 +6,7 @@ type Props = {
   draft: ScreenshotImportDraft;
   done: number;
   total: number;
+  error?: string;
   onPick: () => void;
   onMove: (from: number, to: number) => void;
   onRemove: (pageId: string) => void;
@@ -15,10 +16,11 @@ type Props = {
   onParse: () => void;
 };
 
-export function ScreenshotImportSource({ draft, done, total, onPick, onMove, onRemove, onRetry, onTextChange, onContinuationChange, onParse }: Props) {
+export function ScreenshotImportSource({ draft, done, total, error, onPick, onMove, onRemove, onRetry, onTextChange, onContinuationChange, onParse }: Props) {
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={styles.heading}>导入截图旧记录</Text>
     <Text style={styles.progress}>已识别 {done}/{total} 张。图片只在本机处理，提交前都可以修改文字和顺序。</Text>
+    {error ? <Text style={styles.error}>{error}</Text> : null}
     <Pressable accessibilityRole="button" onPress={onPick} style={styles.secondary}><Text style={styles.secondaryText}>继续选择截图</Text></Pressable>
     {draft.pages.map((page, index) => {
       const status = page.ocrState === 'recognized' ? '已识别' : page.ocrState === 'empty' ? '未识别到文字' : page.ocrState === 'failed' ? '识别失败，可手动输入' : page.ocrState === 'unavailable' ? '本地识字不可用，可手动输入' : page.ocrState === 'manual' ? '已手动修改' : '等待识别';
@@ -58,4 +60,5 @@ const styles = StyleSheet.create({
   primaryText: { color: '#fff', fontWeight: '700' },
   secondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center' },
   secondaryText: { color: '#593f72', fontWeight: '700' },
+  error: { color: '#b52626', lineHeight: 20 },
 });

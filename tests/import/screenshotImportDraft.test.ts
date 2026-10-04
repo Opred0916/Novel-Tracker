@@ -2,6 +2,7 @@ import {
   createScreenshotDraft,
   moveScreenshot,
   removeScreenshot,
+  resetScreenshotForRetry,
   setScreenshotContinuation,
   updateScreenshotText,
 } from '../../src/import/screenshotImportDraft';
@@ -40,4 +41,13 @@ test('removing a page invalidates the draft without changing the other page', ()
   expect(result.pages).toHaveLength(1);
   expect(result.pages[0]).toMatchObject({ id: 'page-2', uri: 'file:///two.png', continuesPrevious: false });
   expect(result.parseRevision).toBe(1);
+});
+
+test('prepares a manually edited page for an explicit OCR retry without touching other pages', () => {
+  const edited = updateScreenshotText(draft(), 'page-1', '手动文字');
+  const retried = resetScreenshotForRetry(edited, 'page-1');
+
+  expect(retried.pages[0]).toMatchObject({ text: '', edited: false, ocrState: 'pending', revision: 2 });
+  expect(retried.pages[1]).toMatchObject({ text: '', edited: false, ocrState: 'pending', revision: 0 });
+  expect(retried.parseRevision).toBe(2);
 });

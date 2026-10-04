@@ -1,7 +1,7 @@
 import { BOOK_STATUSES, type BookStatus } from '../books/types';
 import { MAX_IMPORT_BYTES, MAX_IMPORT_CANDIDATES } from './textImportParser';
 import type { ScreenshotPageDraft } from './screenshotImportDraft';
-import type { ImportCandidate, ImportFragment, ImportMode, ImportNoteDraft, ImportParseResult, ImportSourceRef } from './importTypes';
+import type { ImportCandidate, ImportMode, ImportNoteDraft, ImportParseResult, ImportSourceRef } from './importTypes';
 
 type SourceLine = { pageId: string; line: number; raw: string; text: string };
 

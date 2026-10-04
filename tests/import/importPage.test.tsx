@@ -3,10 +3,14 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router } from 'expo-router';
 import ImportPage from '../../src/app/settings/import';
 import { pickImportTxt } from '../../src/import/importPlatform';
+import { pickImportScreenshots } from '../../src/import/screenshotImportPlatform';
+import { getLocalImageTextRecognizer } from '../../src/books/localImageTextRecognizer';
 import { useBooks, useImportCommitService, useNotes, useTags } from '../../src/storage/AppProvider';
 
 jest.mock('expo-router', () => ({ router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() } }));
-jest.mock('../../src/import/importPlatform', () => ({ pickImportTxt: jest.fn() }));
+jest.mock('../../src/import/importPlatform', () => ({ pickImportTxt: jest.fn(), pickImportScreenshots: jest.fn() }));
+jest.mock('../../src/import/screenshotImportPlatform', () => ({ pickImportScreenshots: jest.fn(), cleanupImportScreenshotCopies: jest.fn() }));
+jest.mock('../../src/books/localImageTextRecognizer', () => ({ getLocalImageTextRecognizer: jest.fn() }));
 jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useNotes: jest.fn(), useTags: jest.fn(), useImportCommitService: jest.fn() }));
 
 const books = { list: jest.fn() };
@@ -25,6 +29,8 @@ beforeEach(() => {
   tags.list.mockResolvedValue([]);
   commitService.commit.mockResolvedValue({ createdBooks: 1, createdNotes: 0, appendedNotes: 0, skippedItems: 0 });
   jest.mocked(pickImportTxt).mockResolvedValue(null);
+  jest.mocked(pickImportScreenshots).mockResolvedValue(null);
+  jest.mocked(getLocalImageTextRecognizer).mockReturnValue({ isAvailable: () => false, recognize: jest.fn() });
 });
 
 test('uses pasted text and TXT files as the same preview flow', async () => {
@@ -42,5 +48,37 @@ test('keeps pasted draft when TXT selection is cancelled', async () => {
   await fireEvent.changeText(screen.getByPlaceholderText('粘贴旧书单或摘记文字'), '保留这段文字');
   await fireEvent.press(screen.getByText('选择 TXT 文件'));
   expect(screen.getByDisplayValue('保留这段文字')).toBeTruthy();
+  expect(commitService.commit).not.toHaveBeenCalled();
+});
+
+test('imports multiple screenshots through manual text when local OCR is unavailable', async () => {
+  jest.mocked(pickImportScreenshots).mockResolvedValue(['file:///one.png', 'file:///two.png']);
+  const screen = await render(<ImportPage />);
+
+  await fireEvent.press(screen.getByText('从截图导入'));
+  await waitFor(() => expect(screen.getByText('导入截图旧记录')).toBeTruthy());
+  expect(screen.getAllByText('本地识字不可用，可手动输入').length).toBe(2);
+  await fireEvent.changeText(screen.getByLabelText('第 1 张文字'), '书名：残次品');
+  await fireEvent.changeText(screen.getByLabelText('第 2 张文字'), '书名：默读');
+  await fireEvent.press(screen.getByText('生成导入预览'));
+  await waitFor(() => expect(screen.getByDisplayValue('残次品')).toBeTruthy());
+  await fireEvent.press(screen.getByText('确认导入'));
+  await waitFor(() => expect(commitService.commit).toHaveBeenCalled());
+});
+
+test('keeps screenshot text when the picker is cancelled and invalidates an old preview after edits', async () => {
+  jest.mocked(pickImportScreenshots).mockResolvedValue(['file:///one.png']);
+  const screen = await render(<ImportPage />);
+  await fireEvent.press(screen.getByText('从截图导入'));
+  await waitFor(() => expect(screen.getByText('导入截图旧记录')).toBeTruthy());
+  await fireEvent.changeText(screen.getByLabelText('第 1 张文字'), '书名：旧书');
+  jest.mocked(pickImportScreenshots).mockResolvedValue(null);
+  await fireEvent.press(screen.getByText('继续选择截图'));
+  expect(screen.getByDisplayValue('书名：旧书')).toBeTruthy();
+  await fireEvent.press(screen.getByText('生成导入预览'));
+  await waitFor(() => expect(screen.getByDisplayValue('旧书')).toBeTruthy());
+  await fireEvent.press(screen.getByText('返回修改文字'));
+  await fireEvent.changeText(screen.getByLabelText('第 1 张文字'), '书名：修改后');
+  expect(screen.queryByText('确认导入')).toBeNull();
   expect(commitService.commit).not.toHaveBeenCalled();
 });
