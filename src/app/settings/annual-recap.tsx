@@ -105,6 +105,7 @@ export default function AnnualRecapPage() {
         <View style={[styles.stat, { backgroundColor: theme.primary }]}><Text style={styles.statNumber}>{recap.thoughtCount}</Text><Text style={styles.statLabel}>留下 {recap.thoughtCount} 条想法</Text></View>
       </View>
       <Text style={[styles.help, { color: theme.mutedText }]}>仅统计记录了结束日期的读完记录；同一本书多次读完会分别计入完成次数。</Text>
+      <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/settings/themed-recap', params: { year: String(recap.year) } })} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>主题回顾卡片</Text></Pressable>
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>这一年读过的书</Text>
         {recap.books.length ? recap.books.map(book => <BookRecapCard key={book.bookId} book={book} onPress={() => openBook(book.bookId)} />) : <Text style={[styles.empty, { color: theme.mutedText }]}>这一年还没有带完成日期的阅读记录</Text>}

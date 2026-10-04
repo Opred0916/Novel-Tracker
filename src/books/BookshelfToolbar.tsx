@@ -22,10 +22,11 @@ export type BookshelfToolbarProps = {
   onClearFilters(): void;
   onToggleFilters(): void;
   onEnterBulk(): void;
+  onRandomPick(): void;
   bulkMode: boolean;
 };
 
-export function BookshelfToolbar({ status, statusCounts, onStatusChange, query, onQueryChange, sortLabel, sortOptions, sortOrder, showSortOptions, onToggleSort, onSortChange, activeFilterCount, hasConditions, onClearFilters, onToggleFilters, onEnterBulk, bulkMode }: BookshelfToolbarProps) {
+export function BookshelfToolbar({ status, statusCounts, onStatusChange, query, onQueryChange, sortLabel, sortOptions, sortOrder, showSortOptions, onToggleSort, onSortChange, activeFilterCount, hasConditions, onClearFilters, onToggleFilters, onEnterBulk, onRandomPick, bulkMode }: BookshelfToolbarProps) {
   const { theme } = useTheme();
   const statuses: { value: BookStatus | null; label: string; count: number }[] = [
     { value: null, label: '全部', count: statusCounts.all },
@@ -47,6 +48,7 @@ export function BookshelfToolbar({ status, statusCounts, onStatusChange, query, 
       <Pressable accessibilityRole="button" onPress={onToggleFilters} style={[styles.toolButton, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={{ color: theme.primary, fontWeight: '700' }}>筛选条件{activeFilterCount ? `（${activeFilterCount}）` : ''}</Text></Pressable>
       {hasConditions ? <Pressable accessibilityRole="button" onPress={onClearFilters} style={styles.clearButton}><Text style={{ color: theme.primary, fontWeight: '700' }}>清除筛选</Text></Pressable> : null}
       {!bulkMode ? <Pressable accessibilityRole="button" onPress={onEnterBulk} style={styles.textButton}><Text style={{ color: theme.primary, fontWeight: '700' }}>批量整理</Text></Pressable> : null}
+      {!bulkMode ? <Pressable accessibilityRole="button" onPress={onRandomPick} style={styles.textButton}><Text style={{ color: theme.primary, fontWeight: '700' }}>随机想读</Text></Pressable> : null}
     </View>
     {showSortOptions ? <View style={styles.sortOptions}>{sortOptions.map(option => <Pressable key={option.value} accessibilityRole="radio" accessibilityState={{ checked: sortOrder === option.value }} onPress={() => onSortChange(option.value)} style={[styles.sortOption, { backgroundColor: sortOrder === option.value ? theme.primarySoft : theme.card, borderColor: theme.border }]}><Text style={{ color: theme.text }}>{option.label}</Text></Pressable>)}</View> : null}
   </View>;

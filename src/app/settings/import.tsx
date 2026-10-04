@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { Alert } from 'react-native';
 import { useRef, useState } from 'react';
 import type { BookStatus } from '../../books/types';
@@ -19,6 +19,7 @@ import { parseScreenshotImport } from '../../import/screenshotImportParser';
 import { parseCsvTable, parseXlsxTables } from '../../import/tableImportParser';
 import type { TableSheet } from '../../import/tableImportTypes';
 import { useBooks, useImportCommitService, useNotes, useTags } from '../../storage/AppProvider';
+import { ImportCompletionView } from '../../import/ImportCompletionView';
 
 export default function ImportPage() {
   const books = useBooks();
@@ -40,6 +41,7 @@ export default function ImportPage() {
   const [availableTags, setAvailableTags] = useState<ReadonlyMap<string, string>>(new Map());
   const [screenshotDraft, setScreenshotDraft] = useState<ScreenshotImportDraft | null>(null);
   const [screenshotError, setScreenshotError] = useState('');
+  const [completion, setCompletion] = useState<import('../../import/importReview').ImportSummary | null>(null);
   const screenshotId = useRef(0);
   const screenshotRun = useRef(0);
   const existingSummaries = useRef<{ books: ExistingBookSummary[]; notes: ExistingNoteSummary[] }>({ books: [], notes: [] });
@@ -157,12 +159,18 @@ export default function ImportPage() {
   async function confirm() {
     if (!review || busy) return;
     setBusy(true); setError('');
-    try { await service.commit(review); await cleanupImportScreenshotCopies(screenshotDraft?.pages.map(page => page.uri) ?? []); setScreenshotDraft(null); router.replace('/'); }
+    try {
+      const summary = await service.commit(review);
+      try { await cleanupImportScreenshotCopies(screenshotDraft?.pages.map(page => page.uri) ?? []); } catch { /* cleanup is best effort after a successful commit */ }
+      setScreenshotDraft(null);
+      setCompletion(summary);
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : '导入失败，请检查预览后重试'); }
     finally { setBusy(false); }
   }
 
-  if (review) return <ImportReviewList review={review} hints={hints} busy={busy} error={error} sourcePages={screenshotDraft?.pages} onChange={updateReview} onConfirm={() => { void confirm(); }} onCancel={() => { if (!busy) setReview(null); }} />;
+  if (completion) return <><Stack.Screen options={{ title: '导入完成' }} /><ImportCompletionView summary={completion} onBookshelf={() => router.replace('/')} onAnnualRecap={() => router.replace('/settings/annual-recap')} /></>;
+  if (review) return <><Stack.Screen options={{ title: '追加旧记录' }} /><ImportReviewList review={review} hints={hints} busy={busy} error={error} sourcePages={screenshotDraft?.pages} onChange={updateReview} onConfirm={() => { void confirm(); }} onCancel={() => { if (!busy) setReview(null); }} /></>;
   if (screenshotDraft) return <ScreenshotImportSource draft={screenshotDraft} done={screenshotDraft.pages.filter(page => page.ocrState !== 'pending').length} total={screenshotDraft.pages.length} error={screenshotError} onPick={() => { void chooseScreenshots(); }} onMove={(from, to) => changeScreenshot(moveScreenshot(screenshotDraft, from, to))} onRemove={pageId => { const page = screenshotDraft.pages.find(entry => entry.id === pageId); if (page) void cleanupImportScreenshotCopies([page.uri]); changeScreenshot(removeScreenshot(screenshotDraft, pageId)); }} onRetry={retryScreenshot} onTextChange={(pageId, value) => changeScreenshot(updateScreenshotText(screenshotDraft, pageId, value))} onContinuationChange={(pageId, value) => changeScreenshot(setScreenshotContinuation(screenshotDraft, pageId, value))} onParse={() => { void parseScreenshots(); }} />;
   if (tableStep === 'sheet') return <TableImportSource fileName={tableFileName} sheets={tableSheets} onSelect={index => { setTableSheetIndex(index); setTableStep('mapping'); }} onCancel={() => { setTableStep('source'); setTableSheets([]); }} />;
   if (tableStep === 'mapping' && tableSheets[tableSheetIndex]) return <TableImportMapping sheet={tableSheets[tableSheetIndex]} defaultStatus={defaultStatus} tagIdsByName={availableTags} onMapped={result => { setTableStep('source'); void buildReview(result); }} onBack={() => { setTableStep(tableSheets.length > 1 ? 'sheet' : 'source'); }} />;

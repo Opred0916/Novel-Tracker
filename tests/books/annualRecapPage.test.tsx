@@ -54,6 +54,8 @@ test('shows annual counts, reread sessions, thoughts and navigates to book or no
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: 'book-1' } });
   await fireEvent.press(screen.getByText('这一年最喜欢的段落'));
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: 'book-1', focusNoteId: 'note-1' } });
+  await fireEvent.press(screen.getByText('主题回顾卡片'));
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/settings/themed-recap', params: { year: '2026' } });
 });
 
 test('switches year and displays undated imported thoughts separately', async () => {

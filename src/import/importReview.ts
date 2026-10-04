@@ -27,7 +27,17 @@ export type DuplicateHint = {
   kind: 'book' | 'note'; candidateId: string; targetBookId?: string; existingBookId?: string; existingNoteId?: string; otherCandidateId?: string; message: string;
 };
 export type ImportValidationIssue = { code: string; candidateId?: string; fragmentId?: string; message: string };
-export type ImportSummary = { createdBooks: number; createdNotes: number; appendedNotes: number; skippedItems: number };
+export type ImportSummary = {
+  createdBooks: number;
+  createdNotes: number;
+  appendedNotes: number;
+  skippedItems: number;
+  createdSessions: number;
+  appendedBookCount: number;
+  rereadSessions: number;
+  fiveStarBooks: number;
+  earliestRecordedOn: string | null;
+};
 
 export function normalizeDuplicateKey(title: string): string {
   return title.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLocaleLowerCase('en-US');
@@ -114,10 +124,31 @@ export function validateImportReview(review: ImportReview): ImportValidationIssu
 }
 
 export function summarizeImport(review: ImportReview): ImportSummary {
-  return review.items.reduce((summary, item) => {
-    if (item.action === 'create') { summary.createdBooks += 1; summary.createdNotes += item.candidate.notes.length; }
-    else if (item.action === 'append_notes') summary.appendedNotes += item.candidate.notes.length;
-    else summary.skippedItems += 1;
-    return summary;
-  }, { createdBooks: 0, createdNotes: 0, appendedNotes: 0, skippedItems: 0 });
+  const summary: ImportSummary = {
+    createdBooks: 0, createdNotes: 0, appendedNotes: 0, skippedItems: 0, createdSessions: 0,
+    appendedBookCount: 0, rereadSessions: 0, fiveStarBooks: 0, earliestRecordedOn: null,
+  };
+  const appendedBookIds = new Set<string>();
+  const recordedDates: string[] = [];
+  for (const item of review.items) {
+    if (item.action === 'create') {
+      summary.createdBooks += 1;
+      summary.createdNotes += item.candidate.notes.length;
+      if (item.candidate.status === 'finished' && item.candidate.ratingHalfStars === 10) summary.fiveStarBooks += 1;
+      const sessions = item.candidate.sessions.length ? item.candidate.sessions : item.candidate.status === 'want_to_read' ? [] : [{ ordinal: 1, startedOn: null, endedOn: null }];
+      summary.createdSessions += sessions.length;
+      summary.rereadSessions += sessions.filter(session => session.ordinal >= 2).length;
+      for (const session of sessions) {
+        if (session.startedOn && validOriginalDate(session.startedOn)) recordedDates.push(session.startedOn);
+        if (session.endedOn && validOriginalDate(session.endedOn)) recordedDates.push(session.endedOn);
+      }
+      for (const note of item.candidate.notes) if (note.originalRecordedOn && validOriginalDate(note.originalRecordedOn)) recordedDates.push(note.originalRecordedOn);
+    } else if (item.action === 'append_notes') {
+      summary.appendedNotes += item.candidate.notes.length;
+      if (item.targetBookId) appendedBookIds.add(item.targetBookId);
+    } else summary.skippedItems += 1;
+  }
+  summary.appendedBookCount = appendedBookIds.size;
+  summary.earliestRecordedOn = recordedDates.sort()[0] ?? null;
+  return summary;
 }

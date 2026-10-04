@@ -1,5 +1,6 @@
 import type { Database } from '../storage/database';
 import type { Note } from './types';
+import { isValidRecapDate } from './recapDates';
 
 export type RecapSession = {
   id: string;
@@ -60,20 +61,11 @@ function isValidYear(year: number): boolean {
   return Number.isInteger(year) && year >= 1 && year <= 9999;
 }
 
-function isValidCalendarDate(value: string | null): value is string {
-  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const [year, month, day] = value.split('-').map(Number);
-  if (year < 1 || year > 9999) return false;
-  const date = new Date(0);
-  date.setUTCFullYear(year, month - 1, day);
-  return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
-}
-
 function localDateAndTime(value: string): { date: string; time: string; sortKey: string } | null {
   const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}:\d{2})$/.exec(value);
   if (!match) return null;
   const [, year, month, day, hours, minutes, seconds = '00', , offset] = match;
-  if (!isValidCalendarDate(`${year}-${month}-${day}`) || Number(hours) > 23 || Number(minutes) > 59 || Number(seconds) > 59) return null;
+  if (!isValidRecapDate(`${year}-${month}-${day}`) || Number(hours) > 23 || Number(minutes) > 59 || Number(seconds) > 59) return null;
   if (offset !== 'Z' && (Number(offset.slice(1, 3)) > 23 || Number(offset.slice(4, 6)) > 59)) return null;
   const parsed = new Date(value);
   if (!Number.isFinite(parsed.getTime())) return null;
@@ -92,13 +84,13 @@ function validOriginalTime(value: string | null): string | null {
 }
 
 export function getNoteRecordedOn(note: Pick<Note, 'sourceKind' | 'originalRecordedOn' | 'createdAt'>): string | null {
-  if (note.sourceKind === 'import') return isValidCalendarDate(note.originalRecordedOn) ? note.originalRecordedOn : null;
+  if (note.sourceKind === 'import') return isValidRecapDate(note.originalRecordedOn) ? note.originalRecordedOn : null;
   return localDateAndTime(note.createdAt)?.date ?? null;
 }
 
 function noteDateAndTime(row: NoteRow): { date: string | null; time: string | null; sortKey: string | null } {
   if (row.source_kind === 'import') {
-    const date = isValidCalendarDate(row.original_recorded_on) ? row.original_recorded_on : null;
+    const date = isValidRecapDate(row.original_recorded_on) ? row.original_recorded_on : null;
     const time = validOriginalTime(row.original_recorded_time);
     return {
       date,
@@ -119,7 +111,7 @@ function compareAscending(left: string, right: string): number {
 }
 
 function readYear(value: string): number | null {
-  return isValidCalendarDate(value) ? Number(value.slice(0, 4)) : null;
+  return isValidRecapDate(value) ? Number(value.slice(0, 4)) : null;
 }
 
 export class SqliteAnnualRecapRepository {
@@ -169,7 +161,7 @@ export class SqliteAnnualRecapRepository {
     const booksById = new Map<string, RecapBook>();
     for (const session of sessions) {
       const book = booksById.get(session.book_id) ?? { bookId: session.book_id, title: session.title, coverUri: session.cover_uri, sessions: [] };
-      book.sessions.push({ id: session.id, ordinal: Number(session.ordinal), startedOn: isValidCalendarDate(session.started_on) ? session.started_on : null, endedOn: session.ended_on! });
+      book.sessions.push({ id: session.id, ordinal: Number(session.ordinal), startedOn: isValidRecapDate(session.started_on) ? session.started_on : null, endedOn: session.ended_on! });
       booksById.set(session.book_id, book);
     }
     const books = [...booksById.values()];
