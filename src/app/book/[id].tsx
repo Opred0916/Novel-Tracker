@@ -1,5 +1,5 @@
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookDetail } from '../../books/BookDetail';
 import type { Book, ImageAsset, ReadingSession } from '../../books/types';
@@ -12,7 +12,7 @@ import type { ImageOcrProgress, ImageOcrRecord } from '../../books/imageOcrRepos
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
 export default function BookPage() {
-  const { id, focusImageId } = useLocalSearchParams<{ id: string; focusImageId?: string }>();
+  const { id, focusImageId, focusNoteId } = useLocalSearchParams<{ id: string; focusImageId?: string; focusNoteId?: string }>();
   const repo = useBooks();
   const historyRepo = useReadingHistory();
   const notesRepo = useNotes();
@@ -27,6 +27,11 @@ export default function BookPage() {
   const [previewImage, setPreviewImage] = useState<ImageAsset | null>(null);
   const [previewOcr, setPreviewOcr] = useState<ImageOcrRecord | null>(null);
   const [ocrProgress, setOcrProgress] = useState<ImageOcrProgress | null>(null);
+  const [notesSectionY, setNotesSectionY] = useState(0);
+  const [notesSectionLaidOut, setNotesSectionLaidOut] = useState(false);
+  const [focusNotePosition, setFocusNotePosition] = useState<{ noteId: string; y: number } | null>(null);
+  const [focusNoteError, setFocusNoteError] = useState('');
+  const detailScrollRef = useRef<ScrollView>(null);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -62,6 +67,21 @@ export default function BookPage() {
     if (!book || typeof id !== 'string') return;
     void Promise.resolve(imageOcr.progress(id)).then(setOcrProgress).catch(() => setOcrProgress(null));
   }, [book, id, imageOcr, retry]);
+
+  const handleNoteFocus = useCallback((found: boolean, contentY?: number) => {
+    if (!focusNoteId) return;
+    if (!found) {
+      setFocusNoteError('这条想法已不存在');
+      return;
+    }
+    setFocusNoteError('');
+    if (contentY !== undefined) setFocusNotePosition({ noteId: focusNoteId, y: contentY });
+  }, [focusNoteId]);
+
+  useEffect(() => {
+    if (!focusNoteId || !notesSectionLaidOut || focusNotePosition?.noteId !== focusNoteId) return;
+    detailScrollRef.current?.scrollTo({ y: Math.max(0, notesSectionY + focusNotePosition.y - 24), animated: true });
+  }, [focusNoteId, focusNotePosition, notesSectionLaidOut, notesSectionY]);
 
   if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator /></View>;
   if (loadState === 'missing') return <View style={styles.center}>
@@ -106,11 +126,14 @@ export default function BookPage() {
     ]);
   }
 
-  return <ScrollView testID="book-detail-scroll" style={styles.page} contentContainerStyle={styles.content}>
+  return <ScrollView ref={detailScrollRef} testID="book-detail-scroll" style={styles.page} contentContainerStyle={styles.content}>
     <BookDetail book={currentBook} sessions={sessions} onEditReading={sessionId => router.push({
       pathname: '/book/[id]/reading/[sessionId]', params: { id, sessionId },
     })} />
-    <NotesSection bookId={id} repository={notesRepo} highlights={highlights} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} />
+    <View testID="notes-section-container" onLayout={event => { setNotesSectionY(event.nativeEvent.layout.y); setNotesSectionLaidOut(true); }}>
+      <NotesSection bookId={id} repository={notesRepo} highlights={highlights} focusNoteId={focusNoteId} onFocusResult={handleNoteFocus} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} />
+    </View>
+    {focusNoteError ? <Text style={styles.focusNoteError}>{focusNoteError}</Text> : null}
     <HighlightsSection bookId={id} repository={notesRepo} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} />
     {ocrProgress && ocrProgress.total > 0 ? <Text style={styles.ocrProgress}>图片文字识别：{ocrProgress.done}/{ocrProgress.total}{ocrProgress.failed ? `（失败 ${ocrProgress.failed}）` : ''}</Text> : null}
     <Pressable accessibilityRole="button" disabled={deleting} style={[styles.edit, deleting && styles.disabled]} onPress={() => router.push({ pathname: '/book/[id]/edit', params: { id } })}>
@@ -136,5 +159,6 @@ const styles = StyleSheet.create({
   deleteText: { color: '#b52626', fontWeight: '700', fontSize: 16 },
   deleteError: { color: '#b52626', textAlign: 'center', marginHorizontal: 24, marginTop: 14 },
   ocrProgress: { color: '#766f68', fontSize: 13, textAlign: 'center', marginTop: 14 },
+  focusNoteError: { color: '#b52626', textAlign: 'center', marginHorizontal: 24, marginTop: 12 },
   disabled: { opacity: 0.55 },
 });

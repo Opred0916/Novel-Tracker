@@ -295,6 +295,23 @@ test('detail page previews the image selected from search results', async () => 
   expect(screen.getByText('识别内容')).toBeTruthy();
 });
 
+test('detail page focuses only the requested note belonging to the current book', async () => {
+  jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id, focusNoteId: 'note-1' });
+  notesRepo.listNotes.mockResolvedValue([{ id: 'note-1', bookId: book.id, body: '想法正文', createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z', readingSessionId: null, sourceKind: 'app', originalRecordedOn: null, originalRecordedTime: null, images: [] }]);
+  const screen = await render(<BookPage />);
+  await waitFor(() => expect(screen.getByTestId('note-note-1')).toBeTruthy());
+  expect(screen.getByText('想法正文')).toBeTruthy();
+  expect(screen.queryByText('这条想法已不存在')).toBeNull();
+});
+
+test('detail page does not show another note when the focus ID is missing', async () => {
+  jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id, focusNoteId: 'foreign-note' });
+  notesRepo.listNotes.mockResolvedValue([{ id: 'note-1', bookId: book.id, body: '当前书的想法', createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z', readingSessionId: null, sourceKind: 'app', originalRecordedOn: null, originalRecordedTime: null, images: [] }]);
+  const screen = await render(<BookPage />);
+  await waitFor(() => expect(screen.getByText('这条想法已不存在')).toBeTruthy());
+  expect(screen.getByText('当前书的想法')).toBeTruthy();
+});
+
 test('detail page asks for confirmation before deleting a novel', async () => {
   const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   repo.delete.mockResolvedValue(undefined);
