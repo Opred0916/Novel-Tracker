@@ -4,8 +4,10 @@ import type { Book } from './types';
 import type { BookSearchResult } from './bookSearch';
 import { BookCover } from './BookCover';
 
-export function BookCard({ book, matchedNoteSnippet, matchedImage, onPress }: { book: Book; matchedNoteSnippet?: string | null; matchedImage?: BookSearchResult['matchedImage']; onPress: () => void }) {
-  return <Pressable accessibilityRole="button" accessibilityLabel={`查看${book.title}`} onPress={onPress} style={styles.card}>
+export function BookCard({ book, matchedNoteSnippet, matchedImage, onPress, selection }: { book: Book; matchedNoteSnippet?: string | null; matchedImage?: BookSearchResult['matchedImage']; onPress: () => void; selection?: { checked: boolean; onToggle: () => void } }) {
+  const isSelecting = Boolean(selection);
+  return <Pressable accessibilityRole={isSelecting ? 'checkbox' : 'button'} accessibilityLabel={isSelecting ? `选择${book.title}` : `查看${book.title}`} accessibilityState={isSelecting ? { checked: selection?.checked } : undefined} onPress={isSelecting ? selection?.onToggle : onPress} style={[styles.card, isSelecting && styles.selectionCard]}>
+    {selection ? <Text style={[styles.checkbox, selection.checked && styles.checkboxChecked]}>{selection.checked ? '✓' : ''}</Text> : null}
     <BookCover title={book.title} uri={book.coverUri} size="small" />
     <View style={styles.details}>
       <Text style={styles.title}>{book.title}</Text>
@@ -24,7 +26,8 @@ export function BookCard({ book, matchedNoteSnippet, matchedImage, onPress }: { 
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: 'white', padding: 14, borderRadius: 14, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  card: { backgroundColor: 'white', padding: 14, borderRadius: 14, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }, selectionCard: { borderWidth: 1, borderColor: '#d6cec4' },
+  checkbox: { width: 24, height: 24, borderWidth: 1, borderColor: '#b9afa5', borderRadius: 12, textAlign: 'center', lineHeight: 22, color: '#fff' }, checkboxChecked: { backgroundColor: '#593f72', borderColor: '#593f72' },
   details: { flex: 1, gap: 4 },
   title: { fontSize: 17, fontWeight: '600', color: '#302a25', flexShrink: 1 },
   author: { color: '#766f68' }, rating: { color: '#80659d' },

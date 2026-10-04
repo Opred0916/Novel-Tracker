@@ -7,6 +7,7 @@ export function useBookSearch(repository: SearchRepository, filters: BookSearchF
   const [results, setResults] = useState<BookSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [lastSuccessfulKey, setLastSuccessfulKey] = useState<string | null>(null);
   const [retryToken, setRetryToken] = useState(0);
   const requestId = useRef(0);
   const tagIdsKey = JSON.stringify(filters.tagIds);
@@ -17,6 +18,7 @@ export function useBookSearch(repository: SearchRepository, filters: BookSearchF
     tagIds: JSON.parse(tagIdsKey) as string[],
     ...(filters.sortOrder ? { sortOrder: filters.sortOrder } : {}),
   }), [filters.query, filters.status, filters.bookType, filters.sortOrder, tagIdsKey]);
+  const filterKey = JSON.stringify(stableFilters);
   const debounceMs = options.debounceMs ?? 250;
 
   useEffect(() => {
@@ -26,7 +28,10 @@ export function useBookSearch(repository: SearchRepository, filters: BookSearchF
       setLoading(true);
       setError('');
       repository.search(stableFilters).then(next => {
-        if (active && currentRequest === requestId.current) setResults(next);
+        if (active && currentRequest === requestId.current) {
+          setResults(next);
+          setLastSuccessfulKey(filterKey);
+        }
       }).catch(() => {
         if (active && currentRequest === requestId.current) setError('搜索失败，请重试');
       }).finally(() => {
@@ -34,8 +39,8 @@ export function useBookSearch(repository: SearchRepository, filters: BookSearchF
       });
     }, debounceMs);
     return () => { active = false; clearTimeout(timer); };
-  }, [repository, stableFilters, debounceMs, retryToken]);
+  }, [repository, stableFilters, filterKey, debounceMs, retryToken]);
 
   const retry = useCallback(() => setRetryToken(value => value + 1), []);
-  return { results, loading, error, retry };
+  return { results, loading, error, resultsCurrent: lastSuccessfulKey === filterKey && !error, retry };
 }

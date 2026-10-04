@@ -160,6 +160,39 @@ test('bookshelf refreshes a nondefault sort after returning from detail', async 
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
 });
 
+test('bookshelf selects books by ID across filters and can remove hidden selections', async () => {
+  const other = { ...book, id: 'book-2', title: '归途', author: '另一作者' };
+  searchRepo.search.mockImplementation(async ({ query }: { query: string }) => query ? [{ book, matchedNoteSnippet: null }] : [{ book, matchedNoteSnippet: null }, { book: other, matchedNoteSnippet: null }]);
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getByText('批量整理'));
+  await fireEvent.press(screen.getByRole('checkbox', { name: '选择长夜' }));
+  await fireEvent.press(screen.getByRole('checkbox', { name: '选择归途' }));
+  expect(screen.getByText('已选 2 本')).toBeTruthy();
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '长夜');
+  await waitFor(() => expect(screen.queryByText('归途')).toBeNull());
+  await fireEvent.press(screen.getByText('查看已选'));
+  expect(screen.getByText('归途 · 另一作者')).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '移除归途' }));
+  expect(screen.queryByText('归途 · 另一作者')).toBeNull();
+  expect(screen.getByText('已选 1 本')).toBeTruthy();
+});
+
+test('bookshelf only selects the completed current result and preserves selection after clearing filters', async () => {
+  const other = { ...book, id: 'book-2', title: '归途', author: null };
+  searchRepo.search.mockImplementation(async ({ query }: { query: string }) => query ? [{ book, matchedNoteSnippet: null }] : [{ book, matchedNoteSnippet: null }, { book: other, matchedNoteSnippet: null }]);
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getByText('批量整理'));
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '长夜');
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith(expect.objectContaining({ query: '长夜' })));
+  await fireEvent.press(screen.getByText('全选当前结果'));
+  expect(screen.getByText('已选 1 本')).toBeTruthy();
+  await fireEvent.press(screen.getByText('清除筛选'));
+  await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
+  expect(screen.getByText('已选 1 本')).toBeTruthy();
+});
+
 test('bookshelf filters by search and clears the filter', async () => {
   const other = { ...book, id: 'book-2', title: '归途', author: '另一作者' };
   searchRepo.search.mockImplementation(async ({ query }: { query: string }) => query
