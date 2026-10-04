@@ -119,4 +119,22 @@ describe('SqliteAnnualRecapRepository', () => {
       expect(await repo.availableYears(2025)).toEqual([2026, 2025]);
     } finally { db.close(); }
   });
+
+  test('rejects incomplete or normalized app timestamps and preserves sub-minute order', async () => {
+    const db = createInMemoryDatabase();
+    try {
+      await migrateDatabase(db);
+      await seedBook(db, 'one', '严格时间');
+      await db.execAsync(`
+        INSERT INTO notes (id, book_id, body, created_at, updated_at, source_kind) VALUES
+          ('z-earlier', 'one', '更早', '2026-06-01T00:00:01.000Z', '2026-06-01T00:00:01.000Z', 'app'),
+          ('a-later', 'one', '更晚', '2026-06-01T00:00:59.000Z', '2026-06-01T00:00:59.000Z', 'app'),
+          ('invalid-day', 'one', '无效日期', '2026-02-30T00:00:00.000Z', '2026-02-30T00:00:00.000Z', 'app'),
+          ('incomplete', 'one', '不完整日期', '2026', '2026', 'app');
+      `);
+      const thoughts = (await new SqliteAnnualRecapRepository(db).getYear(2026)).thoughts;
+      expect(thoughts.map(note => note.id)).toEqual(['a-later', 'z-earlier']);
+      expect(thoughts.map(note => note.body)).not.toEqual(expect.arrayContaining(['无效日期', '不完整日期']));
+    } finally { db.close(); }
+  });
 });

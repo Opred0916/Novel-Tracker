@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookCover } from '../../books/BookCover';
 import type { AnnualRecap, RecapNote, RecapBook } from '../../books/annualRecapRepository';
@@ -27,9 +27,9 @@ function ThoughtCard({ note, onPress }: { note: RecapNote; onPress: () => void }
 
 function BookRecapCard({ book, onPress }: { book: RecapBook; onPress: () => void }) {
   return <Pressable accessibilityRole="button" style={styles.bookCard} onPress={onPress}>
-    <BookCover title={book.title} uri={book.coverUri} size="small" showTitle={false} />
+    <BookCover title={book.title} uri={book.coverUri} size="small" showTitle />
     <View style={styles.bookInfo}>
-      <Text style={styles.bookTitle}>{book.title}</Text>
+      {book.coverUri ? <Text style={styles.bookTitle}>{book.title}</Text> : null}
       {book.sessions.map(session => <Text key={session.id} style={styles.session}>
         {ordinalLabel(session.ordinal)} · {session.startedOn ?? '开始日期未记录'} → {session.endedOn}
       </Text>)}
@@ -45,19 +45,26 @@ export default function AnnualRecapPage() {
   const [undatedThoughts, setUndatedThoughts] = useState<RecapNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showUndated, setShowUndated] = useState(true);
+  const requestVersion = useRef(0);
 
   const refresh = useCallback(() => {
     let active = true;
+    const version = requestVersion.current + 1;
+    requestVersion.current = version;
     setLoading(true);
     setError('');
-    Promise.all([repository.availableYears(new Date().getFullYear()), repository.getYear(year), repository.listUndatedThoughts()]).then(([available, nextRecap, undated]) => {
-      if (!active) return;
-      setYears(available);
+    setRecap(null);
+    void repository.availableYears(new Date().getFullYear()).then(available => {
+      if (active && requestVersion.current === version) setYears(available);
+    }).catch(() => undefined);
+    Promise.all([repository.getYear(year), repository.listUndatedThoughts()]).then(([nextRecap, undated]) => {
+      if (!active || requestVersion.current !== version) return;
       setRecap(nextRecap);
       setUndatedThoughts(undated);
       setLoading(false);
     }).catch(() => {
-      if (!active) return;
+      if (!active || requestVersion.current !== version) return;
       setRecap(null);
       setLoading(false);
       setError('读取年度回顾失败，请重试');
@@ -93,6 +100,7 @@ export default function AnnualRecapPage() {
         <View style={styles.stat}><Text style={styles.statNumber}>{recap.completedReadingCount}</Text><Text style={styles.statLabel}>完成阅读 {recap.completedReadingCount} 次</Text></View>
         <View style={styles.stat}><Text style={styles.statNumber}>{recap.thoughtCount}</Text><Text style={styles.statLabel}>留下 {recap.thoughtCount} 条想法</Text></View>
       </View>
+      <Text style={styles.help}>仅统计记录了结束日期的读完记录；同一本书多次读完会分别计入完成次数。</Text>
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>这一年读过的书</Text>
         {recap.books.length ? recap.books.map(book => <BookRecapCard key={book.bookId} book={book} onPress={() => openBook(book.bookId)} />) : <Text style={styles.empty}>这一年还没有带完成日期的阅读记录</Text>}
@@ -102,10 +110,14 @@ export default function AnnualRecapPage() {
         {recap.thoughts.length ? recap.thoughts.map(note => <ThoughtCard key={note.id} note={note} onPress={() => openThought(note)} />) : <Text style={styles.empty}>这一年还没有记录想法</Text>}
       </View>
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>日期未记录</Text>
-        <Text style={styles.help}>这些旧摘记没有原始日期，不归入任何年份。</Text>
-        {undatedThoughts.length ? undatedThoughts.map(note => <ThoughtCard key={note.id} note={note} onPress={() => openThought(note)} />) : <Text style={styles.empty}>没有日期未记录的摘记</Text>}
+        <Pressable accessibilityRole="button" style={styles.undatedHeading} onPress={() => setShowUndated(value => !value)}>
+          <Text style={styles.sectionTitle}>日期未记录</Text>
+          <Text style={styles.link}>{showUndated ? '收起' : '展开'}</Text>
+        </Pressable>
+        {showUndated ? <><Text style={styles.help}>这些旧摘记没有原始日期，不归入任何年份。</Text>
+          {undatedThoughts.length ? undatedThoughts.map(note => <ThoughtCard key={note.id} note={note} onPress={() => openThought(note)} />) : <Text style={styles.empty}>没有日期未记录的摘记</Text>}</> : null}
       </View>
+      {!recap.books.length && !recap.thoughts.length ? <Pressable accessibilityRole="button" onPress={() => router.replace('/')} style={styles.secondary}><Text style={styles.secondaryText}>去书架添加或导入</Text></Pressable> : null}
     </> : null}
     <Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.secondary}><Text style={styles.secondaryText}>返回书库概览</Text></Pressable>
   </ScrollView>;
@@ -128,6 +140,7 @@ const styles = StyleSheet.create({
   statLabel: { color: '#eee6f3', fontSize: 12, lineHeight: 17 },
   section: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 12 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#302a25' },
+  undatedHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bookCard: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: '#eee7df', paddingTop: 12 },
   bookInfo: { flex: 1, gap: 6 },
   bookTitle: { fontSize: 17, fontWeight: '700', color: '#302a25' },

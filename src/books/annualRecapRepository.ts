@@ -63,17 +63,23 @@ function isValidYear(year: number): boolean {
 function isValidCalendarDate(value: string | null): value is string {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [year, month, day] = value.split('-').map(Number);
+  if (year < 1 || year > 9999) return false;
   const date = new Date(0);
   date.setUTCFullYear(year, month - 1, day);
   return date.getUTCFullYear() === year && date.getUTCMonth() + 1 === month && date.getUTCDate() === day;
 }
 
-function localDateAndTime(value: string): { date: string; time: string } | null {
+function localDateAndTime(value: string): { date: string; time: string; sortKey: string } | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?(Z|[+-]\d{2}:\d{2})$/.exec(value);
+  if (!match) return null;
+  const [, year, month, day, hours, minutes, seconds = '00', , offset] = match;
+  if (!isValidCalendarDate(`${year}-${month}-${day}`) || Number(hours) > 23 || Number(minutes) > 59 || Number(seconds) > 59) return null;
+  if (offset !== 'Z' && (Number(offset.slice(1, 3)) > 23 || Number(offset.slice(4, 6)) > 59)) return null;
   const parsed = new Date(value);
   if (!Number.isFinite(parsed.getTime())) return null;
   const date = `${String(parsed.getFullYear()).padStart(4, '0')}-${String(parsed.getMonth() + 1).padStart(2, '0')}-${String(parsed.getDate()).padStart(2, '0')}`;
   const time = `${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`;
-  return { date, time };
+  return { date, time, sortKey: parsed.toISOString() };
 }
 
 function validOriginalTime(value: string | null): string | null {
@@ -90,15 +96,18 @@ export function getNoteRecordedOn(note: Pick<Note, 'sourceKind' | 'originalRecor
   return localDateAndTime(note.createdAt)?.date ?? null;
 }
 
-function noteDateAndTime(row: NoteRow): { date: string | null; time: string | null } {
+function noteDateAndTime(row: NoteRow): { date: string | null; time: string | null; sortKey: string | null } {
   if (row.source_kind === 'import') {
+    const date = isValidCalendarDate(row.original_recorded_on) ? row.original_recorded_on : null;
+    const time = validOriginalTime(row.original_recorded_time);
     return {
-      date: isValidCalendarDate(row.original_recorded_on) ? row.original_recorded_on : null,
-      time: validOriginalTime(row.original_recorded_time),
+      date,
+      time,
+      sortKey: date ? `${date}T${(time ?? '00:00').padEnd(8, ':00')}` : null,
     };
   }
   const local = localDateAndTime(row.created_at);
-  return { date: local?.date ?? null, time: local?.time ?? null };
+  return { date: local?.date ?? null, time: local?.time ?? null, sortKey: local?.sortKey ?? null };
 }
 
 function compareDescending(left: string, right: string): number {
@@ -147,7 +156,8 @@ export class SqliteAnnualRecapRepository {
       if (year !== null) years.add(year);
     }
     for (const row of await this.noteRows()) {
-      const year = noteDateAndTime(row).date ? Number(noteDateAndTime(row).date!.slice(0, 4)) : null;
+      const date = noteDateAndTime(row).date;
+      const year = date ? readYear(date) : null;
       if (year !== null) years.add(year);
     }
     return [...years].sort((left, right) => right - left);
@@ -169,10 +179,10 @@ export class SqliteAnnualRecapRepository {
     books.sort((left, right) => compareDescending(left.sessions[0].endedOn, right.sessions[0].endedOn) || compareAscending(left.title, right.title) || compareAscending(left.bookId, right.bookId));
 
     const thoughts = (await this.noteRows()).map(row => {
-      const { date, time } = noteDateAndTime(row);
-      return { row, date, time };
-    }).filter(item => item.date?.slice(0, 4) === String(year)).sort((left, right) =>
-      compareDescending(left.date!, right.date!) || compareDescending(left.time ?? '', right.time ?? '') || compareAscending(left.row.id, right.row.id),
+      const { date, time, sortKey } = noteDateAndTime(row);
+      return { row, date, time, sortKey };
+    }).filter(item => item.date !== null && readYear(item.date) === year).sort((left, right) =>
+      compareDescending(left.sortKey!, right.sortKey!) || compareAscending(left.row.id, right.row.id),
     ).map(item => ({
       id: item.row.id,
       bookId: item.row.book_id,

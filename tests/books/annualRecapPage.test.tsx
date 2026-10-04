@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { router, useFocusEffect } from 'expo-router';
 import AnnualRecapPage from '../../src/app/settings/annual-recap';
 import { useAnnualRecapRepository } from '../../src/storage/AppProvider';
@@ -45,6 +45,7 @@ test('shows annual counts, reread sessions, thoughts and navigates to book or no
   await waitFor(() => expect(screen.getByText('读完 1 本')).toBeTruthy());
   expect(screen.getByText('完成阅读 2 次')).toBeTruthy();
   expect(screen.getByText('留下 1 条想法')).toBeTruthy();
+  expect(screen.getByText(/仅统计记录了结束日期的读完记录/)).toBeTruthy();
   expect(screen.getByText(/二刷/)).toBeTruthy();
   expect(screen.getByText(/开始日期未记录/)).toBeTruthy();
   expect(screen.getByText('这一年最喜欢的段落')).toBeTruthy();
@@ -79,4 +80,19 @@ test('returns to the overview page', async () => {
   await waitFor(() => expect(screen.getByText('年度阅读回顾')).toBeTruthy());
   await fireEvent.press(screen.getByText('返回书库概览'));
   expect(router.back).toHaveBeenCalled();
+});
+
+test('cancels a retry result when the user switches years', async () => {
+  let resolveRetry: ((value: typeof recap2026) => void) | undefined;
+  repository.getYear.mockRejectedValueOnce(new Error('first read failed'))
+    .mockImplementationOnce(() => new Promise(resolve => { resolveRetry = resolve; }))
+    .mockResolvedValue({ ...recap2026, year: 2025, finishedBookCount: 0, completedReadingCount: 0, thoughtCount: 0, books: [], thoughts: [] });
+  const screen = await render(<AnnualRecapPage />);
+  await waitFor(() => expect(screen.getByText('读取年度回顾失败，请重试')).toBeTruthy());
+  await fireEvent.press(screen.getByText('重试'));
+  await fireEvent.press(screen.getByText('2025'));
+  await waitFor(() => expect(screen.getByText('2025 年')).toBeTruthy());
+  await act(async () => { resolveRetry?.(recap2026); });
+  expect(screen.getByText('2025 年')).toBeTruthy();
+  expect(screen.getByText('读完 0 本')).toBeTruthy();
 });

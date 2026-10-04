@@ -28,6 +28,8 @@ export default function BookPage() {
   const [previewOcr, setPreviewOcr] = useState<ImageOcrRecord | null>(null);
   const [ocrProgress, setOcrProgress] = useState<ImageOcrProgress | null>(null);
   const [notesSectionY, setNotesSectionY] = useState(0);
+  const [notesSectionLaidOut, setNotesSectionLaidOut] = useState(false);
+  const [focusNotePosition, setFocusNotePosition] = useState<{ noteId: string; y: number } | null>(null);
   const [focusNoteError, setFocusNoteError] = useState('');
   const detailScrollRef = useRef<ScrollView>(null);
 
@@ -73,8 +75,13 @@ export default function BookPage() {
       return;
     }
     setFocusNoteError('');
-    if (contentY !== undefined) detailScrollRef.current?.scrollTo({ y: Math.max(0, notesSectionY + contentY - 24), animated: true });
-  }, [focusNoteId, notesSectionY]);
+    if (contentY !== undefined) setFocusNotePosition({ noteId: focusNoteId, y: contentY });
+  }, [focusNoteId]);
+
+  useEffect(() => {
+    if (!focusNoteId || !notesSectionLaidOut || focusNotePosition?.noteId !== focusNoteId) return;
+    detailScrollRef.current?.scrollTo({ y: Math.max(0, notesSectionY + focusNotePosition.y - 24), animated: true });
+  }, [focusNoteId, focusNotePosition, notesSectionLaidOut, notesSectionY]);
 
   if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator /></View>;
   if (loadState === 'missing') return <View style={styles.center}>
@@ -123,7 +130,7 @@ export default function BookPage() {
     <BookDetail book={currentBook} sessions={sessions} onEditReading={sessionId => router.push({
       pathname: '/book/[id]/reading/[sessionId]', params: { id, sessionId },
     })} />
-    <View onLayout={event => setNotesSectionY(event.nativeEvent.layout.y)}>
+    <View testID="notes-section-container" onLayout={event => { setNotesSectionY(event.nativeEvent.layout.y); setNotesSectionLaidOut(true); }}>
       <NotesSection bookId={id} repository={notesRepo} highlights={highlights} focusNoteId={focusNoteId} onFocusResult={handleNoteFocus} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} />
     </View>
     {focusNoteError ? <Text style={styles.focusNoteError}>{focusNoteError}</Text> : null}
