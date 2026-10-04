@@ -111,6 +111,33 @@ test('combines status, type and every selected tag', async () => {
   } finally { db.close(); }
 });
 
+test('sorts filtered results by addition and rating while preserving the result set', async () => {
+  const { db, repo } = await setup();
+  try {
+    await db.runAsync("UPDATE books SET created_at = ?, rating_half_stars = ? WHERE id = ?", '2026-12-01T00:00:00.000Z', 4, 'same-a');
+    await db.runAsync("UPDATE books SET created_at = ?, rating_half_stars = ? WHERE id = ?", '2026-11-01T00:00:00.000Z', 10, 'same-b');
+    const filters = { query: '', status: null, bookType: null, tagIds: [] } as const;
+
+    expect((await repo.search({ ...filters, sortOrder: 'recently_added' })).map(result => result.book.id)).toEqual(['same-a', 'same-b', 'one', 'two', 'special']);
+    expect((await repo.search({ ...filters, sortOrder: 'rating_high' })).map(result => result.book.id)).toEqual(['same-b', 'same-a', 'one', 'two', 'special']);
+    expect((await repo.search({ ...filters, sortOrder: 'rating_high', query: '长夜' })).map(result => result.book.id)).toEqual(['one']);
+  } finally { db.close(); }
+});
+
+test('sorts by the latest valid finished session and ignores dropped or invalid dates', async () => {
+  const { db, repo } = await setup();
+  try {
+    await db.execAsync(`
+      INSERT INTO reading_sessions (id, book_id, ordinal, started_on, ended_on, outcome) VALUES
+        ('one-first', 'one', 1, '2026-09-01', '2026-09-10', 'finished'),
+        ('one-second', 'one', 2, '2026-10-01', '2026-10-02', 'finished'),
+        ('two-dropped', 'two', 1, '2026-12-01', '2026-12-31', 'dropped'),
+        ('same-b-invalid', 'same-b', 1, '2026-02-01', '2026-02-30', 'finished');
+    `);
+    expect((await repo.search({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' })).map(result => result.book.id)).toEqual(['one', 'two', 'special', 'same-a', 'same-b']);
+  } finally { db.close(); }
+});
+
 test('treats LIKE characters literally and keeps stable distinct results', async () => {
   const { db, repo } = await setup();
   try {
