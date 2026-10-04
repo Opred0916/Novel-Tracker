@@ -15,7 +15,8 @@ export function useBookSearch(repository: SearchRepository, filters: BookSearchF
     status: filters.status,
     bookType: filters.bookType,
     tagIds: JSON.parse(tagIdsKey) as string[],
-  }), [filters.query, filters.status, filters.bookType, tagIdsKey]);
+    ...(filters.sortOrder ? { sortOrder: filters.sortOrder } : {}),
+  }), [filters.query, filters.status, filters.bookType, filters.sortOrder, tagIdsKey]);
   const debounceMs = options.debounceMs ?? 250;
 
   useEffect(() => {

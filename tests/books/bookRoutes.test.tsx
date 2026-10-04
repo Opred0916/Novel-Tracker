@@ -130,6 +130,23 @@ test('bookshelf opens the tapped novel detail page', async () => {
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: book.id } });
 });
 
+test('bookshelf searches with recent update sorting by default', async () => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
+  expect(searchRepo.search).toHaveBeenCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_updated' });
+});
+
+test('bookshelf changes sort order and keeps it when filters are cleared', async () => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getByText('排序：最近修改'));
+  await fireEvent.press(screen.getByText('最近读完'));
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
+  expect(screen.getByText('排序：最近读完')).toBeTruthy();
+  await fireEvent.press(screen.getByText('清除筛选'));
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
+});
+
 test('bookshelf filters by search and clears the filter', async () => {
   const other = { ...book, id: 'book-2', title: '归途', author: '另一作者' };
   searchRepo.search.mockImplementation(async ({ query }: { query: string }) => query
@@ -173,12 +190,12 @@ test('bookshelf submits status, type, and every selected tag then clears them to
   await fireEvent.press(screen.getByText('耽美'));
   await fireEvent.press(screen.getByText('古代'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({
-    query: '', status: 'reading', bookType: 'romance_male_male', tagIds: ['ancient'],
+    query: '', status: 'reading', bookType: 'romance_male_male', tagIds: ['ancient'], sortOrder: 'recently_updated',
   }));
   expect(screen.getByText('筛选条件（3）')).toBeTruthy();
   await fireEvent.press(screen.getByText('清除筛选'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({
-    query: '', status: null, bookType: null, tagIds: [],
+    query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_updated',
   }));
   expect(screen.getByText('筛选条件')).toBeTruthy();
 });
