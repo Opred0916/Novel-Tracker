@@ -9,12 +9,16 @@ export type ImportSessionDraft = {
   endedOn: string | null;
 };
 
+export type ImportSourceRef = { kind: 'screenshot'; pageId: string; line: number };
+
 export type ImportNoteDraft = {
   id: string;
   body: string;
   originalRecordedOn: string | null;
   originalRecordedTime: string | null;
   sourceText: string;
+  sourceRef?: ImportSourceRef;
+  recordedAtHint?: string;
 };
 
 export type ImportCandidate = {
@@ -32,7 +36,8 @@ export type ImportCandidate = {
   notes: ImportNoteDraft[];
   whyWantToRead: string | null;
   platform: string | null;
+  sourceRef?: ImportSourceRef;
 };
 
-export type ImportFragment = { id: string; sourceLine: number; text: string; reason: string };
+export type ImportFragment = { id: string; sourceLine: number; text: string; reason: string; sourceRef?: ImportSourceRef; recordedAtHint?: string; candidateId?: string };
 export type ImportParseResult = { candidates: ImportCandidate[]; fragments: ImportFragment[]; warnings: string[] };
