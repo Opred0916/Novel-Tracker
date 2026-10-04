@@ -37,7 +37,7 @@ export default function ImportPage() {
     const existingNotes = (await Promise.all(existingBooks.map(book => notes.listNotes(book.id)))).flat();
     const next: ImportReview = {
       items: result.candidates.map(candidate => ({ candidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] })),
-      fragments: result.fragments, ignoredFragmentIds: [], warnings: result.warnings,
+      fragments: result.fragments, fragmentDecisions: {}, warnings: result.warnings,
     };
     setReview(next);
     setHints(findImportDuplicates(next, existingBooks.map(book => ({ id: book.id, title: book.title, author: book.author })), existingNotes.map(note => ({ id: note.id, bookId: note.bookId, body: note.body }))));
@@ -78,7 +78,7 @@ export default function ImportPage() {
       id: `manual-${Date.now()}`, sourceLine: 0, sourceText: '', title: '', author: null, protagonists: [], status: defaultStatus,
       ratingHalfStars: null, bookType: null, tagIds: [], sessions: [], notes: [], whyWantToRead: null, platform: null,
     };
-    setReview({ items: [{ candidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] }], fragments: [], ignoredFragmentIds: [] });
+    setReview({ items: [{ candidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] }], fragments: [], fragmentDecisions: {} });
     setHints([]);
   }
 

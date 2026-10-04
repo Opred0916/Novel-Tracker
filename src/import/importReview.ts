@@ -9,7 +9,17 @@ export type ImportReviewItem = {
   acknowledgedDuplicateNoteIds: string[];
 };
 
-export type ImportReview = { items: ImportReviewItem[]; fragments: ImportFragment[]; ignoredFragmentIds: string[]; warnings?: string[] };
+export type ImportFragmentDecision = { kind: 'ignore' } | { kind: 'book'; candidateId: string } | { kind: 'note'; noteId: string };
+export type ImportReview = { items: ImportReviewItem[]; fragments: ImportFragment[]; fragmentDecisions: Record<string, ImportFragmentDecision>; warnings?: string[] };
+export type ImportReviewAction =
+  | { type: 'ignore_fragment'; fragmentId: string }
+  | { type: 'fragment_to_book'; fragmentId: string; candidateId: string; title: string }
+  | { type: 'fragment_to_note'; fragmentId: string; candidateId: string; noteId: string; body: string }
+  | { type: 'move_note'; noteId: string; targetCandidateId: string }
+  | { type: 'delete_note'; noteId: string }
+  | { type: 'split_candidate'; sourceCandidateId: string; newCandidateId: string; noteIds: string[] }
+  | { type: 'merge_candidates'; sourceCandidateId: string; targetCandidateId: string }
+  | { type: 'set_note_date'; noteId: string; date: string | null; time: string | null };
 export type ExistingBookSummary = { id: string; title: string; author: string | null };
 export type ExistingNoteSummary = { id: string; bookId: string; body: string };
 export type DuplicateHint = {
@@ -55,14 +65,29 @@ function issue(code: string, message: string, candidateId?: string): ImportValid
 
 export function validateImportReview(review: ImportReview): ImportValidationIssue[] {
   const issues: ImportValidationIssue[] = [];
-  const ignored = new Set(review.ignoredFragmentIds);
-  for (const fragment of review.fragments) if (!ignored.has(fragment.id)) issues.push({ code: 'unacknowledged_fragment', fragmentId: fragment.id, message: `还有未处理的原文：${fragment.text}` });
+  const decisions = review.fragmentDecisions ?? {};
+  const itemsById = new Map(review.items.map(item => [item.candidate.id, item]));
+  const notesById = new Map(review.items.flatMap(item => item.candidate.notes.map(note => [note.id, { note, item }] as const)));
+  for (const fragment of review.fragments) {
+    const decision = decisions[fragment.id];
+    if (!decision) { issues.push({ code: 'unacknowledged_fragment', fragmentId: fragment.id, message: `还有未处理的原文：${fragment.text}` }); continue; }
+    if (decision.kind === 'book') {
+      const target = itemsById.get(decision.candidateId);
+      if (!target) issues.push({ code: 'fragment_target_missing', fragmentId: fragment.id, message: '片段指定的候选书目不存在' });
+      else if (target.action === 'skip') issues.push({ code: 'fragment_target_skipped', fragmentId: fragment.id, message: '片段不能指定给已跳过的候选书目' });
+    } else if (decision.kind === 'note') {
+      const target = notesById.get(decision.noteId);
+      if (!target) issues.push({ code: 'fragment_note_missing', fragmentId: fragment.id, message: '片段指定的摘记不存在' });
+      else if (target.item.action === 'skip') issues.push({ code: 'fragment_target_skipped', fragmentId: fragment.id, message: '片段不能指定给已跳过的候选书目' });
+    }
+  }
   for (const item of review.items) {
     const candidate = item.candidate;
     if (!candidate.title.trim()) issues.push(issue('empty_title', '书名不能为空', candidate.id));
     if (candidate.ratingHalfStars !== null && candidate.status !== 'finished') issues.push(issue('rating_requires_finished', '只有已读书籍可以填写评分', candidate.id));
     if (item.action === 'append_notes' && !item.targetBookId) issues.push(issue('append_target_required', '追加摘记必须选择目标书籍', candidate.id));
     if (item.action === 'append_notes' && candidate.notes.length === 0) issues.push(issue('append_notes_required', '追加摘记操作至少需要一条摘记', candidate.id));
+    for (const note of candidate.notes) if (!note.body.trim()) issues.push(issue('empty_note', '摘记正文不能为空', candidate.id));
     const ordinals = new Set<number>();
     for (const session of candidate.sessions) {
       if (ordinals.has(session.ordinal)) issues.push(issue('duplicate_session_ordinal', `第 ${session.ordinal} 次阅读重复`, candidate.id));

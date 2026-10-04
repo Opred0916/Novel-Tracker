@@ -11,7 +11,7 @@ function review(overrides: Partial<ImportReview> = {}): ImportReview {
   const candidate = parseTextImport('书名：残次品\n状态：已读\n摘记：很好看', 'blocks', 'want_to_read').candidates[0];
   return {
     items: [{ candidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] }],
-    fragments: [], ignoredFragmentIds: [], ...overrides,
+    fragments: [], fragmentDecisions: {}, ...overrides,
   };
 }
 
@@ -46,7 +46,7 @@ test('validates actions, dates, scores, ordering, append targets, and fragments'
   expect(issues.map(issue => issue.code)).toEqual(expect.arrayContaining([
     'rating_requires_finished', 'duplicate_session_ordinal', 'reading_session_must_be_last', 'invalid_session_dates', 'append_target_required', 'unacknowledged_fragment',
   ]));
-  expect(validateImportReview({ ...current, ignoredFragmentIds: ['f1'], items: [{ ...current.items[0], action: 'skip' }] })).toEqual(expect.arrayContaining([]));
+  expect(validateImportReview({ ...current, fragmentDecisions: { f1: { kind: 'ignore' } }, items: [{ ...current.items[0], action: 'skip' }] })).toEqual(expect.arrayContaining([]));
 });
 
 test('summarizes create, note append, and skip actions', () => {
