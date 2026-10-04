@@ -45,6 +45,22 @@ test('attaches multiple images and keeps an image used by a note after highlight
   } finally { db.close(); }
 });
 
+test('resolves a linked image for detail preview and rejects unrelated images', async () => {
+  const db = await setup();
+  try {
+    await db.runAsync("INSERT INTO books (id, title, status, created_at, updated_at) VALUES ('book-2', '归途', 'finished', 'a', 'b')");
+    await db.runAsync("INSERT INTO image_assets VALUES ('image-1', 'book-1', 'file:///one.jpg', '2026-03-01')");
+    await db.runAsync("INSERT INTO image_assets VALUES ('image-other', 'book-2', 'file:///other.jpg', '2026-03-01')");
+    const repo = new SqliteNotesRepository(db, () => 'note-1');
+    await repo.addHighlights('book-1', ['image-1']);
+    expect(await repo.resolveLinkedImage('book-1', 'image-1')).toEqual({
+      image: { id: 'image-1', bookId: 'book-1', localPath: 'file:///one.jpg', createdAt: '2026-03-01' },
+      source: 'highlight',
+    });
+    expect(await repo.resolveLinkedImage('book-1', 'image-other')).toBeNull();
+  } finally { db.close(); }
+});
+
 test('unlinking the last image reference removes its OCR row and queues the local file', async () => {
   const db = await setup();
   try {

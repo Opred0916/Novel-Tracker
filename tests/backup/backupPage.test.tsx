@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import BackupPage from '../../src/app/settings/backup';
 import { BackupValidationError } from '../../src/backup/backupValidation';
 import { pickBackupFile, shareBackup } from '../../src/backup/backupPlatform';
-import { useBackupService } from '../../src/storage/AppProvider';
+import { useBackupService, useImageOcr } from '../../src/storage/AppProvider';
 import { makeValidManifest } from './backupFixtures';
 
 jest.mock('expo-router', () => ({
@@ -13,16 +13,18 @@ jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void | (() => void)) => require('react').useEffect(callback, [callback]),
 }));
 jest.mock('../../src/backup/backupPlatform', () => ({ pickBackupFile: jest.fn(), shareBackup: jest.fn() }));
-jest.mock('../../src/storage/AppProvider', () => ({ useBackupService: jest.fn() }));
+jest.mock('../../src/storage/AppProvider', () => ({ useBackupService: jest.fn(), useImageOcr: jest.fn() }));
 
 const service = {
   getOverview: jest.fn(), createBackup: jest.fn(), releaseGeneratedBackup: jest.fn(), inspectBackup: jest.fn(),
   restore: jest.fn(), cancelInspection: jest.fn(), cleanupStaleOperations: jest.fn(),
 };
+const imageOcr = { pause: jest.fn(async () => undefined), resume: jest.fn(), schedule: jest.fn(async () => undefined) };
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useBackupService).mockReturnValue(service as unknown as ReturnType<typeof useBackupService>);
+  jest.mocked(useImageOcr).mockReturnValue(imageOcr as unknown as ReturnType<typeof useImageOcr>);
   service.getOverview.mockResolvedValue({ counts: makeValidManifest().counts, lastGeneratedAt: null });
   service.createBackup.mockResolvedValue({ operationId: 'export-1', uri: 'cache://backup.noveltracker' });
   service.releaseGeneratedBackup.mockResolvedValue(undefined);
@@ -72,6 +74,9 @@ test('previews counts and only restores after an independent destructive confirm
     const buttons = alert.mock.calls.at(-1)?.[2];
     await act(async () => { buttons?.find(button => button.style === 'destructive')?.onPress?.(); });
     await waitFor(() => expect(service.restore).toHaveBeenCalledWith('secret-token', expect.any(Function)));
+    expect(imageOcr.pause).toHaveBeenCalledTimes(1);
+    expect(imageOcr.resume).toHaveBeenCalledTimes(1);
+    expect(imageOcr.schedule).toHaveBeenCalledTimes(1);
     expect(router.replace).toHaveBeenCalledWith('/');
   } finally { alert.mockRestore(); }
 });

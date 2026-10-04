@@ -9,6 +9,7 @@ type NoteRow = {
   source_kind: 'app' | 'import'; original_recorded_on: string | null; original_recorded_time: string | null;
 };
 type ImageRow = { id: string; book_id: string; local_path: string; created_at: string };
+export type LinkedImage = { image: ImageAsset; source: 'highlight' | 'note' };
 
 const dateOf = (timestamp: string) => timestamp.slice(0, 10);
 const fromImage = (row: ImageRow): ImageAsset => ({ id: row.id, bookId: row.book_id, localPath: row.local_path, createdAt: row.created_at });
@@ -121,6 +122,21 @@ export class SqliteNotesRepository {
   async listHighlights(bookId: string): Promise<ImageAsset[]> {
     const rows = await this.db.getAllAsync<ImageRow>('SELECT a.* FROM image_assets a JOIN highlight_images h ON h.image_id = a.id WHERE h.book_id = ? ORDER BY h.position ASC', bookId);
     return rows.map(fromImage);
+  }
+
+  async resolveLinkedImage(bookId: string, imageId: string): Promise<LinkedImage | null> {
+    const row = await this.db.getFirstAsync<ImageRow & { source: 'highlight' | 'note' }>(
+      `SELECT a.*, CASE WHEN EXISTS (
+         SELECT 1 FROM highlight_images h WHERE h.book_id = ? AND h.image_id = a.id
+       ) THEN 'highlight' ELSE 'note' END AS source
+       FROM image_assets a
+       WHERE a.id = ? AND a.book_id = ? AND (
+         EXISTS (SELECT 1 FROM highlight_images h WHERE h.book_id = ? AND h.image_id = a.id)
+         OR EXISTS (SELECT 1 FROM note_images n JOIN notes note ON note.id = n.note_id WHERE n.image_id = a.id AND note.book_id = ?)
+       )`,
+      bookId, imageId, bookId, bookId, bookId,
+    );
+    return row ? { image: fromImage(row), source: row.source } : null;
   }
 
   async recalculateAssociations(bookId: string): Promise<void> {

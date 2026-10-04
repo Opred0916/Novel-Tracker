@@ -4,7 +4,7 @@ import type { Note, ImageAsset } from './types';
 import type { SqliteNotesRepository } from './notesRepository';
 import { NoteForm } from './NoteForm';
 
-export function NotesSection({ bookId, repository, highlights, onChanged }: { bookId: string; repository: SqliteNotesRepository; highlights: ImageAsset[]; onChanged?: () => void }) {
+export function NotesSection({ bookId, repository, highlights, onChanged, onSelect }: { bookId: string; repository: SqliteNotesRepository; highlights: ImageAsset[]; onChanged?: () => void; onSelect?: (images: ImageAsset[]) => void }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [editing, setEditing] = useState<Note | null | undefined>(undefined);
   async function refresh() { setNotes(await repository.listNotes(bookId)); }
@@ -20,7 +20,7 @@ export function NotesSection({ bookId, repository, highlights, onChanged }: { bo
     ]);
   }
   return <View style={styles.container}><View style={styles.heading}><Text style={styles.label}>摘记</Text><Pressable onPress={() => setEditing(null)}><Text style={styles.add}>新增摘记</Text></Pressable></View>
-    {notes.length ? notes.map(note => <View key={note.id} style={styles.note}><Text style={styles.meta}>{note.createdAt.slice(0, 10)} · {note.readingSessionId ? '已关联阅读次数' : '未关联到具体阅读次数'}</Text><Text style={styles.body}>{note.body}</Text><View style={styles.grid}>{note.images.map(image => <Image key={image.id} source={{ uri: image.localPath }} style={styles.image} />)}</View><View style={styles.actions}><Pressable onPress={() => setEditing(note)}><Text style={styles.link}>编辑</Text></Pressable><Pressable onPress={() => void remove(note)}><Text style={styles.delete}>删除</Text></Pressable></View></View>) : <Text style={styles.empty}>还没有摘记</Text>}
+    {notes.length ? notes.map(note => <View key={note.id} style={styles.note}><Text style={styles.meta}>{note.createdAt.slice(0, 10)} · {note.readingSessionId ? '已关联阅读次数' : '未关联到具体阅读次数'}</Text><Text style={styles.body}>{note.body}</Text><View style={styles.grid}>{note.images.map(image => <Pressable key={image.id} accessibilityRole="button" accessibilityLabel="打开摘记图片" onPress={() => onSelect?.([image])}><Image source={{ uri: image.localPath }} style={styles.image} /></Pressable>)}</View><View style={styles.actions}><Pressable onPress={() => setEditing(note)}><Text style={styles.link}>编辑</Text></Pressable><Pressable onPress={() => void remove(note)}><Text style={styles.delete}>删除</Text></Pressable></View></View>) : <Text style={styles.empty}>还没有摘记</Text>}
   </View>;
 }
 

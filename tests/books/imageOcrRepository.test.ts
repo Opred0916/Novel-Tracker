@@ -70,3 +70,13 @@ test('counts recognized, empty and failed as done progress', async () => {
     expect(await repository.progress('book-1')).toEqual({ done: 1, total: 1, failed: 0 });
   } finally { db.close(); }
 });
+
+test('reads one image OCR record for preview status', async () => {
+  const { db, repository } = await setup();
+  try {
+    await repository.reconcile();
+    await repository.markProcessing('image-shared');
+    await repository.finish('image-shared', '识别结果', 'test');
+    expect(await repository.get('image-shared')).toEqual({ imageId: 'image-shared', status: 'recognized', recognizedText: '识别结果', errorCode: null });
+  } finally { db.close(); }
+});

@@ -37,7 +37,7 @@ export function HighlightsSection({ bookId, repository, onChanged, onSelect }: {
   return <View style={styles.container}>
     <Text style={styles.label}>精彩片段</Text>
     <Pressable accessibilityRole="button" onPress={add} style={styles.button}><Text style={styles.buttonText}>添加图片</Text></Pressable>
-    {images.length ? <View style={styles.grid}>{images.map(image => <Pressable key={image.id} onPress={() => onSelect?.([image])} onLongPress={() => remove(image)}>
+    {images.length ? <View style={styles.grid}>{images.map(image => <Pressable key={image.id} accessibilityRole="button" accessibilityLabel="打开精彩片段图片" onPress={() => onSelect?.([image])} onLongPress={() => remove(image)}>
       <Image source={{ uri: image.localPath }} style={styles.image} />
     </Pressable>)}</View> : <Text style={styles.empty}>还没有精彩片段</Text>}
     {error ? <Text style={styles.error}>{error}</Text> : null}

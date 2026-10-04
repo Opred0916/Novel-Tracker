@@ -19,7 +19,7 @@ import { ImportCommitService } from '../import/importCommitService';
 import { OpenExportArchive } from '../export/openExportArchive';
 import { OpenExportService } from '../export/openExportService';
 import { SqliteLibraryOverviewRepository } from '../books/libraryOverviewRepository';
-import { SqliteImageOcrRepository, type ImageOcrProgress } from '../books/imageOcrRepository';
+import { SqliteImageOcrRepository, type ImageOcrProgress, type ImageOcrRecord } from '../books/imageOcrRepository';
 import { ImageOcrWorker } from '../books/imageOcrWorker';
 import { getLocalImageTextRecognizer } from '../books/localImageTextRecognizer';
 
@@ -35,7 +35,10 @@ const LibraryOverviewRepositoryContext = createContext<SqliteLibraryOverviewRepo
 type ImageOcrContextValue = {
   isAvailable: boolean;
   schedule(): Promise<void>;
+  pause(): Promise<void>;
+  resume(): void;
   retry(imageId: string): Promise<void>;
+  get(imageId: string): Promise<ImageOcrRecord | null>;
   progress(bookId?: string): Promise<ImageOcrProgress>;
 };
 const ImageOcrContext = createContext<ImageOcrContextValue | null>(null);
@@ -117,7 +120,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const imageOcrContext: ImageOcrContextValue = {
     isAvailable: imageOcrAvailable,
     schedule: async () => { await imageOcrRepository.reconcile(false); imageOcrWorker.kick(); },
+    pause: async () => { imageOcrWorker.invalidateAndPause(); },
+    resume: () => imageOcrWorker.resume(),
     retry: imageId => imageOcrWorker.retry(imageId),
+    get: imageId => imageOcrRepository.get(imageId),
     progress: bookId => imageOcrRepository.progress(bookId),
   };
   return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}><NotesRepositoryContext.Provider value={notesRepository}><BookSearchRepositoryContext.Provider value={bookSearchRepository}><BackupServiceContext.Provider value={backupService}><OpenExportServiceContext.Provider value={openExportService}><ImportCommitServiceContext.Provider value={importCommitService}><LibraryOverviewRepositoryContext.Provider value={libraryOverviewRepository}><ImageOcrContext.Provider value={imageOcrContext}>{children}</ImageOcrContext.Provider></LibraryOverviewRepositoryContext.Provider></ImportCommitServiceContext.Provider></OpenExportServiceContext.Provider></BackupServiceContext.Provider></BookSearchRepositoryContext.Provider></NotesRepositoryContext.Provider></ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;

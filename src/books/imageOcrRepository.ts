@@ -3,6 +3,7 @@ import type { Database } from '../storage/database';
 export type ImageOcrStatus = 'pending' | 'processing' | 'recognized' | 'empty' | 'failed';
 
 export type ImageOcrProgress = { done: number; total: number; failed: number };
+export type ImageOcrRecord = { imageId: string; status: ImageOcrStatus; recognizedText: string | null; errorCode: string | null };
 
 export type PendingImageOcr = { imageId: string; bookId: string; localPath: string };
 
@@ -90,6 +91,13 @@ export class SqliteImageOcrRepository {
       this.nowFactory(), imageId,
     );
     return Number(result.changes) > 0;
+  }
+
+  async get(imageId: string): Promise<ImageOcrRecord | null> {
+    const row = await this.db.getFirstAsync<{ image_id: string; status: ImageOcrStatus; recognized_text: string | null; error_code: string | null }>(
+      'SELECT image_id, status, recognized_text, error_code FROM image_ocr WHERE image_id = ?', imageId,
+    );
+    return row ? { imageId: row.image_id, status: row.status, recognizedText: row.recognized_text, errorCode: row.error_code } : null;
   }
 
   async resetProcessing(imageId: string): Promise<void> {
