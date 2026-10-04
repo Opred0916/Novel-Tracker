@@ -24,6 +24,7 @@ const baseProps = {
   onClearFilters: jest.fn(),
   onToggleFilters: jest.fn(),
   onEnterBulk: jest.fn(),
+  onRandomPick: jest.fn(),
   bulkMode: false,
 };
 
@@ -41,4 +42,10 @@ test('hides clear filters until a condition is active', async () => {
   expect(view.getByText('清除筛选')).toBeTruthy();
   fireEvent.press(view.getByText('清除筛选'));
   expect(baseProps.onClearFilters).toHaveBeenCalled();
+});
+
+test('offers a random want-to-read action', async () => {
+  const view = await render(<BookshelfToolbar {...baseProps} />);
+  fireEvent.press(view.getByText('随机想读'));
+  expect(baseProps.onRandomPick).toHaveBeenCalled();
 });

@@ -1,6 +1,6 @@
 import { Link, router, useFocusEffect } from 'expo-router';
 import { useCallback, useContext, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { TagPicker } from './TagPicker';
 import { BOOK_TYPE_LABELS } from './TypePicker';
@@ -11,8 +11,11 @@ import { BulkOrganizePanel } from './BulkOrganizePanel';
 import { useBookSearch } from './useBookSearch';
 import type { LibraryOverview } from './libraryOverviewRepository';
 import { useBookSearchRepository, useBulkOrganizeRepository, useLibraryOverviewRepository, useTags } from '../storage/AppProvider';
+import { useBooks } from '../storage/AppProvider';
 import { BookshelfToolbar } from './BookshelfToolbar';
 import { useTheme } from '../theme/ThemeProvider';
+import { selectWantToReadBook } from './randomWantToRead';
+import { RandomWantToReadSheet } from './RandomWantToReadSheet';
 
 const BOOK_SORT_OPTIONS: { value: BookSortOrder; label: string }[] = [
   { value: 'recently_updated', label: '最近修改' },
@@ -25,6 +28,7 @@ export default function Bookshelf() {
   const { theme } = useTheme();
   const insets = useContext(SafeAreaInsetsContext) ?? { top: 0, right: 0, bottom: 0, left: 0 };
   const searchRepo = useBookSearchRepository();
+  const booksRepo = useBooks();
   const bulkOrganizeRepository = useBulkOrganizeRepository();
   const overviewRepository = useLibraryOverviewRepository();
   const tagRepo = useTags();
@@ -43,6 +47,10 @@ export default function Bookshelf() {
   const [tagError, setTagError] = useState('');
   const [overview, setOverview] = useState<LibraryOverview | null>(null);
   const [overviewError, setOverviewError] = useState('');
+  const [randomPick, setRandomPick] = useState<{ book: import('./types').Book | null; candidateCount: number } | null>(null);
+  const [randomBusy, setRandomBusy] = useState(false);
+  const [randomError, setRandomError] = useState('');
+  const previousRandomId = useRef<string | null>(null);
   const hasFocused = useRef(false);
   const { results, loading, error: searchError, resultsCurrent, retry } = useBookSearch(searchRepo, { query, status, bookType, tagIds, sortOrder });
   useFocusEffect(useCallback(() => {
@@ -62,6 +70,23 @@ export default function Bookshelf() {
     setStatus(null);
     setBookType(null);
     setTagIds([]);
+  }
+
+  async function pickRandomWantToRead() {
+    if (randomBusy) return;
+    setRandomBusy(true);
+    setRandomError('');
+    try {
+      const books = await booksRepo.list();
+      const candidates = books.filter(book => book.status === 'want_to_read');
+      const selected = selectWantToReadBook(books, previousRandomId.current);
+      previousRandomId.current = selected?.id ?? previousRandomId.current;
+      setRandomPick({ book: selected, candidateCount: candidates.length });
+    } catch {
+      setRandomError('随机抽取失败，请重试');
+    } finally {
+      setRandomBusy(false);
+    }
   }
 
   function enterBulkMode() {
@@ -148,8 +173,10 @@ export default function Bookshelf() {
       onClearFilters={clearFilters}
       onToggleFilters={() => setShowFilters(value => !value)}
       onEnterBulk={enterBulkMode}
+      onRandomPick={() => { void pickRandomWantToRead(); }}
       bulkMode={bulkMode}
     />
+    {randomError ? <View style={styles.errorRow}><Text style={[styles.error, { color: theme.danger }]}>{randomError}</Text><Pressable accessibilityRole="button" onPress={() => { void pickRandomWantToRead(); }}><Text style={[styles.link, { color: theme.primary }]}>重试</Text></Pressable></View> : null}
     {overviewError ? <Text style={[styles.error, { color: theme.danger }]}>{overviewError}</Text> : null}
     {tagError ? <Text style={[styles.error, { color: theme.danger }]}>{tagError}</Text> : null}
     {searchError ? <View style={styles.errorRow}><Text style={[styles.error, { color: theme.danger }]}>{searchError}</Text><Pressable accessibilityRole="button" onPress={retry}><Text style={[styles.link, { color: theme.primary }]}>重试</Text></Pressable></View> : null}
@@ -183,6 +210,9 @@ export default function Bookshelf() {
         selection={bulkMode ? { checked: selectedBooks.has(item.book.id), onToggle: () => toggleSelected(item.book) } : undefined} />}
     />
     <Link href="/book/new" asChild><Pressable accessibilityRole="button" style={[styles.add, { bottom: insets.bottom + 8, backgroundColor: theme.primary }]}><Text style={styles.addText}>＋ 添加小说</Text></Pressable></Link>
+    <Modal visible={randomPick !== null} transparent animationType="slide" onRequestClose={() => setRandomPick(null)}>
+      <View style={styles.modalBackdrop}><Pressable accessibilityRole="button" accessibilityLabel="关闭随机抽取" style={styles.modalDismiss} onPress={() => setRandomPick(null)} /><View style={styles.modalSheet}><RandomWantToReadSheet book={randomPick?.book ?? null} candidateCount={randomPick?.candidateCount ?? 0} onClose={() => setRandomPick(null)} onPickAgain={() => { void pickRandomWantToRead(); }} onOpen={id => { setRandomPick(null); router.push({ pathname: '/book/[id]', params: { id } }); }} /></View></View>
+    </Modal>
   </View>;
 }
 
@@ -198,4 +228,5 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' }, emptyTitle: { fontSize: 20, fontWeight: '600', color: '#302a25' },
   add: { position: 'absolute', left: 22, right: 22, padding: 17, borderRadius: 16, alignItems: 'center' }, addText: { color: 'white', fontWeight: '700', fontSize: 17 },
+  modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.28)' }, modalDismiss: { flex: 1 }, modalSheet: { paddingBottom: 0 },
 });

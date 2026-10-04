@@ -157,6 +157,18 @@ test('bookshelf shows status counts at the top and filters by a tapped status', 
   expect(screen.getByRole('radio', { name: '在读 2 本' }).props.accessibilityState).toEqual({ checked: true });
 });
 
+test('bookshelf random pick uses the full library instead of search results', async () => {
+  const wantToRead = { ...book, id: 'book-want', title: '想读书', status: 'want_to_read' as const };
+  repo.list.mockResolvedValue([book, wantToRead]);
+  searchRepo.search.mockResolvedValue([]);
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('书架还是空的')).toBeTruthy());
+  await fireEvent.press(screen.getByText('随机想读'));
+  await waitFor(() => expect(screen.getByText('随机抽到')).toBeTruthy());
+  expect(screen.getAllByText('想读书').length).toBeGreaterThan(0);
+  expect(repo.list).toHaveBeenCalled();
+});
+
 test('bookshelf changes sort order and keeps it when filters are cleared', async () => {
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
