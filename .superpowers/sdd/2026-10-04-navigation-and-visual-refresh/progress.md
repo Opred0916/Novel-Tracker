@@ -8,3 +8,5 @@ Task 1: complete (tests: npm.cmd test -- --runInBand tests/theme -> 3 suites, 5 
 Task 2: complete (tests: npm.cmd test -- --runInBand tests/navigation/tabs.test.tsx tests/books/bookRoutes.test.tsx tests/books/annualRecapPage.test.tsx -> 3 suites, 43 tests passed).
 Task 3: complete (tests: npm.cmd test -- --runInBand tests/books/BookshelfToolbar.test.tsx tests/books/bookRoutes.test.tsx tests/books/useBookSearch.test.tsx -> 3 suites, 42 tests passed; npx.cmd tsc --noEmit -> exit 0).
 Task 4: complete (tests: npm.cmd test -- --runInBand tests/books/defaultCover.test.ts tests/books/BookCover.test.tsx -> 2 suites, 3 tests passed; npx.cmd tsc --noEmit -> exit 0).
+Task 5: complete (tests: theme/core + form regression -> 11 suites, 48 tests passed; navigation/bookshelf/cover/detail/recap -> 9 suites, 60 tests passed; import/backup/export/organize -> 9 suites, 39 tests passed; npx.cmd tsc --noEmit -> exit 0; npm.cmd run lint -> exit 0; git diff --check -> exit 0; old purple palette scan clean).
+Final review: self-review completed against the plan and changed-file diff. A reviewer subagent was attempted but unavailable due usage limit; no merge or push performed.
