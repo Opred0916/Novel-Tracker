@@ -7,7 +7,7 @@ import { createInMemoryDatabase } from '../helpers/inMemoryDatabase';
 
 function makeReview(text: string, action: 'create' | 'append_notes' | 'skip' = 'create'): ImportReview {
   const candidate = parseTextImport(text, 'blocks', 'want_to_read').candidates[0];
-  return { items: [{ candidate, action, targetBookId: action === 'append_notes' ? 'existing' : null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] }], fragments: [], ignoredFragmentIds: [] };
+  return { items: [{ candidate, action, targetBookId: action === 'append_notes' ? 'existing' : null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] }], fragments: [], fragmentDecisions: {} };
 }
 
 test('creates imported books, unknown-date sessions, and provenance-aware notes in one transaction', async () => {
@@ -48,7 +48,7 @@ test('rolls back all imported rows when a later candidate fails', async () => {
     const review: ImportReview = { items: [
       { candidate: first, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] },
       { candidate: second, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] },
-    ], fragments: [], ignoredFragmentIds: [] };
+    ], fragments: [], fragmentDecisions: {} };
     const service = new ImportCommitService(db, randomUUID, () => '2026-10-03T10:00:00.000Z');
     await expect(service.commit(review)).rejects.toThrow('injected failure');
     expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM books')).toEqual({ count: 0 });
