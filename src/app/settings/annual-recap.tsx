@@ -27,7 +27,7 @@ function ThoughtCard({ note, onPress }: { note: RecapNote; onPress: () => void }
 
 function BookRecapCard({ book, onPress }: { book: RecapBook; onPress: () => void }) {
   return <Pressable accessibilityRole="button" style={styles.bookCard} onPress={onPress}>
-    <BookCover title={book.title} uri={book.coverUri} size="small" showTitle />
+    <BookCover title={book.title} bookId={book.bookId} uri={book.coverUri} size="small" showTitle />
     <View style={styles.bookInfo}>
       {book.coverUri ? <Text style={styles.bookTitle}>{book.title}</Text> : null}
       {book.sessions.map(session => <Text key={session.id} style={styles.session}>

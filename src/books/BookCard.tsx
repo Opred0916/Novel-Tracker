@@ -8,7 +8,7 @@ export function BookCard({ book, matchedNoteSnippet, matchedImage, onPress, sele
   const isSelecting = Boolean(selection);
   return <Pressable accessibilityRole={isSelecting ? 'checkbox' : 'button'} accessibilityLabel={isSelecting ? `选择${book.title}` : `查看${book.title}`} accessibilityState={isSelecting ? { checked: selection?.checked } : undefined} onPress={isSelecting ? selection?.onToggle : onPress} style={[styles.card, isSelecting && styles.selectionCard]}>
     {selection ? <Text style={[styles.checkbox, selection.checked && styles.checkboxChecked]}>{selection.checked ? '✓' : ''}</Text> : null}
-    <BookCover title={book.title} uri={book.coverUri} size="small" />
+    <BookCover title={book.title} bookId={book.id} uri={book.coverUri} size="small" />
     <View style={styles.details}>
       <Text style={styles.title}>{book.title}</Text>
       {book.author ? <Text style={styles.author}>{book.author}</Text> : null}

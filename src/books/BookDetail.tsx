@@ -12,7 +12,7 @@ export function BookDetail({ book, sessions = [], onEditReading }: {
 }) {
   const ordered = [...sessions].sort((a, b) => a.ordinal - b.ordinal);
   return <View style={styles.container}>
-    <BookCover title={book.title} uri={book.coverUri} size="large" showTitle />
+    <BookCover title={book.title} bookId={book.id} uri={book.coverUri} size="large" showTitle />
     <Text style={styles.title}>{book.title}</Text>
     <Text style={styles.status}>{BOOK_STATUS_LABELS[book.status]}</Text>
     <View style={styles.section}>
