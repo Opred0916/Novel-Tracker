@@ -92,6 +92,14 @@ export class SqliteImageOcrRepository {
     return Number(result.changes) > 0;
   }
 
+  async resetProcessing(imageId: string): Promise<void> {
+    await this.db.runAsync(
+      `UPDATE image_ocr SET status = 'pending', updated_at = ?, error_code = NULL
+       WHERE image_id = ? AND status = 'processing'`,
+      this.nowFactory(), imageId,
+    );
+  }
+
   async progress(bookId?: string): Promise<ImageOcrProgress> {
     const row = await this.db.getFirstAsync<{ total: number; done: number; failed: number }>(
       `SELECT
