@@ -2,6 +2,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import React, { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { todayLocalDate } from './readingDates';
+import { useTheme } from '../theme/ThemeProvider';
 
 type DateField = 'start' | 'end';
 
@@ -21,6 +22,7 @@ export function ReadingDateFields({ startedOn, endedOn, showEnd, onStartChange, 
   onStartChange: (value: string) => void;
   onEndChange: (value: string) => void;
 }) {
+  const { theme } = useTheme();
   const [activeField, setActiveField] = useState<DateField | null>(null);
   const [draftDate, setDraftDate] = useState(new Date());
 
@@ -74,9 +76,9 @@ export function ReadingDateFields({ startedOn, endedOn, showEnd, onStartChange, 
       <View style={styles.overlay}>
         <View style={styles.sheet}>
           <View style={styles.actions}>
-            <Pressable accessibilityRole="button" onPress={() => setActiveField(null)}><Text style={styles.action}>取消</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => setActiveField(null)}><Text style={[styles.action, { color: theme.primary }]}>取消</Text></Pressable>
             <Text style={styles.sheetTitle}>选择{activeField === 'start' ? '开始' : '结束'}日期</Text>
-            <Pressable accessibilityRole="button" onPress={finish}><Text style={styles.action}>完成</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={finish}><Text style={[styles.action, { color: theme.primary }]}>完成</Text></Pressable>
           </View>
           {activeField ? <DateTimePicker value={draftDate} mode="date" display="spinner" locale="zh-CN" themeVariant="light"
             onValueChange={(_event, selected) => setDraftDate(selected)} /> : null}
@@ -95,6 +97,6 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: '#0006' },
   sheet: { backgroundColor: '#fff', borderTopLeftRadius: 18, borderTopRightRadius: 18, paddingBottom: 24 },
   actions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
-  action: { fontSize: 17, color: '#634277', fontWeight: '600' },
+  action: { fontSize: 17, fontWeight: '600' },
   sheetTitle: { fontSize: 16, fontWeight: '600', color: '#302a25' },
 });

@@ -4,17 +4,19 @@ import { BOOK_STATUS_LABELS } from './status';
 import type { Book, ReadingSession } from './types';
 import { BOOK_TYPE_LABELS } from './TypePicker';
 import { BookCover } from './BookCover';
+import { useTheme } from '../theme/ThemeProvider';
 
 export function BookDetail({ book, sessions = [], onEditReading }: {
   book: Book;
   sessions?: ReadingSession[];
   onEditReading?: (sessionId: string) => void;
 }) {
+  const { theme } = useTheme();
   const ordered = [...sessions].sort((a, b) => a.ordinal - b.ordinal);
   return <View style={styles.container}>
-    <BookCover title={book.title} uri={book.coverUri} size="large" showTitle />
-    <Text style={styles.title}>{book.title}</Text>
-    <Text style={styles.status}>{BOOK_STATUS_LABELS[book.status]}</Text>
+    <BookCover title={book.title} bookId={book.id} uri={book.coverUri} size="large" showTitle />
+    <Text style={[styles.title, { color: theme.text }]}>{book.title}</Text>
+    <Text style={[styles.status, { color: theme.primary, backgroundColor: theme.primarySoft }]}>{BOOK_STATUS_LABELS[book.status]}</Text>
     <View style={styles.section}>
       <Text style={styles.label}>作者</Text>
       <Text style={styles.value}>{book.author ?? '未填写作者'}</Text>
@@ -44,14 +46,14 @@ export function BookDetail({ book, sessions = [], onEditReading }: {
       {book.legacyReadCount === 1 ? <View style={styles.historyItem}>
         <Text style={styles.value}>第 1 次阅读 · 读完 · 日期未记录</Text>
         {onEditReading ? <Pressable accessibilityRole="button" onPress={() => onEditReading('first')}>
-          <Text style={styles.link}>补记首刷日期</Text>
+          <Text style={[styles.link, { color: theme.primary }]}>补记首刷日期</Text>
         </Pressable> : null}
       </View> : null}
       {ordered.map(session => <View key={session.id} style={styles.historyItem}>
         <Text style={styles.value}>第 {session.ordinal} 次阅读 · {BOOK_STATUS_LABELS[session.outcome]}</Text>
         <Text style={styles.date}>{session.startedOn ?? '日期未记录'} — {session.endedOn ?? (session.outcome === 'reading' ? '在读中' : '日期未记录')}</Text>
         {onEditReading ? <Pressable accessibilityRole="button" onPress={() => onEditReading(session.id)}>
-          <Text style={styles.link}>编辑第 {session.ordinal} 次阅读</Text>
+          <Text style={[styles.link, { color: theme.primary }]}>编辑第 {session.ordinal} 次阅读</Text>
         </Pressable> : null}
       </View>)}
       {!book.legacyReadCount && ordered.length === 0 ? <Text style={styles.value}>暂无阅读记录</Text> : null}
@@ -68,11 +70,11 @@ export function BookDetail({ book, sessions = [], onEditReading }: {
 const styles = StyleSheet.create({
   container: { padding: 24, gap: 18 },
   title: { fontSize: 28, fontWeight: '700', color: '#302a25' },
-  status: { alignSelf: 'flex-start', color: '#593f72', backgroundColor: '#eee5f4', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  status: { alignSelf: 'flex-start', color: '#28584E', backgroundColor: '#E8F1EC', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   section: { backgroundColor: '#fff', padding: 18, borderRadius: 14, gap: 8 },
   label: { fontSize: 14, fontWeight: '600', color: '#766f68' },
   value: { fontSize: 17, color: '#302a25' },
   historyItem: { gap: 5, paddingVertical: 6 },
   date: { fontSize: 14, color: '#766f68' },
-  link: { fontSize: 14, color: '#593f72', fontWeight: '600', paddingVertical: 4 },
+  link: { fontSize: 14, color: '#28584E', fontWeight: '600', paddingVertical: 4 },
 });

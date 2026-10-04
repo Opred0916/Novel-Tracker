@@ -6,6 +6,7 @@ import type { BackupInspection, BackupProgress } from '../../backup/backupServic
 import type { BackupCounts, BackupProgressStage } from '../../backup/backupTypes';
 import { BackupValidationError } from '../../backup/backupValidation';
 import { useBackupService, useImageOcr } from '../../storage/AppProvider';
+import { useTheme } from '../../theme/ThemeProvider';
 
 type Overview = { counts: BackupCounts; lastGeneratedAt: string | null };
 const STAGE_LABELS: Record<BackupProgressStage, string> = {
@@ -24,6 +25,7 @@ function restoreReadError(error: unknown): string {
 }
 
 export default function BackupPage() {
+  const { theme } = useTheme();
   const service = useBackupService();
   const imageOcr = useImageOcr();
   const [overview, setOverview] = useState<Overview | null>(null);
@@ -132,27 +134,27 @@ export default function BackupPage() {
   }
 
   return <ScrollView contentContainerStyle={styles.container}>
-    <Text style={styles.heading}>备份与恢复</Text>
-    <Text style={styles.help}>备份包含书籍、阅读记录、摘记和图片，也可能包含私人内容，请妥善保存。</Text>
-    <View style={styles.card}>
-      <Text style={styles.cardTitle}>当前书库</Text>
-      <Text style={styles.value}>{overview ? summary(overview.counts) : '正在读取…'}</Text>
-      <Text style={styles.muted}>{overview?.lastGeneratedAt ? `上次生成备份：${new Date(overview.lastGeneratedAt).toLocaleString()}` : '尚未生成备份'}</Text>
+    <Text style={[styles.heading, { color: theme.text }]}>备份与恢复</Text>
+    <Text style={[styles.help, { color: theme.mutedText }]}>备份包含书籍、阅读记录、摘记和图片，也可能包含私人内容，请妥善保存。</Text>
+    <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <Text style={[styles.cardTitle, { color: theme.text }]}>当前书库</Text>
+      <Text style={[styles.value, { color: theme.text }]}>{overview ? summary(overview.counts) : '正在读取…'}</Text>
+      <Text style={[styles.muted, { color: theme.mutedText }]}>{overview?.lastGeneratedAt ? `上次生成备份：${new Date(overview.lastGeneratedAt).toLocaleString()}` : '尚未生成备份'}</Text>
     </View>
-    {progress ? <Text accessibilityLiveRegion="polite" style={styles.progress}>{STAGE_LABELS[progress.stage]}</Text> : null}
-    {error ? <Text style={styles.error}>{error}</Text> : null}
-    <Pressable accessibilityRole="button" disabled={busy} onPress={generate} style={[styles.primary, busy && styles.disabled]}>
+    {progress ? <Text accessibilityLiveRegion="polite" style={[styles.progress, { color: theme.primary }]}>{STAGE_LABELS[progress.stage]}</Text> : null}
+    {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+    <Pressable accessibilityRole="button" disabled={busy} onPress={generate} style={[styles.primary, { backgroundColor: theme.primary }, busy && styles.disabled]}>
       <Text style={styles.primaryText}>生成备份</Text>
     </Pressable>
-    <Pressable accessibilityRole="button" disabled={busy} onPress={chooseRestore} style={[styles.secondary, busy && styles.disabled]}>
-      <Text style={styles.secondaryText}>从备份恢复</Text>
+    <Pressable accessibilityRole="button" disabled={busy} onPress={chooseRestore} style={[styles.secondary, { backgroundColor: theme.card, borderColor: theme.primary }, busy && styles.disabled]}>
+      <Text style={[styles.secondaryText, { color: theme.primary }]}>从备份恢复</Text>
     </Pressable>
-    {inspection ? <View style={[styles.card, styles.warning]}>
-      <Text style={styles.cardTitle}>备份预览</Text>
-      <Text style={styles.value}>{summary(inspection.counts)}</Text>
+    {inspection ? <View style={[styles.card, styles.warning, { backgroundColor: theme.card, borderColor: '#c48235' }]}>
+      <Text style={[styles.cardTitle, { color: theme.text }]}>备份预览</Text>
+      <Text style={[styles.value, { color: theme.text }]}>{summary(inspection.counts)}</Text>
       <Text style={styles.warningText}>这会完整替换当前书库</Text>
       <Pressable accessibilityRole="button" disabled={busy} onPress={confirmRestore} style={styles.danger}><Text style={styles.primaryText}>确认恢复</Text></Pressable>
-      <Pressable accessibilityRole="button" disabled={busy} onPress={cancelRestore} style={styles.cancel}><Text style={styles.secondaryText}>取消恢复</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={busy} onPress={cancelRestore} style={styles.cancel}><Text style={[styles.secondaryText, { color: theme.primary }]}>取消恢复</Text></Pressable>
     </View> : null}
   </ScrollView>;
 }
@@ -162,10 +164,10 @@ const styles = StyleSheet.create({
   heading: { fontSize: 26, fontWeight: '700', color: '#302a25' }, help: { color: '#766f68', lineHeight: 21 },
   card: { backgroundColor: '#fff', padding: 18, borderRadius: 14, gap: 8, borderWidth: 1, borderColor: '#e1dad1' },
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#302a25' }, value: { color: '#302a25', lineHeight: 22 },
-  muted: { color: '#817871' }, progress: { color: '#593f72', fontWeight: '600' }, error: { color: '#b52626', lineHeight: 20 },
-  primary: { backgroundColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center' },
-  secondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center' },
-  primaryText: { color: '#fff', fontWeight: '700' }, secondaryText: { color: '#593f72', fontWeight: '700' }, disabled: { opacity: 0.5 },
+  muted: { color: '#817871' }, progress: { color: '#28584E', fontWeight: '600' }, error: { color: '#b52626', lineHeight: 20 },
+  primary: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center' },
+  secondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center' },
+  primaryText: { color: '#fff', fontWeight: '700' }, secondaryText: { color: '#28584E', fontWeight: '700' }, disabled: { opacity: 0.5 },
   warning: { borderColor: '#c48235' }, warningText: { color: '#9a5719', fontWeight: '700' },
   danger: { backgroundColor: '#a33b35', padding: 14, borderRadius: 12, alignItems: 'center', marginTop: 6 },
   cancel: { padding: 10, alignItems: 'center' },

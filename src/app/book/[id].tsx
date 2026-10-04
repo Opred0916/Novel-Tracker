@@ -8,11 +8,13 @@ import { NotesSection } from '../../books/NotesSection';
 import { HighlightsSection } from '../../books/HighlightsSection';
 import { ImagePreview } from '../../books/ImagePreview';
 import type { ImageOcrProgress, ImageOcrRecord } from '../../books/imageOcrRepository';
+import { useTheme } from '../../theme/ThemeProvider';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
 export default function BookPage() {
   const { id, focusImageId, focusNoteId } = useLocalSearchParams<{ id: string; focusImageId?: string; focusNoteId?: string }>();
+  const { theme } = useTheme();
   const repo = useBooks();
   const historyRepo = useReadingHistory();
   const notesRepo = useNotes();
@@ -83,15 +85,15 @@ export default function BookPage() {
     detailScrollRef.current?.scrollTo({ y: Math.max(0, notesSectionY + focusNotePosition.y - 24), animated: true });
   }, [focusNoteId, focusNotePosition, notesSectionLaidOut, notesSectionY]);
 
-  if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator /></View>;
+  if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator color={theme.primary} /></View>;
   if (loadState === 'missing') return <View style={styles.center}>
-    <Text style={styles.message}>找不到这本小说</Text>
-    <Pressable accessibilityRole="button" onPress={() => router.replace('/')}><Text style={styles.link}>返回书架</Text></Pressable>
+    <Text style={[styles.message, { color: theme.text }]}>找不到这本小说</Text>
+    <Pressable accessibilityRole="button" onPress={() => router.replace('/')}><Text style={[styles.link, { color: theme.primary }]}>返回书架</Text></Pressable>
   </View>;
   if (loadState === 'error') return <View style={styles.center}>
-    <Text style={styles.message}>读取小说失败，请重试</Text>
-    <Pressable accessibilityRole="button" onPress={() => setRetry(value => value + 1)}><Text style={styles.link}>重试</Text></Pressable>
-    <Pressable accessibilityRole="button" onPress={() => router.replace('/')}><Text style={styles.link}>返回书架</Text></Pressable>
+    <Text style={[styles.message, { color: theme.text }]}>读取小说失败，请重试</Text>
+    <Pressable accessibilityRole="button" onPress={() => setRetry(value => value + 1)}><Text style={[styles.link, { color: theme.primary }]}>重试</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => router.replace('/')}><Text style={[styles.link, { color: theme.primary }]}>返回书架</Text></Pressable>
   </View>;
   if (!book) return null;
   const currentBook = book;
@@ -133,15 +135,15 @@ export default function BookPage() {
     <View testID="notes-section-container" onLayout={event => { setNotesSectionY(event.nativeEvent.layout.y); setNotesSectionLaidOut(true); }}>
       <NotesSection bookId={id} repository={notesRepo} highlights={highlights} sessions={sessions} focusNoteId={focusNoteId} onFocusResult={handleNoteFocus} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} />
     </View>
-    {focusNoteError ? <Text style={styles.focusNoteError}>{focusNoteError}</Text> : null}
+    {focusNoteError ? <Text style={[styles.focusNoteError, { color: theme.danger }]}>{focusNoteError}</Text> : null}
     <HighlightsSection bookId={id} repository={notesRepo} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} />
-    {ocrProgress && ocrProgress.total > 0 ? <Text style={styles.ocrProgress}>图片文字识别：{ocrProgress.done}/{ocrProgress.total}{ocrProgress.failed ? `（失败 ${ocrProgress.failed}）` : ''}</Text> : null}
-    <Pressable accessibilityRole="button" disabled={deleting} style={[styles.edit, deleting && styles.disabled]} onPress={() => router.push({ pathname: '/book/[id]/edit', params: { id } })}>
+    {ocrProgress && ocrProgress.total > 0 ? <Text style={[styles.ocrProgress, { color: theme.mutedText }]}>图片文字识别：{ocrProgress.done}/{ocrProgress.total}{ocrProgress.failed ? `（失败 ${ocrProgress.failed}）` : ''}</Text> : null}
+    <Pressable accessibilityRole="button" disabled={deleting} style={[styles.edit, { backgroundColor: theme.primary }, deleting && styles.disabled]} onPress={() => router.push({ pathname: '/book/[id]/edit', params: { id } })}>
       <Text style={styles.editText}>编辑资料</Text>
     </Pressable>
-    {deleteError ? <Text style={styles.deleteError}>{deleteError}</Text> : null}
-    <Pressable accessibilityRole="button" disabled={deleting} style={[styles.delete, deleting && styles.disabled]} onPress={confirmDelete}>
-      <Text style={styles.deleteText}>{deleting ? '正在删除…' : '删除小说'}</Text>
+    {deleteError ? <Text style={[styles.deleteError, { color: theme.danger }]}>{deleteError}</Text> : null}
+    <Pressable accessibilityRole="button" disabled={deleting} style={[styles.delete, { borderColor: theme.danger }, deleting && styles.disabled]} onPress={confirmDelete}>
+      <Text style={[styles.deleteText, { color: theme.danger }]}>{deleting ? '正在删除…' : '删除小说'}</Text>
     </Pressable>
     <ImagePreview image={previewImage} visible={Boolean(previewImage)} status={previewOcr ? previewOcr.status : imageOcr.isAvailable ? 'pending' : 'unavailable'} recognizedText={previewOcr?.recognizedText} onClose={() => { setPreviewImage(null); setPreviewOcr(null); }} onRetry={previewImage ? async () => { await imageOcr.retry(previewImage.id); setPreviewOcr(await imageOcr.get(previewImage.id)); } : undefined} />
   </ScrollView>;
@@ -152,8 +154,8 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 24 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 14, padding: 24 },
   message: { fontSize: 17, color: '#302a25' },
-  link: { fontSize: 16, color: '#593f72', fontWeight: '600' },
-  edit: { backgroundColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center', marginHorizontal: 24, marginTop: 8 },
+  link: { fontSize: 16, color: '#28584E', fontWeight: '600' },
+  edit: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center', marginHorizontal: 24, marginTop: 8 },
   editText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   delete: { borderWidth: 1, borderColor: '#b52626', padding: 15, borderRadius: 12, alignItems: 'center', marginHorizontal: 24, marginTop: 12 },
   deleteText: { color: '#b52626', fontWeight: '700', fontSize: 16 },

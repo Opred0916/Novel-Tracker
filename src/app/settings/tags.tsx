@@ -5,8 +5,10 @@ import { TagPicker } from '../../books/TagPicker';
 import type { Tag } from '../../books/types';
 import { DEFAULT_QUICK_TAG_NAMES } from '../../storage/database';
 import { useTags } from '../../storage/AppProvider';
+import { useTheme } from '../../theme/ThemeProvider';
 
 export default function QuickTagsPage() {
+  const { theme } = useTheme();
   const repo = useTags();
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -48,26 +50,26 @@ export default function QuickTagsPage() {
     }
   }
 
-  if (loading) return <View style={styles.container}><Text>正在读取标签…</Text></View>;
+  if (loading) return <View style={styles.container}><Text style={{ color: theme.text }}>正在读取标签…</Text></View>;
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    <Text style={styles.heading}>快捷标签</Text>
-    <Text style={styles.help}>选择添加小说时优先显示的标签。移除快捷标签不会删除书籍上已有的标签。</Text>
+    <Text style={[styles.heading, { color: theme.text }]}>快捷标签</Text>
+    <Text style={[styles.help, { color: theme.mutedText }]}>选择添加小说时优先显示的标签。移除快捷标签不会删除书籍上已有的标签。</Text>
     <TagPicker tags={tags} selectedIds={selectedIds} onChange={setSelectedIds} searchable />
-    <Text style={styles.heading}>显示顺序</Text>
+    <Text style={[styles.heading, { color: theme.text }]}>显示顺序</Text>
     {selectedIds.map(id => {
       const tag = tags.find(item => item.id === id);
       if (!tag) return null;
       return <View key={id} style={styles.row}>
-        <Text style={styles.orderName}>{tag.name}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${tag.name}上移`} onPress={() => move(id, -1)} style={styles.move}><Text>↑</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel={`${tag.name}下移`} onPress={() => move(id, 1)} style={styles.move}><Text>↓</Text></Pressable>
+        <Text style={[styles.orderName, { color: theme.text }]}>{tag.name}</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${tag.name}上移`} onPress={() => move(id, -1)} style={[styles.move, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}><Text style={{ color: theme.text }}>↑</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${tag.name}下移`} onPress={() => move(id, 1)} style={[styles.move, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}><Text style={{ color: theme.text }}>↓</Text></Pressable>
       </View>;
     })}
     <Pressable accessibilityRole="button" onPress={() => setSelectedIds(DEFAULT_QUICK_TAG_NAMES.map(name => tags.find(tag => tag.name === name)?.id).filter((id): id is string => Boolean(id)))}>
-      <Text style={styles.link}>恢复默认快捷标签</Text>
+      <Text style={[styles.link, { color: theme.primary }]}>恢复默认快捷标签</Text>
     </Pressable>
-    {error ? <Text style={styles.error}>{error}</Text> : null}
-    <Pressable accessibilityRole="button" disabled={saving} onPress={save} style={styles.save}><Text style={styles.saveText}>{saving ? '保存中…' : '保存快捷标签'}</Text></Pressable>
+    {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+    <Pressable accessibilityRole="button" disabled={saving} onPress={save} style={[styles.save, { backgroundColor: theme.primary }]}><Text style={styles.saveText}>{saving ? '保存中…' : '保存快捷标签'}</Text></Pressable>
   </ScrollView>;
 }
 
@@ -75,6 +77,6 @@ const styles = StyleSheet.create({
   container: { padding: 24, gap: 14, paddingBottom: 50 }, heading: { fontSize: 21, fontWeight: '700', color: '#302a25' },
   help: { color: '#766f68', lineHeight: 20 }, row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   orderName: { flex: 1, color: '#302a25' }, move: { padding: 10, backgroundColor: '#fff', borderRadius: 10 },
-  link: { color: '#593f72', fontWeight: '600', paddingVertical: 12 }, error: { color: '#b52626' },
-  save: { backgroundColor: '#593f72', padding: 16, borderRadius: 12, alignItems: 'center' }, saveText: { color: '#fff', fontWeight: '700' },
+  link: { color: '#28584E', fontWeight: '600', paddingVertical: 12 }, error: { color: '#b52626' },
+  save: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center' }, saveText: { color: '#fff', fontWeight: '700' },
 });

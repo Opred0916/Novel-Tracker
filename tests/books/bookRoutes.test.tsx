@@ -3,7 +3,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBooks, useBookSearchRepository, useBulkOrganizeRepository, useImageOcr, useLibraryOverviewRepository, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
-import Bookshelf from '../../src/app/index';
+import Bookshelf from '../../src/books/BookshelfScreen';
 import NewBook from '../../src/app/book/new';
 import QuickTagsPage from '../../src/app/settings/tags';
 import BookPage from '../../src/app/book/[id]';
@@ -252,11 +252,11 @@ test('bookshelf passes the matched image to the detail page for preview', async 
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: book.id, focusImageId: 'image-1' } });
 });
 
-test('bookshelf opens backup and restore settings', async () => {
+test('bookshelf keeps maintenance tools in the management tab', async () => {
   const screen = await render(<Bookshelf />);
-  await waitFor(() => expect(screen.getByText('备份与恢复')).toBeTruthy());
-  await fireEvent.press(screen.getByText('备份与恢复'));
-  expect(router.push).toHaveBeenCalledWith('/settings/backup');
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
+  expect(screen.queryByText('备份与恢复')).toBeNull();
+  expect(screen.queryByText('快捷标签设置')).toBeNull();
 });
 
 test('data management exposes the open export entry', async () => {

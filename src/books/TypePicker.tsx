@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { BOOK_TYPES, type BookType } from './types';
+import { useTheme } from '../theme/ThemeProvider';
 
 export const BOOK_TYPE_LABELS: Record<BookType, string> = {
   romance_male_male: '耽美',
@@ -11,11 +12,12 @@ export const BOOK_TYPE_LABELS: Record<BookType, string> = {
 };
 
 export function TypePicker({ value, onChange }: { value: BookType | null; onChange: (value: BookType | null) => void }) {
+  const { theme } = useTheme();
   return <View style={styles.group}>
     {[null, ...BOOK_TYPES].map(type => <Pressable key={type ?? 'none'} accessibilityRole="radio"
       accessibilityState={{ checked: value === type }} onPress={() => onChange(type)}
-      style={[styles.option, value === type && styles.selected]}>
-      <Text style={[styles.text, value === type && styles.selectedText]}>{type === null ? '不分类' : BOOK_TYPE_LABELS[type]}</Text>
+      style={[styles.option, { borderColor: value === type ? theme.primary : theme.border, backgroundColor: value === type ? theme.primarySoft : theme.card }]}>
+      <Text style={{ color: value === type ? theme.primary : theme.text, fontWeight: value === type ? '700' : '500' }}>{type === null ? '不分类' : BOOK_TYPE_LABELS[type]}</Text>
     </Pressable>)}
   </View>;
 }
@@ -23,7 +25,7 @@ export function TypePicker({ value, onChange }: { value: BookType | null; onChan
 const styles = StyleSheet.create({
   group: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   option: { borderWidth: 1, borderColor: '#d6cec4', backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10 },
-  selected: { backgroundColor: '#593f72', borderColor: '#593f72' },
+  selected: { backgroundColor: '#28584E', borderColor: '#28584E' },
   text: { color: '#302a25' },
   selectedText: { color: '#fff', fontWeight: '700' },
 });
