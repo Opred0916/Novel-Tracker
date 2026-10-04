@@ -3,7 +3,7 @@ import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBooks, useBookSearchRepository, useBulkOrganizeRepository, useImageOcr, useLibraryOverviewRepository, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
-import Bookshelf from '../../src/app/index';
+import Bookshelf from '../../src/books/BookshelfScreen';
 import NewBook from '../../src/app/book/new';
 import QuickTagsPage from '../../src/app/settings/tags';
 import BookPage from '../../src/app/book/[id]';

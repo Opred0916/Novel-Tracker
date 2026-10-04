@@ -1,9 +1,11 @@
 import { Stack } from 'expo-router';
 import { AppProvider } from '../storage/AppProvider';
+import { ThemeProvider, useTheme } from '../theme/ThemeProvider';
 
-export default function RootLayout() {
-  return <AppProvider><Stack screenOptions={{ headerStyle: { backgroundColor: '#f8f5ef' }, contentStyle: { backgroundColor: '#f8f5ef' } }}>
-    <Stack.Screen name="index" options={{ title: '我的书架' }} />
+function RootNavigator() {
+  const { theme } = useTheme();
+  return <Stack screenOptions={{ headerStyle: { backgroundColor: theme.background }, headerTintColor: theme.primary, contentStyle: { backgroundColor: theme.background } }}>
+    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     <Stack.Screen name="book/new" options={{ title: '添加小说' }} />
     <Stack.Screen name="book/[id]" options={{ title: '小说详情' }} />
     <Stack.Screen name="book/[id]/edit" options={{ title: '编辑小说' }} />
@@ -14,5 +16,9 @@ export default function RootLayout() {
     <Stack.Screen name="settings/data" options={{ title: '数据管理' }} />
     <Stack.Screen name="settings/import" options={{ title: '追加旧记录' }} />
     <Stack.Screen name="settings/overview" options={{ title: '书库概览' }} />
-  </Stack></AppProvider>;
+  </Stack>;
+}
+
+export default function RootLayout() {
+  return <ThemeProvider><AppProvider><RootNavigator /></AppProvider></ThemeProvider>;
 }
