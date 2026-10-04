@@ -93,3 +93,14 @@ test('shows a commit error while keeping the current review open', async () => {
   await waitFor(() => expect(screen.getByText('事务提交失败')).toBeTruthy());
   expect(screen.getByDisplayValue('失败后仍保留')).toBeTruthy();
 });
+
+test('refreshes duplicate hints when a candidate title is corrected in preview', async () => {
+  books.list.mockResolvedValue([{ id: 'existing', title: '残次品', author: null }]);
+  const screen = await render(<ImportPage />);
+  await fireEvent.changeText(screen.getByPlaceholderText('粘贴旧书单或摘记文字'), '书名：残次品');
+  await fireEvent.press(screen.getByText('生成导入预览'));
+  await waitFor(() => expect(screen.getByText('书名可能已存在：残次品')).toBeTruthy());
+
+  await fireEvent.changeText(screen.getByLabelText('第1条书名'), '默读');
+  await waitFor(() => expect(screen.queryByText('书名可能已存在：残次品')).toBeNull());
+});

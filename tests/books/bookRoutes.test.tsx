@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useBooks, useBookSearchRepository, useBulkOrganizeRepository, useImageOcr, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
+import { useBooks, useBookSearchRepository, useBulkOrganizeRepository, useImageOcr, useLibraryOverviewRepository, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
 import Bookshelf from '../../src/app/index';
 import NewBook from '../../src/app/book/new';
 import QuickTagsPage from '../../src/app/settings/tags';
@@ -24,7 +24,7 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useBookSearchRepository: jest.fn(), useBulkOrganizeRepository: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn(), useNotes: jest.fn(), useImageOcr: jest.fn() }));
+jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useBookSearchRepository: jest.fn(), useBulkOrganizeRepository: jest.fn(), useLibraryOverviewRepository: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn(), useNotes: jest.fn(), useImageOcr: jest.fn() }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'new-tag-id') }));
 
 const book: Book = {
@@ -42,6 +42,7 @@ const repo = {
 };
 const searchRepo = { search: jest.fn() };
 const bulkOrganizeRepo = { preview: jest.fn(), apply: jest.fn() };
+const overviewRepo = { getOverview: jest.fn() };
 const tagRepo = { list: jest.fn(), listQuick: jest.fn(), create: jest.fn(), setQuick: jest.fn() };
 const historyRepo = { list: jest.fn(), backfillFirst: jest.fn(), updateDates: jest.fn(), delete: jest.fn() };
 const notesRepo = { listNotes: jest.fn(), listHighlights: jest.fn(), resolveLinkedImage: jest.fn(), createNote: jest.fn(), updateNote: jest.fn(), deleteNote: jest.fn(), registerImage: jest.fn(), addHighlights: jest.fn(), removeHighlight: jest.fn() };
@@ -52,6 +53,7 @@ beforeEach(() => {
   jest.mocked(useBooks).mockReturnValue(repo as unknown as ReturnType<typeof useBooks>);
   jest.mocked(useBookSearchRepository).mockReturnValue(searchRepo as unknown as ReturnType<typeof useBookSearchRepository>);
   jest.mocked(useBulkOrganizeRepository).mockReturnValue(bulkOrganizeRepo as unknown as ReturnType<typeof useBulkOrganizeRepository>);
+  jest.mocked(useLibraryOverviewRepository).mockReturnValue(overviewRepo as unknown as ReturnType<typeof useLibraryOverviewRepository>);
   jest.mocked(useTags).mockReturnValue(tagRepo as unknown as ReturnType<typeof useTags>);
   jest.mocked(useReadingHistory).mockReturnValue(historyRepo as unknown as ReturnType<typeof useReadingHistory>);
   jest.mocked(useNotes).mockReturnValue(notesRepo as unknown as ReturnType<typeof useNotes>);
@@ -61,6 +63,7 @@ beforeEach(() => {
   repo.list.mockResolvedValue([book]);
   repo.update.mockResolvedValue(book);
   searchRepo.search.mockResolvedValue([{ book, matchedNoteSnippet: null }]);
+  overviewRepo.getOverview.mockResolvedValue({ totalBooks: 4, byStatus: { want_to_read: 1, reading: 2, finished: 1, dropped: 0 }, finishedBooksThisYear: 1, year: 2026 });
   bulkOrganizeRepo.preview.mockResolvedValue({
     draft: { addTagIds: ['ancient'], removeTagIds: [], newTags: [], typeChange: { kind: 'keep' } },
     items: [{ before: { id: book.id, title: book.title, author: book.author, updatedAt: book.updatedAt, bookType: book.bookType, tagIds: [] }, after: { bookType: book.bookType, tagIds: ['ancient'] }, addedTagIds: ['ancient'], removedTagIds: [], typeChanged: false, changed: true }],
@@ -142,6 +145,16 @@ test('bookshelf searches with recent update sorting by default', async () => {
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   expect(searchRepo.search).toHaveBeenCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_updated' });
+});
+
+test('bookshelf shows status counts at the top and filters by a tapped status', async () => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByRole('radio', { name: '在读 2 本' })).toBeTruthy());
+  expect(screen.getByRole('radio', { name: '全部 4 本' })).toBeTruthy();
+  expect(screen.getByRole('radio', { name: '弃读 0 本' })).toBeTruthy();
+  await fireEvent.press(screen.getByRole('radio', { name: '在读 2 本' }));
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'reading' })));
+  expect(screen.getByRole('radio', { name: '在读 2 本' }).props.accessibilityState).toEqual({ checked: true });
 });
 
 test('bookshelf changes sort order and keeps it when filters are cleared', async () => {
@@ -256,13 +269,13 @@ test('bookshelf submits status, type, and every selected tag then clears them to
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   await fireEvent.press(screen.getByText('筛选条件'));
-  await fireEvent.press(screen.getByText('在读'));
+  await fireEvent.press(screen.getByRole('radio', { name: '在读 2 本' }));
   await fireEvent.press(screen.getByText('耽美'));
   await fireEvent.press(screen.getByText('古代'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({
     query: '', status: 'reading', bookType: 'romance_male_male', tagIds: ['ancient'], sortOrder: 'recently_updated',
   }));
-  expect(screen.getByText('筛选条件（3）')).toBeTruthy();
+  expect(screen.getByText('筛选条件（2）')).toBeTruthy();
   await fireEvent.press(screen.getByText('清除筛选'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({
     query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_updated',

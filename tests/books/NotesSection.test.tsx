@@ -37,3 +37,13 @@ test('keeps note image selection available while focusing a note', async () => {
   await fireEvent.press(screen.getByLabelText('打开摘记图片'));
   expect(onSelect).toHaveBeenCalledWith([image]);
 });
+
+test('shows the actual reading ordinal for a linked note and keeps unknown links unassigned', async () => {
+  const base = { id: 'note-1', bookId: 'book-1', body: '二刷想法', createdAt: '2026-10-01T00:00:00.000Z', updatedAt: '2026-10-01T00:00:00.000Z', readingSessionId: 'session-2', sourceKind: 'app', originalRecordedOn: null, originalRecordedTime: null, images: [] };
+  repository.listNotes.mockResolvedValue([base, { ...base, id: 'note-2', body: '无法对应', readingSessionId: 'removed-session' }]);
+  const screen = await render(<NotesSection bookId="book-1" repository={repository as never} highlights={[]} sessions={[{ id: 'session-2', bookId: 'book-1', ordinal: 2, startedOn: '2026-09-01', endedOn: '2026-09-10', outcome: 'finished' }]} />);
+
+  expect(screen.getByText(/第 2 次阅读后/)).toBeTruthy();
+  expect(screen.getByText(/未关联到具体阅读次数/)).toBeTruthy();
+  expect(screen.queryByText(/已关联阅读次数/)).toBeNull();
+});
