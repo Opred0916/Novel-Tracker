@@ -5,7 +5,7 @@ import { pickBackupFile, shareBackup } from '../../backup/backupPlatform';
 import type { BackupInspection, BackupProgress } from '../../backup/backupService';
 import type { BackupCounts, BackupProgressStage } from '../../backup/backupTypes';
 import { BackupValidationError } from '../../backup/backupValidation';
-import { useBackupService } from '../../storage/AppProvider';
+import { useBackupService, useImageOcr } from '../../storage/AppProvider';
 
 type Overview = { counts: BackupCounts; lastGeneratedAt: string | null };
 const STAGE_LABELS: Record<BackupProgressStage, string> = {
@@ -25,6 +25,7 @@ function restoreReadError(error: unknown): string {
 
 export default function BackupPage() {
   const service = useBackupService();
+  const imageOcr = useImageOcr();
   const [overview, setOverview] = useState<Overview | null>(null);
   const [inspection, setInspection] = useState<BackupInspection | null>(null);
   const [progress, setProgress] = useState<BackupProgress | null>(null);
@@ -111,7 +112,10 @@ export default function BackupPage() {
   async function restore() {
     if (!inspection) return;
     setError('');
+    let paused = false;
     try {
+      await imageOcr.pause();
+      paused = true;
       await service.restore(inspection.token, reportProgress);
       setInspection(null);
       await refresh();
@@ -119,6 +123,10 @@ export default function BackupPage() {
     } catch {
       if (mounted.current) setError('恢复失败，原有数据未发生变化。');
     } finally {
+      if (paused) {
+        imageOcr.resume();
+        await imageOcr.schedule().catch(() => undefined);
+      }
       if (mounted.current) setProgress(null);
     }
   }

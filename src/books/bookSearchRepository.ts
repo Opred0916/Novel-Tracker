@@ -5,11 +5,7 @@ import type { Book } from './types';
 
 type SearchRow = { id: string };
 type NoteRow = { body: string };
-
-function metadataMatchesAll(book: Book, terms: string[]): boolean {
-  const values = [book.title, book.author ?? '', ...book.protagonists].map(value => value.toLocaleLowerCase());
-  return terms.every(term => values.some(value => value.includes(term)));
-}
+type ImageMatchRow = { image_id: string; recognized_text: string; source: 'highlight' | 'note' };
 
 function termsMissingFromMetadata(book: Book, terms: string[]): string[] {
   const values = [book.title, book.author ?? '', ...book.protagonists].map(value => value.toLocaleLowerCase());
@@ -20,6 +16,7 @@ export class SqliteBookSearchRepository {
   constructor(private readonly db: Database, private readonly books: Pick<BookRepository, 'get'>) {}
 
   async search(filters: BookSearchFilters): Promise<BookSearchResult[]> {
+    const linkedImageSql = `(EXISTS (SELECT 1 FROM highlight_images h WHERE h.image_id = a.id) OR EXISTS (SELECT 1 FROM note_images ni JOIN notes nn ON nn.id = ni.note_id WHERE ni.image_id = a.id AND nn.book_id = a.book_id))`;
     const terms = normalizeSearchTerms(filters.query);
     const where: string[] = [];
     const args: (string | number | null)[] = [];
@@ -30,9 +27,14 @@ export class SqliteBookSearchRepository {
         LOWER(b.title) LIKE ? ESCAPE '\\' OR
         LOWER(COALESCE(b.author, '')) LIKE ? ESCAPE '\\' OR
         EXISTS (SELECT 1 FROM book_protagonists p WHERE p.book_id = b.id AND LOWER(p.name) LIKE ? ESCAPE '\\') OR
-        EXISTS (SELECT 1 FROM notes n WHERE n.book_id = b.id AND LOWER(n.body) LIKE ? ESCAPE '\\')
+        EXISTS (SELECT 1 FROM notes n WHERE n.book_id = b.id AND LOWER(n.body) LIKE ? ESCAPE '\\') OR
+        EXISTS (
+          SELECT 1 FROM image_ocr o JOIN image_assets a ON a.id = o.image_id
+          WHERE a.book_id = b.id AND o.status = 'recognized' AND LOWER(COALESCE(o.recognized_text, '')) LIKE ? ESCAPE '\\'
+          AND ${linkedImageSql.replace('nn.book_id = a.book_id', 'nn.book_id = b.id')}
+        )
       )`);
-      args.push(pattern, pattern, pattern, pattern);
+      args.push(pattern, pattern, pattern, pattern, pattern);
     }
     if (filters.status !== null) { where.push('b.status = ?'); args.push(filters.status); }
     if (filters.bookType !== null) { where.push('b.type = ?'); args.push(filters.bookType); }
@@ -51,16 +53,35 @@ export class SqliteBookSearchRepository {
       const book = await this.books.get(row.id);
       if (!book) continue;
       let matchedNoteSnippet: string | null = null;
-      if (terms.length && !metadataMatchesAll(book, terms)) {
-        const noteTerms = termsMissingFromMetadata(book, terms);
+      const nonMetadataTerms = terms.length ? termsMissingFromMetadata(book, terms) : [];
+      if (nonMetadataTerms.length) {
         const notes = await this.db.getAllAsync<NoteRow>('SELECT body FROM notes WHERE book_id = ? ORDER BY created_at DESC, id ASC', book.id);
-        const note = notes.find(item => noteTerms.some(term => item.body.toLocaleLowerCase().includes(term)));
+        const note = notes.find(item => nonMetadataTerms.some(term => item.body.toLocaleLowerCase().includes(term)));
         if (note) {
-          const matchedTerm = noteTerms.find(term => note.body.toLocaleLowerCase().includes(term));
+          const matchedTerm = nonMetadataTerms.find(term => note.body.toLocaleLowerCase().includes(term));
           if (matchedTerm) matchedNoteSnippet = buildNoteSnippet(note.body, matchedTerm);
         }
       }
-      results.push({ book, matchedNoteSnippet });
+      let matchedImage: BookSearchResult['matchedImage'] = null;
+      if (terms.length) {
+        const imageRows = await this.db.getAllAsync<ImageMatchRow>(
+          `SELECT o.image_id, o.recognized_text,
+             CASE WHEN EXISTS (SELECT 1 FROM highlight_images h WHERE h.image_id = a.id) THEN 'highlight' ELSE 'note' END AS source
+           FROM image_ocr o JOIN image_assets a ON a.id = o.image_id
+           WHERE a.book_id = ? AND o.status = 'recognized'
+             AND ${linkedImageSql}
+             AND (${nonMetadataTerms.length ? nonMetadataTerms.map(() => `LOWER(o.recognized_text) LIKE ? ESCAPE '\\'`).join(' OR ') : '0'})
+           ORDER BY a.created_at DESC, a.id ASC`,
+          book.id,
+          ...nonMetadataTerms.map(term => `%${escapeLikeTerm(term)}%`),
+        );
+        const row = imageRows[0];
+        if (row) {
+          const matchedTerm = nonMetadataTerms.find(term => row.recognized_text.toLocaleLowerCase().includes(term));
+          if (matchedTerm) matchedImage = { imageId: row.image_id, source: row.source, snippet: buildNoteSnippet(row.recognized_text, matchedTerm) };
+        }
+      }
+      results.push({ book, matchedNoteSnippet, matchedImage });
     }
     return results;
   }

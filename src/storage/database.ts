@@ -153,6 +153,16 @@ export async function migrateDatabase(db: Database): Promise<void> {
       FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
       FOREIGN KEY (image_id) REFERENCES image_assets(id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS image_ocr (
+      image_id TEXT PRIMARY KEY NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('pending', 'processing', 'recognized', 'empty', 'failed')),
+      recognized_text TEXT,
+      updated_at TEXT NOT NULL,
+      recognizer_version TEXT,
+      error_code TEXT,
+      FOREIGN KEY (image_id) REFERENCES image_assets(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS image_ocr_status_index ON image_ocr(status, updated_at, image_id);
   `);
 
   if (version < 4) {
@@ -205,7 +215,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
   if (!noteColumns.some(column => column.name === 'original_recorded_time')) {
     await db.execAsync('ALTER TABLE notes ADD COLUMN original_recorded_time TEXT');
   }
-  await db.execAsync('PRAGMA user_version = 10');
+  await db.execAsync('PRAGMA user_version = 11');
 }
 
 export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {

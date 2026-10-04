@@ -45,7 +45,7 @@ export default function Bookshelf() {
     {tagError ? <Text style={styles.error}>{tagError}</Text> : null}
     {searchError ? <View style={styles.errorRow}><Text style={styles.error}>{searchError}</Text><Pressable accessibilityRole="button" onPress={retry}><Text style={styles.link}>重试</Text></Pressable></View> : null}
     {loading && results.length ? <ActivityIndicator accessibilityLabel="正在搜索" color="#593f72" style={styles.inlineLoading} /> : null}
-    <TextInput placeholder="搜索书名、作者、主角或摘记" value={query} onChangeText={setQuery} style={styles.search} />
+    <TextInput placeholder="搜索书名、作者、主角、摘记或图片文字" value={query} onChangeText={setQuery} style={styles.search} />
     <View style={styles.actions}>
       <Pressable accessibilityRole="button" onPress={() => setShowFilters(value => !value)}><Text style={styles.link}>筛选条件{activeFilterCount ? `（${activeFilterCount}）` : ''}</Text></Pressable>
       <Pressable accessibilityRole="button" onPress={clearFilters}><Text style={styles.link}>清除筛选</Text></Pressable>
@@ -72,7 +72,7 @@ export default function Bookshelf() {
         <TagPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} searchable />
       </View> : null}
       ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="正在搜索" color="#593f72" /> : searchError ? null : <View style={styles.empty}><Text style={styles.emptyTitle}>{hasConditions ? '没有符合条件的小说' : '书架还是空的'}</Text><Text style={styles.subheading}>{hasConditions ? '试试清除筛选。' : '先记下一本想读的小说吧。'}</Text></View>}
-      renderItem={({ item }) => <BookCard book={item.book} matchedNoteSnippet={item.matchedNoteSnippet} onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book.id } })} />}
+      renderItem={({ item }) => <BookCard book={item.book} matchedNoteSnippet={item.matchedNoteSnippet} matchedImage={item.matchedImage} onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book.id, ...(item.matchedImage ? { focusImageId: item.matchedImage.imageId } : {}) } })} />}
     />
     <Link href="/book/new" asChild><Pressable accessibilityRole="button" style={styles.add}><Text style={styles.addText}>＋ 添加小说</Text></Pressable></Link>
   </View>;

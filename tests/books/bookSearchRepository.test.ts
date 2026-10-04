@@ -25,6 +25,22 @@ async function setup() {
       ('note-1', 'one', '读完以后觉得非常值得重读，人物关系很动人。', '2026-10-01T10:00:00Z', '2026-10-01T10:00:00Z'),
       ('note-2', 'one', '二刷仍然值得重读。', '2026-10-02T10:00:00Z', '2026-10-02T10:00:00Z'),
       ('note-3', 'two', '整体轻松。', '2026-10-01T10:00:00Z', '2026-10-01T10:00:00Z');
+    INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES
+      ('image-highlight', 'one', 'file:///managed/highlight.jpg', '2026-10-02T12:00:00Z'),
+      ('image-note', 'two', 'file:///managed/note.jpg', '2026-10-01T12:00:00Z'),
+      ('image-pending', 'one', 'file:///managed/pending.jpg', '2026-10-03T12:00:00Z'),
+      ('image-orphan', 'one', 'file:///managed/orphan.jpg', '2026-10-04T12:00:00Z'),
+      ('image-cover', 'one', 'file:///managed/cover.jpg', '2026-10-04T12:00:00Z');
+    INSERT INTO highlight_images (book_id, image_id, position) VALUES
+      ('one', 'image-highlight', 0), ('one', 'image-pending', 1);
+    INSERT INTO note_images (note_id, image_id, position) VALUES ('note-3', 'image-note', 0);
+    UPDATE books SET cover_image_id = 'image-cover' WHERE id = 'one';
+    INSERT INTO image_ocr (image_id, status, recognized_text, updated_at) VALUES
+      ('image-highlight', 'recognized', '剑与月光', '2026-10-02T12:00:00Z'),
+      ('image-note', 'recognized', '星河尽头', '2026-10-01T12:00:00Z'),
+      ('image-pending', 'pending', '不应被搜到', '2026-10-03T12:00:00Z'),
+      ('image-orphan', 'recognized', '孤立截图', '2026-10-04T12:00:00Z'),
+      ('image-cover', 'recognized', '封面文字', '2026-10-04T12:00:00Z');
   `);
   return { db, repo: new SqliteBookSearchRepository(db, new SqliteBookRepository(db)) };
 }
@@ -54,6 +70,36 @@ test('combines terms across author and note and returns a note snippet once', as
     expect(results).toHaveLength(1);
     expect(results[0].book.id).toBe('one');
     expect(results[0].matchedNoteSnippet).toContain('重读');
+  } finally { db.close(); }
+});
+
+test('searches recognized image text and returns stable highlight evidence', async () => {
+  const { db, repo } = await setup();
+  try {
+    const results = await repo.search({ ...all, query: '剑与月光' });
+    expect(results).toHaveLength(1);
+    expect(results[0].matchedImage).toEqual({ imageId: 'image-highlight', source: 'highlight', snippet: '剑与月光' });
+    expect(results[0].matchedNoteSnippet).toBeNull();
+  } finally { db.close(); }
+});
+
+test('searches image text attached only to a note and ignores pending, orphan and cover OCR', async () => {
+  const { db, repo } = await setup();
+  try {
+    expect((await repo.search({ ...all, query: '星河尽头' }))[0].matchedImage).toEqual({ imageId: 'image-note', source: 'note', snippet: '星河尽头' });
+    expect(await repo.search({ ...all, query: '不应被搜到' })).toEqual([]);
+    expect(await repo.search({ ...all, query: '孤立截图' })).toEqual([]);
+    expect(await repo.search({ ...all, query: '封面文字' })).toEqual([]);
+  } finally { db.close(); }
+});
+
+test('combines metadata and image terms while returning one book result', async () => {
+  const { db, repo } = await setup();
+  try {
+    const results = await repo.search({ ...all, query: 'Priest 剑与月光' });
+    expect(results).toHaveLength(1);
+    expect(results[0].book.id).toBe('one');
+    expect(results[0].matchedImage?.imageId).toBe('image-highlight');
   } finally { db.close(); }
 });
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useBooks, useBookSearchRepository, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
+import { useBooks, useBookSearchRepository, useImageOcr, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
 import Bookshelf from '../../src/app/index';
 import NewBook from '../../src/app/book/new';
 import QuickTagsPage from '../../src/app/settings/tags';
@@ -24,7 +24,7 @@ jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
-jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useBookSearchRepository: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn(), useNotes: jest.fn() }));
+jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useBookSearchRepository: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn(), useNotes: jest.fn(), useImageOcr: jest.fn() }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'new-tag-id') }));
 
 const book: Book = {
@@ -43,7 +43,8 @@ const repo = {
 const searchRepo = { search: jest.fn() };
 const tagRepo = { list: jest.fn(), listQuick: jest.fn(), create: jest.fn(), setQuick: jest.fn() };
 const historyRepo = { list: jest.fn(), backfillFirst: jest.fn(), updateDates: jest.fn(), delete: jest.fn() };
-const notesRepo = { listNotes: jest.fn(), listHighlights: jest.fn(), createNote: jest.fn(), updateNote: jest.fn(), deleteNote: jest.fn(), registerImage: jest.fn(), addHighlights: jest.fn(), removeHighlight: jest.fn() };
+const notesRepo = { listNotes: jest.fn(), listHighlights: jest.fn(), resolveLinkedImage: jest.fn(), createNote: jest.fn(), updateNote: jest.fn(), deleteNote: jest.fn(), registerImage: jest.fn(), addHighlights: jest.fn(), removeHighlight: jest.fn() };
+const imageOcr = { isAvailable: true, schedule: jest.fn(async () => undefined), retry: jest.fn(async () => undefined), get: jest.fn(), progress: jest.fn() };
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -52,6 +53,7 @@ beforeEach(() => {
   jest.mocked(useTags).mockReturnValue(tagRepo as unknown as ReturnType<typeof useTags>);
   jest.mocked(useReadingHistory).mockReturnValue(historyRepo as unknown as ReturnType<typeof useReadingHistory>);
   jest.mocked(useNotes).mockReturnValue(notesRepo as unknown as ReturnType<typeof useNotes>);
+  jest.mocked(useImageOcr).mockReturnValue(imageOcr as unknown as ReturnType<typeof useImageOcr>);
   jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id });
   repo.get.mockResolvedValue(book);
   repo.list.mockResolvedValue([book]);
@@ -61,6 +63,9 @@ beforeEach(() => {
   tagRepo.listQuick.mockResolvedValue([{ id: 'ancient', name: '古代', isSystem: true }]);
   historyRepo.list.mockResolvedValue([]);
   notesRepo.listHighlights.mockResolvedValue([]);
+  notesRepo.resolveLinkedImage.mockResolvedValue(null);
+  imageOcr.get.mockResolvedValue(null);
+  imageOcr.progress.mockResolvedValue({ done: 0, total: 0, failed: 0 });
   notesRepo.listNotes.mockResolvedValue([]);
 });
 
@@ -104,13 +109,15 @@ test('quick tag settings save the chosen tags without deleting the library', asy
   expect(tagRepo.list).toHaveBeenCalled();
 });
 
-test('book card shows author, rating, and an optional matching note snippet', async () => {
+test('book card shows author, rating, and optional note and image matches', async () => {
   const onPress = jest.fn();
-  const screen = await render(<BookCard book={{ ...book, ratingHalfStars: 9 }} matchedNoteSnippet="这是命中的摘记内容" onPress={onPress} />);
+  const screen = await render(<BookCard book={{ ...book, ratingHalfStars: 9 }} matchedNoteSnippet="这是命中的摘记内容" matchedImage={{ imageId: 'image-1', source: 'highlight', snippet: '这是图片里的命中文字' }} onPress={onPress} />);
   expect(screen.getByText('某作者')).toBeTruthy();
   expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
   expect(screen.getByText('匹配摘记')).toBeTruthy();
   expect(screen.getByText('这是命中的摘记内容')).toBeTruthy();
+  expect(screen.getByText('匹配图片文字')).toBeTruthy();
+  expect(screen.getByText('这是图片里的命中文字')).toBeTruthy();
   expect(screen.queryByText('在读')).toBeNull();
   await fireEvent.press(screen.getAllByText('长夜')[0]);
   expect(onPress).toHaveBeenCalledTimes(1);
@@ -130,11 +137,19 @@ test('bookshelf filters by search and clears the filter', async () => {
     : [{ book, matchedNoteSnippet: null }, { book: other, matchedNoteSnippet: null }]);
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
-  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角或摘记'), '长夜');
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '长夜');
   await waitFor(() => expect(screen.queryByText('归途')).toBeNull());
   expect(screen.getByText('匹配摘记')).toBeTruthy();
   await fireEvent.press(screen.getByText('清除筛选'));
   await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
+});
+
+test('bookshelf passes the matched image to the detail page for preview', async () => {
+  searchRepo.search.mockResolvedValueOnce([{ book, matchedNoteSnippet: null, matchedImage: { imageId: 'image-1', source: 'highlight', snippet: '图片文字' } }]);
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('匹配图片文字')).toBeTruthy());
+  await fireEvent.press(screen.getAllByText('长夜')[0]);
+  expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: book.id, focusImageId: 'image-1' } });
 });
 
 test('bookshelf opens backup and restore settings', async () => {
@@ -185,7 +200,7 @@ test('bookshelf keeps old results visible while a new search is loading', async 
   searchRepo.search.mockResolvedValueOnce([{ book, matchedNoteSnippet: null }]).mockReturnValueOnce(pending);
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
-  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角或摘记'), '新条件');
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '新条件');
   await waitFor(() => expect(screen.getByLabelText('正在搜索')).toBeTruthy());
   expect(screen.getAllByText('长夜').length).toBeGreaterThan(0);
   await act(async () => { resolveSearch([{ book, matchedNoteSnippet: null }]); });
@@ -267,6 +282,17 @@ test('a read error can be retried without a false success state', async () => {
   await fireEvent.press(screen.getByText('重试'));
   await waitFor(() => expect(screen.getByText('某作者')).toBeTruthy());
   expect(repo.get).toHaveBeenCalledTimes(2);
+});
+
+test('detail page previews the image selected from search results', async () => {
+  const image = { id: 'image-1', bookId: book.id, localPath: 'file:///one.jpg', createdAt: '2026-03-01' };
+  jest.mocked(useLocalSearchParams).mockReturnValue({ id: book.id, focusImageId: image.id });
+  notesRepo.resolveLinkedImage.mockResolvedValue({ image, source: 'highlight' });
+  imageOcr.get.mockResolvedValue({ imageId: image.id, status: 'recognized', recognizedText: '识别内容', errorCode: null });
+  const screen = await render(<BookPage />);
+  await waitFor(() => expect(screen.getByLabelText('精彩片段预览')).toBeTruthy());
+  expect(screen.getByText('图片文字')).toBeTruthy();
+  expect(screen.getByText('识别内容')).toBeTruthy();
 });
 
 test('detail page asks for confirmation before deleting a novel', async () => {

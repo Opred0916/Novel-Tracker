@@ -2,6 +2,8 @@ import { migrateDatabase } from '../../src/storage/database';
 import { SqliteNotesRepository } from '../../src/books/notesRepository';
 import { createInMemoryDatabase } from '../helpers/inMemoryDatabase';
 
+const deletionQueue = () => ({ enqueue: jest.fn(async () => undefined), drain: jest.fn(async () => undefined) }) as any;
+
 async function setup() {
   const db = createInMemoryDatabase();
   await migrateDatabase(db);
@@ -32,12 +34,64 @@ test('attaches multiple images and keeps an image used by a note after highlight
   try {
     await db.runAsync("INSERT INTO image_assets VALUES ('image-1', 'book-1', 'file:///one.jpg', '2026-03-01')");
     await db.runAsync("INSERT INTO image_assets VALUES ('image-2', 'book-1', 'file:///two.jpg', '2026-03-01')");
-    const repo = new SqliteNotesRepository(db, () => 'note-1');
+    const queue = deletionQueue();
+    let nextId = 0;
+    const repo = new SqliteNotesRepository(db, () => `note-${++nextId}`, queue);
     await repo.addHighlights('book-1', ['image-1', 'image-2']);
     await repo.createNote('book-1', { body: '想法', imageIds: ['image-1', 'image-2'] });
     await repo.removeHighlight('book-1', 'image-1');
     expect(await db.getFirstAsync('SELECT image_id FROM note_images WHERE note_id = ?', 'note-1')).toEqual({ image_id: 'image-1' });
     expect(await db.getFirstAsync('SELECT image_id FROM highlight_images WHERE book_id = ? AND image_id = ?', 'book-1', 'image-2')).toEqual({ image_id: 'image-2' });
+  } finally { db.close(); }
+});
+
+test('resolves a linked image for detail preview and rejects unrelated images', async () => {
+  const db = await setup();
+  try {
+    await db.runAsync("INSERT INTO books (id, title, status, created_at, updated_at) VALUES ('book-2', '归途', 'finished', 'a', 'b')");
+    await db.runAsync("INSERT INTO image_assets VALUES ('image-1', 'book-1', 'file:///one.jpg', '2026-03-01')");
+    await db.runAsync("INSERT INTO image_assets VALUES ('image-other', 'book-2', 'file:///other.jpg', '2026-03-01')");
+    const repo = new SqliteNotesRepository(db, () => 'note-1');
+    await repo.addHighlights('book-1', ['image-1']);
+    expect(await repo.resolveLinkedImage('book-1', 'image-1')).toEqual({
+      image: { id: 'image-1', bookId: 'book-1', localPath: 'file:///one.jpg', createdAt: '2026-03-01' },
+      source: 'highlight',
+    });
+    expect(await repo.resolveLinkedImage('book-1', 'image-other')).toBeNull();
+  } finally { db.close(); }
+});
+
+test('unlinking the last image reference removes its OCR row and queues the local file', async () => {
+  const db = await setup();
+  try {
+    await db.runAsync("INSERT INTO image_assets VALUES ('image-1', 'book-1', 'file:///managed/one.jpg', '2026-03-01')");
+    await db.runAsync("INSERT INTO image_ocr (image_id, status, recognized_text, updated_at) VALUES ('image-1', 'recognized', '片段', '2026-03-01')");
+    const queue = deletionQueue();
+    const repo = new SqliteNotesRepository(db, () => 'note-1', queue);
+    await repo.createNote('book-1', { body: '想法', imageIds: ['image-1'] });
+    await repo.deleteNote('book-1', 'note-1');
+    expect(await db.getFirstAsync('SELECT id FROM image_assets WHERE id = ?', 'image-1')).toBeNull();
+    expect(await db.getFirstAsync('SELECT image_id FROM image_ocr WHERE image_id = ?', 'image-1')).toBeNull();
+    expect(queue.enqueue).toHaveBeenCalledWith(expect.anything(), ['file:///managed/one.jpg']);
+    expect(queue.drain).toHaveBeenCalled();
+  } finally { db.close(); }
+});
+
+test('unlinking one reference preserves an image used by another note or as a cover', async () => {
+  const db = await setup();
+  try {
+    await db.runAsync("INSERT INTO image_assets VALUES ('image-1', 'book-1', 'file:///managed/one.jpg', '2026-03-01')");
+    await db.runAsync("INSERT INTO image_assets VALUES ('image-cover', 'book-1', 'file:///managed/cover.jpg', '2026-03-01')");
+    await db.runAsync("UPDATE books SET cover_image_id = 'image-cover' WHERE id = 'book-1'");
+    const queue = deletionQueue();
+    let nextId = 0;
+    const repo = new SqliteNotesRepository(db, () => `note-${++nextId}`, queue);
+    await repo.createNote('book-1', { body: '第一条', imageIds: ['image-1', 'image-cover'] });
+    await repo.createNote('book-1', { body: '第二条', imageIds: ['image-1'] });
+    await repo.deleteNote('book-1', 'note-1');
+    expect(await db.getFirstAsync('SELECT id FROM image_assets WHERE id = ?', 'image-1')).toEqual({ id: 'image-1' });
+    expect(await db.getFirstAsync('SELECT id FROM image_assets WHERE id = ?', 'image-cover')).toEqual({ id: 'image-cover' });
+    expect(queue.enqueue).not.toHaveBeenCalled();
   } finally { db.close(); }
 });
 

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Text, View } from 'react-native';
 import { SqliteBookRepository } from '../books/sqliteRepository';
 import { SqliteReadingHistoryRepository } from '../books/readingHistoryRepository';
 import { SqliteTagRepository } from '../books/tagRepository';
@@ -19,6 +19,9 @@ import { ImportCommitService } from '../import/importCommitService';
 import { OpenExportArchive } from '../export/openExportArchive';
 import { OpenExportService } from '../export/openExportService';
 import { SqliteLibraryOverviewRepository } from '../books/libraryOverviewRepository';
+import { SqliteImageOcrRepository, type ImageOcrProgress, type ImageOcrRecord } from '../books/imageOcrRepository';
+import { ImageOcrWorker } from '../books/imageOcrWorker';
+import { getLocalImageTextRecognizer } from '../books/localImageTextRecognizer';
 
 const RepositoryContext = createContext<SqliteBookRepository | null>(null);
 const TagRepositoryContext = createContext<SqliteTagRepository | null>(null);
@@ -29,6 +32,16 @@ const BackupServiceContext = createContext<BackupService | null>(null);
 const ImportCommitServiceContext = createContext<ImportCommitService | null>(null);
 const OpenExportServiceContext = createContext<OpenExportService | null>(null);
 const LibraryOverviewRepositoryContext = createContext<SqliteLibraryOverviewRepository | null>(null);
+type ImageOcrContextValue = {
+  isAvailable: boolean;
+  schedule(): Promise<void>;
+  pause(): Promise<void>;
+  resume(): void;
+  retry(imageId: string): Promise<void>;
+  get(imageId: string): Promise<ImageOcrRecord | null>;
+  progress(bookId?: string): Promise<ImageOcrProgress>;
+};
+const ImageOcrContext = createContext<ImageOcrContextValue | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [repository, setRepository] = useState<SqliteBookRepository | null>(null);
@@ -40,6 +53,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [importCommitService, setImportCommitService] = useState<ImportCommitService | null>(null);
   const [openExportService, setOpenExportService] = useState<OpenExportService | null>(null);
   const [libraryOverviewRepository, setLibraryOverviewRepository] = useState<SqliteLibraryOverviewRepository | null>(null);
+  const [imageOcrRepository, setImageOcrRepository] = useState<SqliteImageOcrRepository | null>(null);
+  const [imageOcrWorker, setImageOcrWorker] = useState<ImageOcrWorker | null>(null);
+  const [imageOcrAvailable, setImageOcrAvailable] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -70,6 +86,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           randomUUID,
         ));
         setLibraryOverviewRepository(new SqliteLibraryOverviewRepository(db));
+        const imageOcr = new SqliteImageOcrRepository(db);
+        const recognizer = getLocalImageTextRecognizer();
+        const imageOcrWorker = new ImageOcrWorker(imageOcr, recognizer);
+        setImageOcrRepository(imageOcr);
+        setImageOcrWorker(imageOcrWorker);
+        setImageOcrAvailable(recognizer.isAvailable());
         setImportCommitService(new ImportCommitService(db));
         void deletionQueue.drain().catch(() => undefined);
         void backup.cleanupStaleOperations().catch(() => undefined);
@@ -80,9 +102,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    if (!imageOcrRepository || !imageOcrWorker) return undefined;
+    let active = true;
+    void imageOcrRepository.reconcile(true).catch(() => undefined).finally(() => {
+      if (active && AppState.currentState === 'active') imageOcrWorker.resume();
+    });
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') imageOcrWorker.resume();
+      else imageOcrWorker.pause();
+    });
+    return () => { active = false; imageOcrWorker.pause(); subscription.remove(); };
+  }, [imageOcrRepository, imageOcrWorker]);
+
   if (error) return <View style={{ padding: 24 }}><Text>无法打开书架：{error}</Text></View>;
-  if (!repository || !tagRepository || !readingHistory || !notesRepository || !bookSearchRepository || !backupService || !importCommitService || !openExportService || !libraryOverviewRepository) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
-  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}><NotesRepositoryContext.Provider value={notesRepository}><BookSearchRepositoryContext.Provider value={bookSearchRepository}><BackupServiceContext.Provider value={backupService}><OpenExportServiceContext.Provider value={openExportService}><ImportCommitServiceContext.Provider value={importCommitService}><LibraryOverviewRepositoryContext.Provider value={libraryOverviewRepository}>{children}</LibraryOverviewRepositoryContext.Provider></ImportCommitServiceContext.Provider></OpenExportServiceContext.Provider></BackupServiceContext.Provider></BookSearchRepositoryContext.Provider></NotesRepositoryContext.Provider></ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;
+  if (!repository || !tagRepository || !readingHistory || !notesRepository || !bookSearchRepository || !backupService || !importCommitService || !openExportService || !libraryOverviewRepository || !imageOcrRepository || !imageOcrWorker) return <View style={{ flex: 1, justifyContent: 'center' }}><ActivityIndicator /></View>;
+  const imageOcrContext: ImageOcrContextValue = {
+    isAvailable: imageOcrAvailable,
+    schedule: async () => { await imageOcrRepository.reconcile(false); imageOcrWorker.kick(); },
+    pause: async () => { imageOcrWorker.invalidateAndPause(); },
+    resume: () => imageOcrWorker.resume(),
+    retry: imageId => imageOcrWorker.retry(imageId),
+    get: imageId => imageOcrRepository.get(imageId),
+    progress: bookId => imageOcrRepository.progress(bookId),
+  };
+  return <RepositoryContext.Provider value={repository}><TagRepositoryContext.Provider value={tagRepository}><ReadingHistoryContext.Provider value={readingHistory}><NotesRepositoryContext.Provider value={notesRepository}><BookSearchRepositoryContext.Provider value={bookSearchRepository}><BackupServiceContext.Provider value={backupService}><OpenExportServiceContext.Provider value={openExportService}><ImportCommitServiceContext.Provider value={importCommitService}><LibraryOverviewRepositoryContext.Provider value={libraryOverviewRepository}><ImageOcrContext.Provider value={imageOcrContext}>{children}</ImageOcrContext.Provider></LibraryOverviewRepositoryContext.Provider></ImportCommitServiceContext.Provider></OpenExportServiceContext.Provider></BackupServiceContext.Provider></BookSearchRepositoryContext.Provider></NotesRepositoryContext.Provider></ReadingHistoryContext.Provider></TagRepositoryContext.Provider></RepositoryContext.Provider>;
 }
 
 export function useBooks(): SqliteBookRepository {
@@ -137,4 +181,10 @@ export function useLibraryOverviewRepository(): SqliteLibraryOverviewRepository 
   const repository = useContext(LibraryOverviewRepositoryContext);
   if (!repository) throw new Error('Library overview repository is not ready');
   return repository;
+}
+
+export function useImageOcr(): ImageOcrContextValue {
+  const value = useContext(ImageOcrContext);
+  if (!value) throw new Error('Image OCR is not ready');
+  return value;
 }

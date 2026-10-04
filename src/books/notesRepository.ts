@@ -2,18 +2,24 @@ import { randomUUID } from 'expo-crypto';
 import type { Database } from '../storage/database';
 import { findReadingSessionForNote } from './noteAssociation';
 import type { ImageAsset, Note, NoteInput } from './types';
+import { ImageDeletionQueue } from './imageDeletionQueue';
 
 type NoteRow = {
   id: string; book_id: string; body: string; created_at: string; updated_at: string; reading_session_id: string | null;
   source_kind: 'app' | 'import'; original_recorded_on: string | null; original_recorded_time: string | null;
 };
 type ImageRow = { id: string; book_id: string; local_path: string; created_at: string };
+export type LinkedImage = { image: ImageAsset; source: 'highlight' | 'note' };
 
 const dateOf = (timestamp: string) => timestamp.slice(0, 10);
 const fromImage = (row: ImageRow): ImageAsset => ({ id: row.id, bookId: row.book_id, localPath: row.local_path, createdAt: row.created_at });
 
 export class SqliteNotesRepository {
-  constructor(private readonly db: Database, private readonly idFactory: () => string = randomUUID) {}
+  constructor(
+    private readonly db: Database,
+    private readonly idFactory: () => string = randomUUID,
+    private readonly deletionQueue: ImageDeletionQueue = new ImageDeletionQueue(db),
+  ) {}
 
   async registerImage(asset: ImageAsset): Promise<void> {
     await this.db.runAsync('INSERT OR IGNORE INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)', asset.id, asset.bookId, asset.localPath, asset.createdAt);
@@ -75,12 +81,17 @@ export class SqliteNotesRepository {
     await this.db.withExclusiveTransactionAsync(async txn => {
       const note = await txn.getFirstAsync<NoteRow>('SELECT * FROM notes WHERE id = ? AND book_id = ?', noteId, bookId);
       if (!note) throw new Error('找不到摘记');
+      const oldImages = await txn.getAllAsync<{ image_id: string }>('SELECT image_id FROM note_images WHERE note_id = ?', noteId);
       await txn.runAsync('UPDATE notes SET body = ?, updated_at = ? WHERE id = ? AND book_id = ?', body, updatedAt, noteId, bookId);
       await txn.runAsync('DELETE FROM note_images WHERE note_id = ?', noteId);
       for (const [position, imageId] of (input.imageIds ?? []).entries()) {
+        const image = await txn.getFirstAsync<{ id: string; book_id: string }>('SELECT id, book_id FROM image_assets WHERE id = ?', imageId);
+        if (!image || image.book_id !== bookId) throw new Error('图片不存在');
         await txn.runAsync('INSERT INTO note_images (note_id, image_id, position) VALUES (?, ?, ?)', noteId, imageId, position);
       }
+      await this.removeUnreferencedImages(txn, oldImages.map(image => image.image_id));
     });
+    await this.deletionQueue.drain().catch(() => undefined);
     const note = (await this.listNotes(bookId)).find(item => item.id === noteId);
     if (!note) throw new Error('找不到摘记');
     return note;
@@ -90,8 +101,12 @@ export class SqliteNotesRepository {
     await this.db.withExclusiveTransactionAsync(async txn => {
       const note = await txn.getFirstAsync<{ id: string }>('SELECT id FROM notes WHERE id = ? AND book_id = ?', noteId, bookId);
       if (!note) throw new Error('找不到摘记');
+      const images = await txn.getAllAsync<{ image_id: string }>('SELECT image_id FROM note_images WHERE note_id = ?', noteId);
+      await txn.runAsync('DELETE FROM note_images WHERE note_id = ?', noteId);
       await txn.runAsync('DELETE FROM notes WHERE id = ? AND book_id = ?', noteId, bookId);
+      await this.removeUnreferencedImages(txn, images.map(image => image.image_id));
     });
+    await this.deletionQueue.drain().catch(() => undefined);
   }
 
   async addHighlights(bookId: string, imageIds: string[]): Promise<void> {
@@ -109,6 +124,21 @@ export class SqliteNotesRepository {
     return rows.map(fromImage);
   }
 
+  async resolveLinkedImage(bookId: string, imageId: string): Promise<LinkedImage | null> {
+    const row = await this.db.getFirstAsync<ImageRow & { source: 'highlight' | 'note' }>(
+      `SELECT a.*, CASE WHEN EXISTS (
+         SELECT 1 FROM highlight_images h WHERE h.book_id = ? AND h.image_id = a.id
+       ) THEN 'highlight' ELSE 'note' END AS source
+       FROM image_assets a
+       WHERE a.id = ? AND a.book_id = ? AND (
+         EXISTS (SELECT 1 FROM highlight_images h WHERE h.book_id = ? AND h.image_id = a.id)
+         OR EXISTS (SELECT 1 FROM note_images n JOIN notes note ON note.id = n.note_id WHERE n.image_id = a.id AND note.book_id = ?)
+       )`,
+      bookId, imageId, bookId, bookId, bookId,
+    );
+    return row ? { image: fromImage(row), source: row.source } : null;
+  }
+
   async recalculateAssociations(bookId: string): Promise<void> {
     await this.db.withExclusiveTransactionAsync(async txn => {
       const sessions = await txn.getAllAsync<{ id: string; book_id: string; ordinal: number; started_on: string | null; ended_on: string | null; outcome: 'reading' | 'finished' | 'dropped' }>('SELECT * FROM reading_sessions WHERE book_id = ? ORDER BY ordinal ASC', bookId);
@@ -124,6 +154,25 @@ export class SqliteNotesRepository {
   async removeHighlight(bookId: string, imageId: string): Promise<void> {
     await this.db.withExclusiveTransactionAsync(async txn => {
       await txn.runAsync('DELETE FROM highlight_images WHERE book_id = ? AND image_id = ?', bookId, imageId);
+      await this.removeUnreferencedImages(txn, [imageId]);
     });
+    await this.deletionQueue.drain().catch(() => undefined);
+  }
+
+  private async removeUnreferencedImages(txn: Pick<Database, 'getFirstAsync' | 'runAsync' | 'getAllAsync'>, imageIds: string[]): Promise<void> {
+    for (const imageId of new Set(imageIds)) {
+      const image = await txn.getFirstAsync<{ id: string; local_path: string }>('SELECT id, local_path FROM image_assets WHERE id = ?', imageId);
+      if (!image) continue;
+      const reference = await txn.getFirstAsync<{ found: number }>(
+        `SELECT 1 AS found FROM note_images WHERE image_id = ?
+         UNION ALL SELECT 1 FROM highlight_images WHERE image_id = ?
+         UNION ALL SELECT 1 FROM books WHERE cover_image_id = ? LIMIT 1`,
+        imageId, imageId, imageId,
+      );
+      if (reference) continue;
+      await this.deletionQueue.enqueue(txn, [image.local_path]);
+      await txn.runAsync('DELETE FROM image_ocr WHERE image_id = ?', imageId);
+      await txn.runAsync('DELETE FROM image_assets WHERE id = ?', imageId);
+    }
   }
 }
