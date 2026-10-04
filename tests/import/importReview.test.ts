@@ -51,7 +51,9 @@ test('validates actions, dates, scores, ordering, append targets, and fragments'
 
 test('summarizes create, note append, and skip actions', () => {
   const current = review();
+  current.items[0].candidate.sessions = [{ ordinal: 1, outcome: 'finished', startedOn: '2026-01-02', endedOn: '2026-01-03' }, { ordinal: 2, outcome: 'finished', startedOn: '2026-02-01', endedOn: '2026-02-02' }];
+  current.items[0].candidate.ratingHalfStars = 10;
   current.items.push({ ...current.items[0], candidate: { ...current.items[0].candidate, id: 'candidate-2', notes: [] }, action: 'skip' });
   current.items.push({ ...current.items[0], candidate: { ...current.items[0].candidate, id: 'candidate-3' }, action: 'append_notes', targetBookId: 'book-1' });
-  expect(summarizeImport(current)).toEqual({ createdBooks: 1, createdNotes: 1, appendedNotes: 1, skippedItems: 1 });
+  expect(summarizeImport(current)).toEqual({ createdBooks: 1, createdNotes: 1, appendedNotes: 1, skippedItems: 1, createdSessions: 2, appendedBookCount: 1, rereadSessions: 1, fiveStarBooks: 1, earliestRecordedOn: '2026-01-02' });
 });

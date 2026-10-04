@@ -5,7 +5,7 @@ import { pickImportTable, pickImportTxt } from '../../src/import/importPlatform'
 import { parseCsvTable, parseXlsxTables } from '../../src/import/tableImportParser';
 import { useBooks, useImportCommitService, useNotes, useTags } from '../../src/storage/AppProvider';
 
-jest.mock('expo-router', () => ({ router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() } }));
+jest.mock('expo-router', () => ({ router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() }, Stack: { Screen: () => null } }));
 jest.mock('../../src/import/importPlatform', () => ({ pickImportTxt: jest.fn(), pickImportTable: jest.fn() }));
 jest.mock('../../src/import/tableImportParser', () => ({ parseCsvTable: jest.fn(), parseXlsxTables: jest.fn() }));
 jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useNotes: jest.fn(), useTags: jest.fn(), useImportCommitService: jest.fn() }));
@@ -25,7 +25,7 @@ beforeEach(() => {
   books.list.mockResolvedValue([]);
   notes.listNotes.mockResolvedValue([]);
   tags.list.mockResolvedValue([]);
-  commitService.commit.mockResolvedValue({ createdBooks: 1, createdNotes: 0, appendedNotes: 0, skippedItems: 0 });
+  commitService.commit.mockResolvedValue({ createdBooks: 1, createdNotes: 0, appendedNotes: 0, skippedItems: 0, createdSessions: 0, appendedBookCount: 0, rereadSessions: 0, fiveStarBooks: 0, earliestRecordedOn: null });
 });
 
 test('CSV import enters column mapping and then the existing review flow', async () => {

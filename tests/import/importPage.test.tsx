@@ -7,7 +7,7 @@ import { pickImportScreenshots } from '../../src/import/screenshotImportPlatform
 import { getLocalImageTextRecognizer } from '../../src/books/localImageTextRecognizer';
 import { useBooks, useImportCommitService, useNotes, useTags } from '../../src/storage/AppProvider';
 
-jest.mock('expo-router', () => ({ router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() } }));
+jest.mock('expo-router', () => ({ router: { replace: jest.fn(), push: jest.fn(), back: jest.fn() }, Stack: { Screen: () => null } }));
 jest.mock('../../src/import/importPlatform', () => ({ pickImportTxt: jest.fn(), pickImportScreenshots: jest.fn() }));
 jest.mock('../../src/import/screenshotImportPlatform', () => ({ pickImportScreenshots: jest.fn(), cleanupImportScreenshotCopies: jest.fn() }));
 jest.mock('../../src/books/localImageTextRecognizer', () => ({ getLocalImageTextRecognizer: jest.fn() }));
@@ -27,7 +27,7 @@ beforeEach(() => {
   books.list.mockResolvedValue([]);
   notes.listNotes.mockResolvedValue([]);
   tags.list.mockResolvedValue([]);
-  commitService.commit.mockResolvedValue({ createdBooks: 1, createdNotes: 0, appendedNotes: 0, skippedItems: 0 });
+  commitService.commit.mockResolvedValue({ createdBooks: 1, createdNotes: 0, appendedNotes: 0, skippedItems: 0, createdSessions: 0, appendedBookCount: 0, rereadSessions: 0, fiveStarBooks: 0, earliestRecordedOn: null });
   jest.mocked(pickImportTxt).mockResolvedValue(null);
   jest.mocked(pickImportScreenshots).mockResolvedValue(null);
   jest.mocked(getLocalImageTextRecognizer).mockReturnValue({ isAvailable: () => false, recognize: jest.fn() });
@@ -40,6 +40,8 @@ test('uses pasted text and TXT files as the same preview flow', async () => {
   await waitFor(() => expect(screen.getByDisplayValue('残次品')).toBeTruthy());
   await fireEvent.press(screen.getByText('确认导入'));
   await waitFor(() => expect(commitService.commit).toHaveBeenCalled());
+  expect(screen.getByText('导入完成')).toBeTruthy();
+  await fireEvent.press(screen.getByText('打开书库'));
   expect(router.replace).toHaveBeenCalledWith('/');
 });
 
