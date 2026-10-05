@@ -37,7 +37,7 @@ test('adds optional motivation and reading platform', async () => {
   const screen = await render(<AddBookForm onSave={onSave} />);
   await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '长夜');
   await fireEvent.changeText(screen.getByPlaceholderText('为什么想看（可选）'), '朋友推荐');
-  await fireEvent.changeText(screen.getByPlaceholderText('阅读平台（可选）'), '晋江文学城');
+  await fireEvent.changeText(screen.getByPlaceholderText('首发平台（可选）'), '晋江文学城');
   await fireEvent.press(screen.getByText('保存小说'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
     whyWantToRead: '朋友推荐', platform: '晋江文学城',

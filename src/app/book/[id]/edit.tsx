@@ -16,6 +16,8 @@ export default function EditBookPage() {
   const historyRepo = useReadingHistory();
   const [book, setBook] = useState<Book | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [quickTags, setQuickTags] = useState<Tag[]>([]);
+  const [existingBooks, setExistingBooks] = useState<Book[]>([]);
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [retry, setRetry] = useState(0);
@@ -27,11 +29,13 @@ export default function EditBookPage() {
       setLoadState('missing');
       return () => { active = false; };
     }
-    Promise.all([repo.get(id), tagRepo.list(), historyRepo.list(id)]).then(([result, tags, records]) => {
+    Promise.all([repo.get(id), tagRepo.list(), tagRepo.listQuick(), historyRepo.list(id), repo.list()]).then(([result, tags, quick, records, books]) => {
       if (!active) return;
       setBook(result);
       setAllTags(tags);
+      setQuickTags(quick);
       setSessions(records);
+      setExistingBooks(books);
       setLoadState(result ? 'ready' : 'missing');
     }).catch(() => { if (active) setLoadState('error'); });
     return () => { active = false; };
@@ -51,7 +55,7 @@ export default function EditBookPage() {
   </View>;
   if (!book) return null;
 
-  return <BookEditForm book={book} allTags={allTags} sessions={sessions} onSave={async input => {
+  return <BookEditForm book={book} allTags={allTags} quickTags={quickTags} authorSuggestions={existingBooks.map(item => item.author ?? '')} platformSuggestions={existingBooks.map(item => item.platform ?? '')} sessions={sessions} onSave={async input => {
     await repo.update(id, input);
     router.back();
   }} />;

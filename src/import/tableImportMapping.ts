@@ -14,7 +14,7 @@ const typeLabels: Record<string, BookType> = {
 export const TABLE_FIELD_LABELS: Record<TableField, string> = {
   title: '书名', author: '作者', protagonists: '主角', status: '阅读状态', rating: '评分', bookType: '作品类型',
   tags: '标签', startedOn: '开始日期', endedOn: '结束日期', note: '摘记', noteRecordedOn: '摘记日期',
-  whyWantToRead: '想看理由', platform: '阅读平台',
+  whyWantToRead: '想看理由', platform: '首发平台',
 };
 export const TABLE_FIELD_ORDER: TableField[] = ['title', 'author', 'protagonists', 'status', 'rating', 'bookType', 'tags', 'startedOn', 'endedOn', 'note', 'noteRecordedOn', 'whyWantToRead', 'platform'];
 
@@ -26,7 +26,7 @@ export function suggestTableMapping(sheet: TableSheet, hasHeader = true): TableC
     title: ['书名', '小说名', '标题', 'title', 'booktitle'], author: ['作者', 'author'], protagonists: ['主角', '主角名', 'protagonists', 'characters'],
     status: ['阅读状态', '状态', 'status'], rating: ['评分', '星级', 'rating'], bookType: ['作品类型', '类型', 'booktype'], tags: ['标签', 'tag', 'tags'],
     startedOn: ['开始日期', '开始时间', '阅读开始', 'startedon'], endedOn: ['结束日期', '完成日期', '阅读结束', 'endedon'], note: ['摘记', '感想', '评论', 'note'],
-    noteRecordedOn: ['摘记日期', '记录日期', 'noterecordedon'], whyWantToRead: ['想看理由', '阅读动机', 'whywanttoread'], platform: ['阅读平台', '平台', 'platform'],
+  noteRecordedOn: ['摘记日期', '记录日期', 'noterecordedon'], whyWantToRead: ['想看理由', '阅读动机', 'whywanttoread'], platform: ['首发平台', '阅读平台', '平台', 'platform'],
   };
   const mapping: TableColumnMapping = {};
   const headers = sheet.rows[0] ?? [];

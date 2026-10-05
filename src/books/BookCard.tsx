@@ -12,18 +12,18 @@ export function BookCard({ book, matchedNoteSnippet, matchedImage, onPress, sele
     {selection ? <Text style={[styles.checkbox, { borderColor: theme.border, backgroundColor: selection.checked ? theme.primary : 'transparent' }]}>{selection.checked ? '✓' : ''}</Text> : null}
     <BookCover title={book.title} bookId={book.id} uri={book.coverUri} size="small" />
     <View style={styles.details}>
-      <Text style={styles.title}>{book.title}</Text>
-      {book.author ? <Text style={styles.author}>{book.author}</Text> : null}
+      <Text style={[styles.title, { color: theme.text }]}>{book.title}</Text>
+      {book.author ? <Text style={[styles.author, { color: theme.mutedText }]}>{book.author}</Text> : null}
       {matchedNoteSnippet ? <View style={styles.noteMatch}>
         <Text style={[styles.noteLabel, { color: theme.primary }]}>匹配摘记</Text>
-        <Text style={styles.noteSnippet} numberOfLines={2}>{matchedNoteSnippet}</Text>
+        <Text style={[styles.noteSnippet, { color: theme.mutedText }]} numberOfLines={2}>{matchedNoteSnippet}</Text>
       </View> : null}
       {matchedImage ? <View style={styles.noteMatch}>
         <Text style={[styles.noteLabel, { color: theme.primary }]}>匹配图片文字</Text>
-        <Text style={styles.noteSnippet} numberOfLines={2}>{matchedImage.snippet}</Text>
+        <Text style={[styles.noteSnippet, { color: theme.mutedText }]} numberOfLines={2}>{matchedImage.snippet}</Text>
       </View> : null}
     </View>
-    {book.ratingHalfStars !== null ? <Text style={[styles.rating, { color: theme.rating }]}>{book.ratingHalfStars / 2} / 5 星</Text> : null}
+    {book.ratingHalfStars !== null ? <Text style={[styles.rating, { color: theme.rating }]}>★ {(book.ratingHalfStars / 2).toFixed(1)}</Text> : null}
   </Pressable>;
 }
 

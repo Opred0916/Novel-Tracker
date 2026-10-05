@@ -47,7 +47,7 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
   }
   if (input.bookType !== undefined) edited.bookType = normalizeType(input.bookType);
   if (input.whyWantToRead !== undefined) edited.whyWantToRead = normalizeOptionalText(input.whyWantToRead, '想看理由');
-  if (input.platform !== undefined) edited.platform = normalizeOptionalText(input.platform, '阅读平台');
+  if (input.platform !== undefined) edited.platform = normalizeOptionalText(input.platform, '首发平台');
   if (input.readingDates !== undefined) {
     if (!input.readingDates || typeof input.readingDates !== 'object') throw new Error('阅读日期无效');
     edited.readingDates = normalizeReadingDates(input.status, input.readingDates.startedOn, input.readingDates.endedOn);
@@ -79,7 +79,7 @@ export function normalizeBookEdit(input: BookEditInput): BookEditInput {
 
 export function normalizeBookCreate(
   input: BookInput,
-): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars' | 'bookType' | 'whyWantToRead' | 'platform'> & { tagIds: string[]; readingDates?: BookInput['readingDates']; coverSource?: BookInput['coverSource'] } {
+): Pick<Book, 'title' | 'author' | 'status' | 'protagonists' | 'ratingHalfStars' | 'bookType' | 'whyWantToRead' | 'platform'> & { tagIds: string[]; newTags?: BookInput['newTags']; readingDates?: BookInput['readingDates']; coverSource?: BookInput['coverSource'] } {
   const normalized = normalizeBookEdit({
     title: input.title,
     author: input.author ?? null,
@@ -96,6 +96,11 @@ export function normalizeBookCreate(
   if (normalized.status !== 'finished' && ratingHalfStars !== null) {
     throw new Error('只有读完的小说才能新增评分');
   }
+  if (input.newTags !== undefined) {
+    if (!Array.isArray(input.newTags) || input.newTags.some(tag => !tag || typeof tag.id !== 'string' || typeof tag.name !== 'string')) throw new Error('新标签无效');
+    const names = input.newTags.map(tag => tag.name.trim().toLocaleLowerCase());
+    if (input.newTags.some(tag => !tag.id.trim() || !tag.name.trim()) || new Set(names).size !== names.length || new Set(input.newTags.map(tag => tag.id)).size !== input.newTags.length || input.newTags.some(tag => !normalized.tagIds?.includes(tag.id))) throw new Error('新标签无效');
+  }
   return {
     ...normalized,
     bookType: normalized.bookType ?? null,
@@ -103,6 +108,7 @@ export function normalizeBookCreate(
     ratingHalfStars,
     whyWantToRead: normalized.whyWantToRead ?? null,
     platform: normalized.platform ?? null,
+    ...(input.newTags ? { newTags: input.newTags.map(tag => ({ id: tag.id, name: tag.name.trim() })) } : {}),
     ...(input.coverSource ? { coverSource: input.coverSource } : {}),
   };
 }

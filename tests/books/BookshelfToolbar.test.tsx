@@ -1,7 +1,6 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 import { BookshelfToolbar } from '../../src/books/BookshelfToolbar';
-import type { BookSortOrder } from '../../src/books/bookSearch';
 
 jest.mock('../../src/theme/ThemeProvider', () => ({
   useTheme: () => ({ theme: { primary: '#28584E', primarySoft: '#E8F1EC', primaryPressed: '#224B42', background: '#F6F3EC', card: '#FFFFFF', text: '#292D29', border: '#D8D5CD', mutedText: '#716F68', rating: '#B77B24', danger: '#9B3030' }, themeId: 'forest', setTheme: jest.fn(), saveError: null }),
@@ -13,19 +12,11 @@ const baseProps = {
   onStatusChange: jest.fn(),
   query: '',
   onQueryChange: jest.fn(),
+  onClearQuery: jest.fn(),
   sortLabel: '最近修改',
-  sortOptions: [{ value: 'recently_updated', label: '最近修改' }, { value: 'recently_finished', label: '最近读完' }] as { value: BookSortOrder; label: string }[],
-  sortOrder: 'recently_updated' as const,
-  showSortOptions: false,
-  onToggleSort: jest.fn(),
-  onSortChange: jest.fn(),
+  activeSheet: null,
+  onOpenSheet: jest.fn(),
   activeFilterCount: 0,
-  hasConditions: false,
-  onClearFilters: jest.fn(),
-  onToggleFilters: jest.fn(),
-  onEnterBulk: jest.fn(),
-  onRandomPick: jest.fn(),
-  bulkMode: false,
 };
 
 test('keeps all five status options in one horizontal strip', async () => {
@@ -35,17 +26,21 @@ test('keeps all five status options in one horizontal strip', async () => {
   expect(view.getByRole('radio', { name: '读完 4 本' })).toBeTruthy();
 });
 
-test('hides clear filters until a condition is active', async () => {
+test('shows query clear control only when a keyword exists', async () => {
   const view = await render(<BookshelfToolbar {...baseProps} />);
-  expect(view.queryByText('清除筛选')).toBeNull();
-  await view.rerender(<BookshelfToolbar {...baseProps} hasConditions activeFilterCount={1} />);
-  expect(view.getByText('清除筛选')).toBeTruthy();
-  fireEvent.press(view.getByText('清除筛选'));
-  expect(baseProps.onClearFilters).toHaveBeenCalled();
+  expect(view.queryByLabelText('清除搜索')).toBeNull();
+  await view.rerender(<BookshelfToolbar {...baseProps} query="长夜" />);
+  expect(view.getByLabelText('清除搜索')).toBeTruthy();
+  fireEvent.press(view.getByLabelText('清除搜索'));
+  expect(baseProps.onClearQuery).toHaveBeenCalled();
 });
 
-test('offers a random want-to-read action', async () => {
+test('opens the three compact tool sheets', async () => {
   const view = await render(<BookshelfToolbar {...baseProps} />);
-  fireEvent.press(view.getByText('随机想读'));
-  expect(baseProps.onRandomPick).toHaveBeenCalled();
+  await fireEvent.press(view.getByText('排序：最近修改'));
+  await fireEvent.press(view.getByText('筛选'));
+  await fireEvent.press(view.getByText('更多'));
+  expect(baseProps.onOpenSheet).toHaveBeenCalledWith('sort');
+  expect(baseProps.onOpenSheet).toHaveBeenCalledWith('filter');
+  expect(baseProps.onOpenSheet).toHaveBeenCalledWith('more');
 });

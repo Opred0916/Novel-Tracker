@@ -127,6 +127,9 @@ export class SqliteBookRepository implements BookRepository {
           await txn.runAsync('INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES (?, ?, ?, ?)', copied.id, id, copied.localPath, copied.createdAt);
           await txn.runAsync('UPDATE books SET cover_image_id = ? WHERE id = ?', copied.id, id);
         }
+        for (const tag of normalized.newTags ?? []) {
+          await txn.runAsync('INSERT INTO tags (id, name, is_system) VALUES (?, ?, 0)', tag.id, tag.name);
+        }
         for (const [position, name] of normalized.protagonists.entries()) {
           await txn.runAsync(
             'INSERT INTO book_protagonists (book_id, position, name) VALUES (?, ?, ?)', id, position, name,

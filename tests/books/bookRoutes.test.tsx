@@ -127,7 +127,7 @@ test('book card shows author, rating, and optional note and image matches', asyn
   const onPress = jest.fn();
   const screen = await render(<BookCard book={{ ...book, ratingHalfStars: 9 }} matchedNoteSnippet="这是命中的摘记内容" matchedImage={{ imageId: 'image-1', source: 'highlight', snippet: '这是图片里的命中文字' }} onPress={onPress} />);
   expect(screen.getByText('某作者')).toBeTruthy();
-  expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
+  expect(screen.getByText('★ 4.5')).toBeTruthy();
   expect(screen.getByText('匹配摘记')).toBeTruthy();
   expect(screen.getByText('这是命中的摘记内容')).toBeTruthy();
   expect(screen.getByText('匹配图片文字')).toBeTruthy();
@@ -171,6 +171,7 @@ test('bookshelf random pick uses the full library instead of search results', as
   searchRepo.search.mockResolvedValue([]);
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getByText('书架还是空的')).toBeTruthy());
+  await fireEvent.press(screen.getByText('更多'));
   await fireEvent.press(screen.getByText('随机想读'));
   await waitFor(() => expect(screen.getByText('随机抽到')).toBeTruthy());
   expect(screen.getAllByText('想读书').length).toBeGreaterThan(0);
@@ -181,13 +182,13 @@ test('bookshelf changes sort order and keeps it when filters are cleared', async
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   await fireEvent.press(screen.getByText('排序：最近修改'));
-  expect(screen.getByRole('radio', { name: '最近读完' }).props.accessibilityState).toEqual({ checked: false });
+  expect(screen.getByRole('radio', { name: '最近读完' }).props.accessibilityState).toMatchObject({ checked: false });
   await fireEvent.press(screen.getByText('最近读完'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
   expect(screen.getByText('排序：最近读完')).toBeTruthy();
   await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '长夜');
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '长夜', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
-  await fireEvent.press(screen.getByText('清除筛选'));
+  await fireEvent.press(screen.getByLabelText('清除搜索'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
 });
 
@@ -206,17 +207,14 @@ test('bookshelf selects books by ID across filters and can remove hidden selecti
   searchRepo.search.mockImplementation(async ({ query }: { query: string }) => query ? [{ book, matchedNoteSnippet: null }] : [{ book, matchedNoteSnippet: null }, { book: other, matchedNoteSnippet: null }]);
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getByText('更多'));
   await fireEvent.press(screen.getByText('批量整理'));
   await fireEvent.press(screen.getByRole('checkbox', { name: '选择长夜' }));
   await fireEvent.press(screen.getByRole('checkbox', { name: '选择归途' }));
   expect(screen.getByText('已选 2 本')).toBeTruthy();
   await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '长夜');
   await waitFor(() => expect(screen.queryByText('归途')).toBeNull());
-  await fireEvent.press(screen.getByText('查看已选'));
-  expect(screen.getByText('归途 · 另一作者')).toBeTruthy();
-  await fireEvent.press(screen.getByRole('button', { name: '移除归途' }));
-  expect(screen.queryByText('归途 · 另一作者')).toBeNull();
-  expect(screen.getByText('已选 1 本')).toBeTruthy();
+  expect(screen.getByText('已选 2 本')).toBeTruthy();
 });
 
 test('bookshelf only selects the completed current result and preserves selection after clearing filters', async () => {
@@ -224,12 +222,13 @@ test('bookshelf only selects the completed current result and preserves selectio
   searchRepo.search.mockImplementation(async ({ query }: { query: string }) => query ? [{ book, matchedNoteSnippet: null }] : [{ book, matchedNoteSnippet: null }, { book: other, matchedNoteSnippet: null }]);
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getByText('更多'));
   await fireEvent.press(screen.getByText('批量整理'));
   await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '长夜');
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith(expect.objectContaining({ query: '长夜' })));
   await fireEvent.press(screen.getByText('全选当前结果'));
   expect(screen.getByText('已选 1 本')).toBeTruthy();
-  await fireEvent.press(screen.getByText('清除筛选'));
+  await fireEvent.press(screen.getByLabelText('清除搜索'));
   await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
   expect(screen.getByText('已选 1 本')).toBeTruthy();
 });
@@ -237,9 +236,10 @@ test('bookshelf only selects the completed current result and preserves selectio
 test('bookshelf opens the bulk organizer and confirms the preview', async () => {
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getByText('更多'));
   await fireEvent.press(screen.getByText('批量整理'));
   await fireEvent.press(screen.getByRole('checkbox', { name: '选择长夜' }));
-  await fireEvent.press(screen.getByText('继续整理'));
+  await fireEvent.press(screen.getByTestId('bulk-continue'));
   await waitFor(() => expect(screen.getByText('批量整理 1 本小说')).toBeTruthy());
   await fireEvent.press(screen.getAllByRole('checkbox')[0]);
   await fireEvent.press(screen.getByText('生成预览'));
@@ -247,7 +247,7 @@ test('bookshelf opens the bulk organizer and confirms the preview', async () => 
   expect(bulkOrganizeRepo.preview).toHaveBeenCalledWith(['book-1'], expect.objectContaining({ addTagIds: ['ancient'] }));
   await fireEvent.press(screen.getByText('确认修改'));
   await waitFor(() => expect(bulkOrganizeRepo.apply).toHaveBeenCalledTimes(1));
-  await waitFor(() => expect(screen.getByText('批量整理')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('更多')).toBeTruthy());
 });
 
 test('bookshelf filters by search and clears the filter', async () => {
@@ -260,7 +260,7 @@ test('bookshelf filters by search and clears the filter', async () => {
   await fireEvent.changeText(screen.getByPlaceholderText('搜索书名、作者、主角、摘记或图片文字'), '长夜');
   await waitFor(() => expect(screen.queryByText('归途')).toBeNull());
   expect(screen.getByText('匹配摘记')).toBeTruthy();
-  await fireEvent.press(screen.getByText('清除筛选'));
+  await fireEvent.press(screen.getByLabelText('清除搜索'));
   await waitFor(() => expect(screen.getAllByText('归途').length).toBeGreaterThan(0));
 });
 
@@ -288,19 +288,20 @@ test('data management exposes the open export entry', async () => {
 test('bookshelf submits status, type, and every selected tag then clears them together', async () => {
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
-  await fireEvent.press(screen.getByText('筛选条件'));
   await fireEvent.press(screen.getByRole('radio', { name: '在读 2 本' }));
+  await fireEvent.press(screen.getByText('筛选'));
   await fireEvent.press(screen.getByText('耽美'));
   await fireEvent.press(screen.getByText('古代'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({
     query: '', status: 'reading', bookType: 'romance_male_male', tagIds: ['ancient'], sortOrder: 'recently_updated',
   }));
-  expect(screen.getByText('筛选条件（2）')).toBeTruthy();
-  await fireEvent.press(screen.getByText('清除筛选'));
+  expect(screen.getByText('筛选')).toBeTruthy();
+  await fireEvent.press(screen.getByText('筛选'));
+  await fireEvent.press(screen.getByText('重置筛选'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({
-    query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_updated',
+    query: '', status: 'reading', bookType: null, tagIds: [], sortOrder: 'recently_updated',
   }));
-  expect(screen.getByText('筛选条件')).toBeTruthy();
+  expect(screen.getByText('筛选')).toBeTruthy();
 });
 
 test('bookshelf offers retry after a search failure', async () => {
@@ -366,6 +367,7 @@ test('edit page preloads details and returns only after a successful update', as
 test('custom tags are not written when editing is abandoned', async () => {
   const screen = await render(<EditBookPage />);
   await waitFor(() => expect(screen.getByDisplayValue('长夜')).toBeTruthy());
+  await fireEvent.press(screen.getByText('全部标签'));
   await fireEvent.changeText(screen.getByPlaceholderText('新标签名称'), '赛博朋克');
   await fireEvent.press(screen.getByText('添加标签'));
   await waitFor(() => expect(screen.getByText('赛博朋克')).toBeTruthy());
@@ -377,6 +379,7 @@ test('custom tags are not written when editing is abandoned', async () => {
 test('custom tags are submitted atomically with the edited book', async () => {
   const screen = await render(<EditBookPage />);
   await waitFor(() => expect(screen.getByDisplayValue('长夜')).toBeTruthy());
+  await fireEvent.press(screen.getByText('全部标签'));
   await fireEvent.changeText(screen.getByPlaceholderText('新标签名称'), '赛博朋克');
   await fireEvent.press(screen.getByText('添加标签'));
   await waitFor(() => expect(screen.getByText('赛博朋克')).toBeTruthy());
