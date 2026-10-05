@@ -2,9 +2,7 @@ import { Link, router, useFocusEffect } from 'expo-router';
 import { useCallback, useContext, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
-import { TagPicker } from './TagPicker';
-import { BOOK_TYPE_LABELS } from './TypePicker';
-import { BOOK_TYPES, type BookStatus, type BookType, type Tag } from './types';
+import { type BookStatus, type BookType, type Tag } from './types';
 import type { BookSortOrder } from './bookSearch';
 import { BookCard } from './BookCard';
 import { BulkOrganizePanel } from './BulkOrganizePanel';
@@ -12,6 +10,7 @@ import { useBookSearch } from './useBookSearch';
 import type { LibraryOverview } from './libraryOverviewRepository';
 import { useBookSearchRepository, useBooks, useBulkOrganizeRepository, useLibraryOverviewRepository, useTags } from '../storage/AppProvider';
 import { BookshelfToolbar } from './BookshelfToolbar';
+import { BookshelfToolsSheet, type BookshelfSheet } from './BookshelfToolsSheet';
 import { useTheme } from '../theme/ThemeProvider';
 import { selectWantToReadBook } from './randomWantToRead';
 import { RandomWantToReadSheet } from './RandomWantToReadSheet';
@@ -37,12 +36,11 @@ export default function Bookshelf() {
   const [bookType, setBookType] = useState<BookType | null>(null);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [sortOrder, setSortOrder] = useState<BookSortOrder>('recently_updated');
-  const [showSortOptions, setShowSortOptions] = useState(false);
+  const [activeSheet, setActiveSheet] = useState<BookshelfSheet>(null);
   const [bulkMode, setBulkMode] = useState(false);
   const [showSelected, setShowSelected] = useState(false);
   const [showBulkPanel, setShowBulkPanel] = useState(false);
   const [selectedBooks, setSelectedBooks] = useState<Map<string, { title: string; author: string | null }>>(new Map());
-  const [showFilters, setShowFilters] = useState(false);
   const [tagError, setTagError] = useState('');
   const [overview, setOverview] = useState<LibraryOverview | null>(null);
   const [overviewError, setOverviewError] = useState('');
@@ -64,11 +62,9 @@ export default function Bookshelf() {
   }, [overviewRepository, retry, tagRepo]));
 
   const activeFilterCount = (bookType ? 1 : 0) + tagIds.length;
-  const hasConditions = query.trim().length > 0 || Boolean(status) || activeFilterCount > 0;
+  const hasConditions = query.trim().length > 0 || activeFilterCount > 0;
 
   function clearFilters() {
-    setQuery('');
-    setStatus(null);
     setBookType(null);
     setTagIds([]);
   }
@@ -164,7 +160,7 @@ export default function Bookshelf() {
   }
 
   return <View style={[styles.page, { backgroundColor: theme.background }]}>
-    <Text style={[styles.heading, { color: theme.text }]}>把喜欢的故事留在这里</Text>
+    <Text style={[styles.heading, { color: theme.text }]}>我的书架</Text>
     <Text style={[styles.subheading, { color: theme.mutedText }]}>找书、记录和整理都在这里完成</Text>
     <BookshelfToolbar
       status={status}
@@ -172,20 +168,13 @@ export default function Bookshelf() {
       onStatusChange={setStatus}
       query={query}
       onQueryChange={setQuery}
+      onClearQuery={() => setQuery('')}
       sortLabel={BOOK_SORT_OPTIONS.find(option => option.value === sortOrder)?.label ?? '最近修改'}
-      sortOptions={BOOK_SORT_OPTIONS}
-      sortOrder={sortOrder}
-      showSortOptions={showSortOptions}
-      onToggleSort={() => setShowSortOptions(value => !value)}
-      onSortChange={value => { setSortOrder(value); setShowSortOptions(false); }}
+      activeSheet={activeSheet}
+      onOpenSheet={setActiveSheet}
       activeFilterCount={activeFilterCount}
-      hasConditions={hasConditions}
-      onClearFilters={clearFilters}
-      onToggleFilters={() => setShowFilters(value => !value)}
-      onEnterBulk={enterBulkMode}
-      onRandomPick={() => { void pickRandomWantToRead(); }}
-      bulkMode={bulkMode}
     />
+    <BookshelfToolsSheet visible={activeSheet !== null} sheet={activeSheet} sortOptions={BOOK_SORT_OPTIONS} sortOrder={sortOrder} bookType={bookType} tags={tags} tagIds={tagIds} onSortChange={value => setSortOrder(value)} onBookTypeChange={setBookType} onTagIdsChange={setTagIds} onResetFilters={clearFilters} onEnterBulk={enterBulkMode} onRandomPick={() => { void pickRandomWantToRead(); }} onClose={() => setActiveSheet(null)} />
     {randomError ? <View style={styles.errorRow}><Text style={[styles.error, { color: theme.danger }]}>{randomError}</Text><Pressable accessibilityRole="button" onPress={() => { void pickRandomWantToRead(); }}><Text style={[styles.link, { color: theme.primary }]}>重试</Text></Pressable></View> : null}
     {overviewError ? <Text style={[styles.error, { color: theme.danger }]}>{overviewError}</Text> : null}
     {tagError ? <Text style={[styles.error, { color: theme.danger }]}>{tagError}</Text> : null}
@@ -205,17 +194,8 @@ export default function Bookshelf() {
       </View>)}</View> : null}
     </View> : null}
     <FlatList data={results} keyExtractor={item => item.book.id} contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 110 }]}
-      ListHeaderComponent={showFilters ? <View style={styles.filters}>
-        <Text style={[styles.filterTitle, { color: theme.text }]}>作品类型</Text>
-        <View style={styles.chips}>{[null, ...BOOK_TYPES].map(value => <Pressable key={value ?? 'all'}
-          accessibilityRole="radio" accessibilityState={{ checked: bookType === value }} onPress={() => setBookType(value)}
-          style={[styles.chip, { backgroundColor: bookType === value ? theme.primarySoft : theme.card, borderColor: bookType === value ? theme.primary : theme.border }]}>
-          <Text style={{ color: bookType === value ? theme.primary : theme.text, fontWeight: bookType === value ? '700' : '500' }}>{value === null ? '全部类型' : BOOK_TYPE_LABELS[value]}</Text>
-        </Pressable>)}</View>
-        <Text style={[styles.filterTitle, { color: theme.text }]}>标签（可多选）</Text>
-        <TagPicker tags={tags} selectedIds={tagIds} onChange={setTagIds} searchable />
-      </View> : null}
-      ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="正在搜索" color={theme.primary} /> : searchError ? null : <View style={styles.empty}><Text style={[styles.emptyTitle, { color: theme.text }]}>{hasConditions ? '没有符合条件的小说' : '书架还是空的'}</Text><Text style={[styles.subheading, { color: theme.mutedText }]}>{hasConditions ? '试试清除筛选。' : '先记下一本想读的小说吧。'}</Text></View>}
+      ListHeaderComponent={null}
+      ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="正在搜索" color={theme.primary} /> : searchError ? null : <View style={styles.empty}><Text style={[styles.emptyTitle, { color: theme.text }]}>{status ? `还没有${status === 'want_to_read' ? '想读' : status === 'reading' ? '在读' : status === 'finished' ? '读完' : '弃读'}的小说` : hasConditions ? '没有符合筛选条件的小说' : '书架还是空的'}</Text><Text style={[styles.subheading, { color: theme.mutedText }]}>{status ? '先添加一本小说吧。' : hasConditions ? '可以调整筛选条件。' : '先记下一本想读的小说吧。'}</Text></View>}
       renderItem={({ item }) => <BookCard book={item.book} matchedNoteSnippet={item.matchedNoteSnippet} matchedImage={item.matchedImage} onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book.id, ...(item.matchedImage ? { focusImageId: item.matchedImage.imageId } : {}) } })}
         selection={bulkMode ? { checked: selectedBooks.has(item.book.id), onToggle: () => toggleSelected(item.book) } : undefined} />}
     />
