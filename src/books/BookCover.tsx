@@ -9,16 +9,14 @@ export function BookCover({ title, bookId, uri, size = 'medium', showTitle = tru
   const palette = getDefaultCoverStyle(bookId ?? 'preview');
   return <View accessibilityLabel={`${title}默认封面`} style={[styles.cover, styles.defaultCover, dimensions, { backgroundColor: palette.backgroundColor, borderColor: palette.accentColor }]}>
     {showTitle ? <Text numberOfLines={3} ellipsizeMode="tail" style={[styles.defaultTitle, { color: palette.accentColor }]}>{title}</Text> : null}
-    <View style={[styles.accentLine, { backgroundColor: palette.accentColor }]} />
   </View>;
 }
 
 const styles = StyleSheet.create({
-  cover: { borderRadius: 12, overflow: 'hidden' },
+  cover: { borderRadius: 10, overflow: 'hidden' },
   small: { width: 64, height: 88 },
   medium: { width: 112, height: 156 },
   large: { width: 180, height: 250 },
-  defaultCover: { alignItems: 'center', justifyContent: 'center', padding: 12, borderWidth: 1 },
-  defaultTitle: { fontSize: 16, lineHeight: 22, fontWeight: '800', textAlign: 'center' },
-  accentLine: { width: '42%', height: 3, borderRadius: 2, marginTop: 10 },
+  defaultCover: { alignItems: 'center', justifyContent: 'center', padding: 8, borderWidth: 1 },
+  defaultTitle: { fontSize: 15, lineHeight: 20, fontWeight: '800', textAlign: 'center' },
 });
