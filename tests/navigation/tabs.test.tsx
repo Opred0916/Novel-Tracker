@@ -3,12 +3,13 @@ import { render } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import TabsLayout from '../../src/app/(tabs)/_layout';
 import ManageTab from '../../src/app/(tabs)/manage';
+import IndexRedirect from '../../src/app/index';
 
 jest.mock('expo-router', () => {
   const { Text } = require('react-native');
   const Tabs = ({ children }: { children: React.ReactNode }) => <>{children}</>;
   Tabs.Screen = ({ options }: { options: { title: string } }) => <Text>{options.title}</Text>;
-  return { Tabs, router: { push: jest.fn() } };
+  return { Tabs, Redirect: ({ href }: { href: string }) => <Text>{href}</Text>, router: { push: jest.fn() } };
 });
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
 
@@ -29,4 +30,9 @@ test('management groups maintenance tools and theme choices', async () => {
   expect(view.getByText('追加旧记录')).toBeTruthy();
   expect(view.getByText('备份与恢复')).toBeTruthy();
   expect(view.getByText('主题颜色')).toBeTruthy();
+});
+
+test('root route redirects to the tabs group', async () => {
+  const view = await render(<IndexRedirect />);
+  expect(view.getByText('/(tabs)')).toBeTruthy();
 });
