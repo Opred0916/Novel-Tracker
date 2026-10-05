@@ -97,7 +97,7 @@ export function normalizeBookCreate(
     throw new Error('只有读完的小说才能新增评分');
   }
   if (input.newTags !== undefined) {
-    if (!Array.isArray(input.newTags)) throw new Error('新标签无效');
+    if (!Array.isArray(input.newTags) || input.newTags.some(tag => !tag || typeof tag.id !== 'string' || typeof tag.name !== 'string')) throw new Error('新标签无效');
     const names = input.newTags.map(tag => tag.name.trim().toLocaleLowerCase());
     if (input.newTags.some(tag => !tag.id.trim() || !tag.name.trim()) || new Set(names).size !== names.length || new Set(input.newTags.map(tag => tag.id)).size !== input.newTags.length || input.newTags.some(tag => !normalized.tagIds?.includes(tag.id))) throw new Error('新标签无效');
   }

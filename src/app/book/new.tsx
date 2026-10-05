@@ -17,7 +17,7 @@ export default function NewBook() {
     Promise.all([tagRepo.listQuick(), tagRepo.list(), repo.list()]).then(([quick, all, existing]) => { if (active) { setQuickTags(quick); setAllTags(all); setBooks(existing); } })
       .catch(() => { if (active) setError('快捷标签读取失败'); });
     return () => { active = false; };
-  }, [tagRepo]);
+  }, [repo, tagRepo]);
   return <View style={{ flex: 1 }}>
     {error ? <Text style={{ color: '#b52626', marginHorizontal: 24 }}>{error}</Text> : null}
     <AddBookForm quickTags={quickTags} allTags={allTags} authorSuggestions={books.map(book => book.author ?? '')} platformSuggestions={books.map(book => book.platform ?? '')} onSave={async input => { await repo.create(input); router.back(); }} />

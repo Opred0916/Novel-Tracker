@@ -12,7 +12,6 @@ import { normalizeBookCreate } from './validation';
 import { BookCoverField } from './BookCoverField';
 import type { StagedCover } from './bookCoverFiles';
 import { useTheme } from '../theme/ThemeProvider';
-import { ChoiceChip } from '../ui/ChoiceChip';
 import { BottomSheet } from '../ui/BottomSheet';
 import { SuggestionField } from './SuggestionField';
 
