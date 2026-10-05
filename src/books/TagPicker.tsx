@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { Tag } from './types';
 import { useTheme } from '../theme/ThemeProvider';
+import { ChoiceChip } from '../ui/ChoiceChip';
 
 type Props = {
   tags: Tag[];
@@ -49,13 +50,10 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, onC
     <View style={styles.group}>
       {visible.map(tag => {
         const selected = selectedIds.includes(tag.id);
-        return <Pressable key={tag.id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }}
+        return <ChoiceChip key={tag.id} label={tag.name} selected={selected} selectionRole="checkbox"
           onPress={() => changeSelection(selectedIdsRef.current.includes(tag.id)
             ? selectedIdsRef.current.filter(id => id !== tag.id)
-            : [...selectedIdsRef.current, tag.id])}
-          style={[styles.option, { borderColor: selected ? theme.primary : theme.border, backgroundColor: selected ? theme.primarySoft : theme.card }]}>
-          <Text style={{ color: selected ? theme.primary : theme.text, fontWeight: selected ? '700' : '500' }}>{tag.name}</Text>
-        </Pressable>;
+            : [...selectedIdsRef.current, tag.id])} />;
       })}
       {visible.length === 0 ? <Text style={styles.empty}>没有匹配的标签</Text> : null}
     </View>
@@ -71,8 +69,6 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, onC
 
 const styles = StyleSheet.create({
   container: { gap: 10 }, group: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  option: { borderWidth: 1, borderColor: '#d6cec4', backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
-  selected: { backgroundColor: '#28584E', borderColor: '#28584E' }, text: { color: '#302a25' }, selectedText: { color: '#fff', fontWeight: '700' },
   input: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, padding: 12, fontSize: 16, backgroundColor: '#fff' },
   createRow: { flexDirection: 'row', gap: 8 }, createInput: { flex: 1 },
   add: { backgroundColor: '#28584E', borderRadius: 12, justifyContent: 'center', paddingHorizontal: 12 }, addText: { color: '#fff', fontWeight: '600' },
