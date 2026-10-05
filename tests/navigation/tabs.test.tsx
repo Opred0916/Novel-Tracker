@@ -24,12 +24,13 @@ test('defines the three bottom navigation destinations', async () => {
   expect(view.getByText('管理')).toBeTruthy();
 });
 
-test('management groups maintenance tools and theme choices', async () => {
+test('management groups maintenance tools and links to appearance', async () => {
   const view = await render(<ManageTab />);
   expect(view.getByText('快捷标签设置')).toBeTruthy();
   expect(view.getByText('追加旧记录')).toBeTruthy();
   expect(view.getByText('备份与恢复')).toBeTruthy();
   expect(view.getByText('主题颜色')).toBeTruthy();
+  expect(view.getByText('整理书库')).toBeTruthy();
 });
 
 test('root route redirects to the tabs group', async () => {

@@ -1,6 +1,5 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { ThemePicker } from '../../theme/ThemePicker';
 import { useTheme } from '../../theme/ThemeProvider';
 
 function Action({ label, onPress, primary = false }: { label: string; onPress: () => void; primary?: boolean }) {
@@ -15,14 +14,16 @@ export default function ManageTab() {
   return <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
     <Text style={[styles.heading, { color: theme.text }]}>管理</Text>
     <Text style={[styles.help, { color: theme.mutedText }]}>维护标签、导入记录、备份数据和应用外观。</Text>
-    <Text style={[styles.section, { color: theme.text }]}>分类偏好</Text>
+    <Text style={[styles.section, { color: theme.text }]}>整理书库</Text>
     <Action label="快捷标签设置" onPress={() => router.push('/settings/tags')} />
-    <Text style={[styles.section, { color: theme.text }]}>带入与带走记录</Text>
+    <Action label="数据管理" onPress={() => router.push('/settings/data')} />
+    <Action label="书库概览" onPress={() => router.push('/settings/overview')} />
+    <Text style={[styles.section, { color: theme.text }]}>导入与导出</Text>
     <Action label="追加旧记录" primary onPress={() => router.push('/settings/import')} />
     <Action label="导出开放格式" onPress={() => router.push('/settings/export')} />
     <Action label="备份与恢复" onPress={() => router.push('/settings/backup')} />
     <Text style={[styles.section, { color: theme.text }]}>外观</Text>
-    <ThemePicker />
+    <Action label="主题颜色" onPress={() => router.push('/settings/appearance')} />
     <View style={styles.bottomSpace} />
   </ScrollView>;
 }
