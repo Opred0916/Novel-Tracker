@@ -27,7 +27,7 @@ export function BookDetail({ book, sessions = [], onEditReading }: {
         <Text style={styles.value}>{book.whyWantToRead}</Text>
       </> : null}
       {book.platform ? <>
-        <Text style={styles.label}>阅读平台</Text>
+        <Text style={styles.label}>首发平台</Text>
         <Text style={styles.value}>{book.platform}</Text>
       </> : null}
     </View> : null}

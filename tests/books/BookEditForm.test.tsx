@@ -20,6 +20,7 @@ test('edits a work type and tags from the full library', async () => {
   ];
   const screen = await render(<BookEditForm book={{ ...baseBook, tags: [tags[0]] }} onSave={onSave} allTags={tags} />);
   await fireEvent.press(screen.getByText('GL'));
+  await fireEvent.press(screen.getByText('全部标签'));
   await fireEvent.changeText(screen.getByPlaceholderText('搜索标签'), '悬疑');
   await fireEvent.press(screen.getByText('悬疑'));
   await fireEvent.press(screen.getByText('保存修改'));

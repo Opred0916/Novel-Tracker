@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { randomUUID } from 'expo-crypto';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { RatingField } from './RatingField';
 import { ReadingDateFields } from './ReadingDateFields';
@@ -11,8 +12,11 @@ import { normalizeBookCreate } from './validation';
 import { BookCoverField } from './BookCoverField';
 import type { StagedCover } from './bookCoverFiles';
 import { useTheme } from '../theme/ThemeProvider';
+import { ChoiceChip } from '../ui/ChoiceChip';
+import { BottomSheet } from '../ui/BottomSheet';
+import { SuggestionField } from './SuggestionField';
 
-export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookInput) => Promise<void>; quickTags?: Tag[] }) {
+export function AddBookForm({ onSave, quickTags = [], allTags = [], authorSuggestions = [], platformSuggestions = [] }: { onSave: (input: BookInput) => Promise<void>; quickTags?: Tag[]; allTags?: Tag[]; authorSuggestions?: string[]; platformSuggestions?: string[] }) {
   const { theme } = useTheme();
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
@@ -25,6 +29,8 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
   const [ratingHalfStars, setRatingHalfStars] = useState<number | null>(null);
   const [bookType, setBookType] = useState<BookType | null>(null);
   const [tagIds, setTagIds] = useState<string[]>([]);
+  const [pendingTags, setPendingTags] = useState<Tag[]>([]);
+  const [showAllTags, setShowAllTags] = useState(false);
   const [coverSource, setCoverSource] = useState<StagedCover | undefined>();
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -39,7 +45,8 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
     let input: BookInput;
     try {
       input = normalizeBookCreate({
-        title, author, status, protagonists, bookType, tagIds, whyWantToRead, platform,
+        title, author, status, protagonists, bookType, tagIds, whyWantToRead: status === 'want_to_read' ? whyWantToRead : null, platform,
+        ...(pendingTags.some(tag => tagIds.includes(tag.id)) ? { newTags: pendingTags.filter(tag => tagIds.includes(tag.id)).map(({ id, name }) => ({ id, name })) } : {}),
         ratingHalfStars: status === 'finished' ? ratingHalfStars : null,
         coverSource,
         ...(status !== 'want_to_read' ? { readingDates: { startedOn, endedOn: status === 'reading' ? null : endedOn } } : {}),
@@ -60,13 +67,6 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
     <Text style={[styles.label, { color: theme.text }]}>书名 *</Text>
     <TextInput placeholder="输入小说书名" placeholderTextColor={theme.mutedText} value={title} onChangeText={setTitle} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} autoFocus />
     <Text style={[styles.help, { color: theme.mutedText }]}>只填书名也能保存，其他资料可以现在填写或以后补充。</Text>
-    <Text style={[styles.label, { color: theme.text }]}>作者</Text>
-    <TextInput placeholder="作者名字" placeholderTextColor={theme.mutedText} value={author} onChangeText={setAuthor} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />
-    <Text style={[styles.label, { color: theme.text }]}>为什么想看</Text>
-    <TextInput placeholder="为什么想看（可选）" value={whyWantToRead} onChangeText={setWhyWantToRead}
-      style={[styles.input, styles.multiline, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} multiline textAlignVertical="top" />
-    <Text style={[styles.label, { color: theme.text }]}>阅读平台</Text>
-    <TextInput placeholder="阅读平台（可选）" placeholderTextColor={theme.mutedText} value={platform} onChangeText={setPlatform} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />
     <Text style={[styles.label, { color: theme.text }]}>阅读状态</Text>
     <View style={styles.statusGroup}>
       {BOOK_STATUSES.map(choice => <Pressable key={choice} accessibilityRole="radio"
@@ -75,12 +75,20 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
         <Text style={{ color: status === choice ? theme.card : theme.text, fontWeight: status === choice ? '700' : '500' }}>{BOOK_STATUS_LABELS[choice]}</Text>
       </Pressable>)}
     </View>
+    <SuggestionField label="作者" placeholder="作者名字" value={author} onChange={setAuthor} suggestions={authorSuggestions} />
+    <SuggestionField label="首发平台" placeholder="首发平台（可选）" value={platform} onChange={setPlatform} suggestions={platformSuggestions} />
+    {status === 'want_to_read' ? <View>
+      <Text style={[styles.label, { color: theme.text }]}>为什么想看</Text>
+      <TextInput placeholder="为什么想看（可选）" placeholderTextColor={theme.mutedText} value={whyWantToRead} onChangeText={setWhyWantToRead}
+        style={[styles.input, styles.multiline, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} multiline textAlignVertical="top" />
+    </View> : null}
     {status !== 'want_to_read' ? <ReadingDateFields startedOn={startedOn} endedOn={endedOn}
       showEnd={status !== 'reading'} onStartChange={setStartedOn} onEndChange={setEndedOn} /> : null}
     <Text style={[styles.label, { color: theme.text }]}>作品类型</Text>
     <TypePicker value={bookType} onChange={setBookType} />
     <Text style={[styles.label, { color: theme.text }]}>快捷标签</Text>
     <TagPicker tags={quickTags} selectedIds={tagIds} onChange={setTagIds} />
+    <Pressable accessibilityRole="button" onPress={() => setShowAllTags(true)} style={[styles.allTagsButton, { borderColor: theme.primary }]}><Text style={[styles.allTagsText, { color: theme.primary }]}>全部标签</Text></Pressable>
     <Text style={[styles.label, { color: theme.text }]}>主角名字</Text>
     {protagonists.map((name, index) => <View key={index} style={styles.nameRow}>
       <Text style={[styles.nameLabel, { color: theme.mutedText }]}>主角 {index + 1}</Text>
@@ -96,6 +104,15 @@ export function AddBookForm({ onSave, quickTags = [] }: { onSave: (input: BookIn
     <Pressable accessibilityRole="button" disabled={saving} onPress={save} style={[styles.button, { backgroundColor: theme.primary }]}>
       <Text style={styles.buttonText}>{saving ? '保存中…' : '保存小说'}</Text>
     </Pressable>
+    <BottomSheet visible={showAllTags} title="全部标签" onClose={() => setShowAllTags(false)}>
+      <TagPicker tags={[...allTags, ...pendingTags]} selectedIds={tagIds} onChange={setTagIds} searchable onCreateTag={async name => {
+        const normalized = name.trim();
+        if ([...allTags, ...pendingTags].some(tag => tag.name.toLocaleLowerCase() === normalized.toLocaleLowerCase())) throw new Error('标签名称已存在');
+        const tag = { id: randomUUID(), name: normalized, isSystem: false };
+        setPendingTags(current => [...current, tag]);
+        return tag;
+      }} />
+    </BottomSheet>
   </ScrollView>;
 }
 
@@ -114,6 +131,7 @@ const styles = StyleSheet.create({
   nameLabel: { color: '#766f68' },
   addName: { padding: 12, alignSelf: 'flex-start' },
   addNameText: { color: '#28584E', fontWeight: '600' },
+  allTagsButton: { borderWidth: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center' }, allTagsText: { fontWeight: '700' },
   error: { color: '#b52626' },
   button: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 12 },
   buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
