@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router, type Href, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BOOK_STATUS_LABELS } from '../../books/status';
@@ -25,7 +25,7 @@ export default function LibraryOverviewPage() {
     {error ? <View style={styles.errorRow}><Text style={[styles.error, { color: theme.danger }]}>{error}</Text><Pressable accessibilityRole="button" onPress={refresh}><Text style={[styles.link, { color: theme.primary }]}>重试</Text></Pressable></View> : null}
     {!overview && !error ? <ActivityIndicator accessibilityLabel="正在读取概览" color={theme.primary} /> : null}
     {overview ? <><View style={[styles.highlight, { backgroundColor: theme.primary }]}><Text style={styles.highlightTitle}>今年读完 {overview.finishedBooksThisYear} 本</Text><Text style={[styles.muted, { color: theme.primarySoft }]}> {overview.year} 年 · 按不同书籍去重</Text></View><View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.cardTitle, { color: theme.text }]}>当前书架</Text><Text style={[styles.total, { color: theme.mutedText }]}>共 {overview.totalBooks} 本</Text>{(Object.keys(BOOK_STATUS_LABELS) as (keyof typeof BOOK_STATUS_LABELS)[]).map(status => <View key={status} style={styles.statusRow}><Text style={[styles.statusLabel, { color: theme.text }]}>{BOOK_STATUS_LABELS[status]}：{overview.byStatus[status]}</Text></View>)}</View></> : null}
-    <Pressable accessibilityRole="button" onPress={() => router.push('/settings/annual-summary')} style={[styles.primary, { backgroundColor: theme.primary }]}><Text style={styles.primaryText}>查看 {year} 年度总结</Text></Pressable>
+    <Pressable accessibilityRole="button" onPress={() => router.push('/settings/annual-summary' as Href)} style={[styles.primary, { backgroundColor: theme.primary }]}><Text style={styles.primaryText}>查看 {year} 年度总结</Text></Pressable>
     <Pressable accessibilityRole="button" onPress={() => router.push('/settings/annual-recap')} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>年度阅读回顾</Text></Pressable>
     <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/settings/themed-recap', params: { year: String(year) } })} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>主题回顾卡片</Text></Pressable>
     <Pressable accessibilityRole="button" onPress={() => router.back()} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>返回书架</Text></Pressable>
