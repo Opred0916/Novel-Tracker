@@ -31,3 +31,12 @@ test('shows a retry action after a read failure', async () => {
   await fireEvent.press(screen.getByText('重试'));
   await waitFor(() => expect(screen.getByText('今年读完 0 本')).toBeTruthy());
 });
+
+test('opens_current_year_summary_from_recap_and_keeps_existing_recap_entries', async () => {
+  const screen = await render(<OverviewPage />);
+  await waitFor(() => expect(screen.getByText(`查看 ${new Date().getFullYear()} 年度总结`)).toBeTruthy());
+  await fireEvent.press(screen.getByText(`查看 ${new Date().getFullYear()} 年度总结`));
+  expect(router.push).toHaveBeenCalledWith('/settings/annual-summary');
+  expect(screen.getByText('年度阅读回顾')).toBeTruthy();
+  expect(screen.getByText('主题回顾卡片')).toBeTruthy();
+});
