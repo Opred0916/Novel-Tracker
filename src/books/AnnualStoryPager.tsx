@@ -21,15 +21,21 @@ function AnnualStoryPagerInner({ summary, pages, onOpenBook }: {
   const { theme } = useTheme();
   const { width } = useWindowDimensions();
   const listRef = useRef<FlatList<AnnualStoryPage>>(null);
+  const indexRef = useRef(0);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    listRef.current?.scrollToOffset({ offset: index * width, animated: false });
-  }, [index, width]);
+    listRef.current?.scrollToOffset({ offset: indexRef.current * width, animated: false });
+  }, [width]);
+
+  function updateIndex(nextIndex: number) {
+    indexRef.current = nextIndex;
+    setIndex(nextIndex);
+  }
 
   function goTo(nextIndex: number) {
     const safeIndex = Math.max(0, Math.min(pages.length - 1, nextIndex));
-    setIndex(safeIndex);
+    updateIndex(safeIndex);
     listRef.current?.scrollToOffset({ offset: safeIndex * width, animated: true });
   }
 
@@ -43,7 +49,7 @@ function AnnualStoryPagerInner({ summary, pages, onOpenBook }: {
       showsHorizontalScrollIndicator={false}
       keyExtractor={page => page.id}
       getItemLayout={(_, itemIndex) => ({ length: width, offset: width * itemIndex, index: itemIndex })}
-      onMomentumScrollEnd={event => setIndex(Math.max(0, Math.min(pages.length - 1, Math.round(event.nativeEvent.contentOffset.x / width))))}
+      onMomentumScrollEnd={event => updateIndex(Math.max(0, Math.min(pages.length - 1, Math.round(event.nativeEvent.contentOffset.x / width))))}
       renderItem={({ item }) => <AnnualStoryPageView page={item} summary={summary} width={width} onOpenBook={onOpenBook} />}
     />
     <View style={styles.navigation}>

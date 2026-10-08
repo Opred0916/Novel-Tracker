@@ -154,9 +154,10 @@ describe('SqliteAnnualSummaryRepository', () => {
           ('a-1', 'a', '一', '2026-05-01T00:00:00.000Z', '2026-05-01T00:00:00.000Z', 'app'),
           ('a-2', 'a', '二', '2026-05-02T00:00:00.000Z', '2026-05-02T00:00:00.000Z', 'app'),
           ('b-1', 'b', '一', '2026-05-01T00:00:00.000Z', '2026-05-01T00:00:00.000Z', 'app'),
+          ('b-2', 'b', '二', '2026-05-02T00:00:00.000Z', '2026-05-02T00:00:00.000Z', 'app'),
           ('x-1', 'thought-only', '不在年度书目', '2026-07-01T00:00:00.000Z', '2026-07-01T00:00:00.000Z', 'app');
         INSERT INTO image_assets (id, book_id, local_path, created_at) VALUES ('note-image', 'a', 'file:///note', '2026-05-01');
-        INSERT INTO note_images (note_id, image_id, position) VALUES ('a-1', 'note-image', 0);
+        INSERT INTO note_images (note_id, image_id, position) VALUES ('a-1', 'note-image', 0), ('b-1', 'note-image', 0);
       `);
 
       const summary = await new SqliteAnnualSummaryRepository(db).getYear(2026);
@@ -167,11 +168,11 @@ describe('SqliteAnnualSummaryRepository', () => {
       expect(summary.highestRatingHalfStars).toBe(10);
       expect(summary.topRatedBooks.map(book => book.bookId)).toEqual(['b', 'a']);
       expect(summary.fiveStarBookCount).toBe(2);
-      expect(summary.thoughtCount).toBe(4);
+      expect(summary.thoughtCount).toBe(5);
       expect(summary.thoughtBookCount).toBe(3);
-      expect(summary.thoughtImageCount).toBe(1);
-      expect(summary.mostThoughtBooks.map(book => book.bookId)).toEqual(['a', 'b', 'thought-only']);
-      expect(summary.representativeBooks.map(book => book.bookId)).toEqual(['a', 'b', 'c']);
+      expect(summary.thoughtImageCount).toBe(2);
+      expect(summary.mostThoughtBooks.map(book => book.bookId)).toEqual(['b', 'a', 'thought-only']);
+      expect(summary.representativeBooks.map(book => book.bookId)).toEqual(['b', 'a']);
     } finally { db.close(); }
   });
 

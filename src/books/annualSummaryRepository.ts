@@ -311,14 +311,21 @@ export class SqliteAnnualSummaryRepository {
         || compareText(left.bookId, right.bookId))
       .slice(0, 3);
 
-    const representativeBooks = [...ratedBooks].sort((left, right) =>
+    const representativeCandidates = [...ratedBooks].sort((left, right) =>
       right.ratingHalfStars! - left.ratingHalfStars!
       || right.annualThoughtCount - left.annualThoughtCount
       || right.annualThoughtImageCount - left.annualThoughtImageCount
       || right.currentHighlightCount - left.currentHighlightCount
       || compareText(left.title, right.title)
       || compareText(left.bookId, right.bookId),
-    ).slice(0, 3);
+    );
+    const representativeLeader = representativeCandidates[0];
+    const representativeBooks = representativeLeader ? representativeCandidates.filter(book =>
+      book.ratingHalfStars === representativeLeader.ratingHalfStars
+      && book.annualThoughtCount === representativeLeader.annualThoughtCount
+      && book.annualThoughtImageCount === representativeLeader.annualThoughtImageCount
+      && book.currentHighlightCount === representativeLeader.currentHighlightCount,
+    ).slice(0, 3) : [];
 
     const annualBookIds = new Set(books.map(book => book.bookId));
     const annualHighlightIds = new Set(allHighlights.filter(row => annualBookIds.has(row.book_id)).map(row => row.image_id));

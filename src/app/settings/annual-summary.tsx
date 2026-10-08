@@ -1,6 +1,7 @@
 import { Stack, router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useContext, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { AnnualStoryPager } from '../../books/AnnualStoryPager';
 import type { AnnualStorySummary } from '../../books/annualSummaryRepository';
 import { buildAnnualStoryPages } from '../../books/annualStoryPages';
@@ -9,6 +10,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 
 export default function AnnualSummaryPage() {
   const { theme } = useTheme();
+  const insets = useContext(SafeAreaInsetsContext) ?? { top: 0, right: 0, bottom: 0, left: 0 };
   const repository = useAnnualSummaryRepository();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
@@ -43,7 +45,7 @@ export default function AnnualSummaryPage() {
 
   const pages = summary ? buildAnnualStoryPages(summary) : [];
 
-  return <View style={[styles.screen, { backgroundColor: theme.background }]}>
+  return <View style={[styles.screen, { backgroundColor: theme.background, paddingTop: insets.top + 8, paddingBottom: insets.bottom }]}>
     <Stack.Screen options={{ headerShown: false }} />
     <View style={styles.topBar}>
       <Pressable accessibilityRole="button" accessibilityLabel="关闭年度总结" onPress={() => router.back()} style={[styles.closeButton, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.closeText, { color: theme.primary }]}>关闭</Text></Pressable>
@@ -64,7 +66,7 @@ export default function AnnualSummaryPage() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, paddingTop: 48 },
+  screen: { flex: 1 },
   topBar: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16 },
   closeButton: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
   closeText: { fontWeight: '800' },
@@ -80,4 +82,3 @@ const styles = StyleSheet.create({
   secondary: { minWidth: 180, paddingHorizontal: 20, paddingVertical: 13, borderRadius: 16, borderWidth: 1, alignItems: 'center' },
   secondaryText: { fontWeight: '800' },
 });
-
