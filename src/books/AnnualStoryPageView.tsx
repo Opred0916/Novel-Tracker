@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { BookCover } from './BookCover';
+import { AnnualSummarySharePanel } from './AnnualSummarySharePanel';
 import type { AnnualStorySummary, AnnualSummaryBook } from './annualSummaryRepository';
 import { annualBooksSentence, peakMonthSentence, type AnnualStoryPage } from './annualStoryPages';
 
@@ -89,14 +90,15 @@ export function AnnualStoryPageView({ page, summary, width, onOpenBook }: {
     {summary.representativeBooks[0] ? <Text style={bodyStyle}>如果要从这一年留下一个故事，也许会是《{summary.representativeBooks[0].title}》。</Text> : null}
   </ScrollView>;
 
-  return <ScrollView style={pageStyle} contentContainerStyle={styles.content}>
-    <Text style={titleStyle}>把这一年的故事带走</Text><Text style={bodyStyle}>下一步可以生成年度海报，保存到相册或使用系统分享。</Text>
+  return <ScrollView style={pageStyle} contentContainerStyle={styles.shareContent}>
+    <AnnualSummarySharePanel summary={summary} />
   </ScrollView>;
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1 },
   content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 28, paddingVertical: 24, gap: 18 },
+  shareContent: { paddingHorizontal: 20, paddingVertical: 20 },
   coverHero: { flex: 1, margin: 20, borderRadius: 30, padding: 28, justifyContent: 'center', gap: 14, overflow: 'hidden' },
   eyebrow: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', letterSpacing: 3 },
   coverTitle: { color: '#FFFFFF', fontSize: 38, lineHeight: 48, fontWeight: '900' },
@@ -122,4 +124,3 @@ const styles = StyleSheet.create({
   listCard: { padding: 18, borderRadius: 18, gap: 5 },
   listTitle: { fontSize: 18, fontWeight: '800' },
 });
-
