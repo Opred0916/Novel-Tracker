@@ -4,7 +4,7 @@ import { ThemeProvider, useTheme } from '../theme/ThemeProvider';
 
 function RootNavigator() {
   const { theme } = useTheme();
-  return <Stack screenOptions={{ headerStyle: { backgroundColor: theme.background }, headerTintColor: theme.primary, contentStyle: { backgroundColor: theme.background } }}>
+  return <Stack screenOptions={{ headerStyle: { backgroundColor: theme.background }, headerTintColor: theme.primary, headerTitleStyle: { color: theme.text, fontWeight: '600' }, contentStyle: { backgroundColor: theme.background } }}>
     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     <Stack.Screen name="book/new" options={{ title: '添加小说', headerBackTitle: '书架' }} />
     <Stack.Screen name="book/[id]" options={{ title: '小说详情', headerBackTitle: '书架' }} />

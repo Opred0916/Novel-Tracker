@@ -7,7 +7,8 @@ export default function TabsLayout() {
   return <Tabs screenOptions={{
     tabBarActiveTintColor: theme.primary,
     tabBarInactiveTintColor: theme.mutedText,
-    tabBarStyle: { backgroundColor: theme.card, borderTopColor: theme.border },
+    tabBarStyle: { backgroundColor: theme.card, borderTopColor: theme.border, borderTopWidth: 0.5 },
+    tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
     headerShown: false,
   }}>
     <Tabs.Screen name="index" options={{ title: '书架', tabBarIcon: ({ color, size }) => <Ionicons name="library-outline" color={color} size={size} /> }} />
