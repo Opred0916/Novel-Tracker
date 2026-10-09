@@ -20,3 +20,11 @@ test('quick record button does not open the book card', async () => {
   expect(onQuickRecord).toHaveBeenCalledTimes(1);
   expect(onPress).not.toHaveBeenCalled();
 });
+
+test('keeps a long title and rating in the flexible details column', async () => {
+  const book = { id: 'long', title: '很长很长很长很长的小说名字和续篇', author: '一位名字也非常长的作者', status: 'finished' as const, protagonists: [], ratingHalfStars: 9, bookType: null, tags: [], legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '', updatedAt: '', whyWantToRead: null, platform: null };
+  const view = await render(<BookCard book={book} onPress={jest.fn()} />);
+  expect(view.getAllByText(book.title).some(node => node.props.numberOfLines === 2)).toBe(true);
+  expect(view.getByText(book.author).props.numberOfLines).toBe(1);
+  expect(view.getByText('★ 4.5')).toBeTruthy();
+});

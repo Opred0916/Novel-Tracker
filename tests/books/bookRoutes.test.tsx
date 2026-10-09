@@ -148,6 +148,7 @@ test('bookshelf opens the tapped novel detail page', async () => {
 test('bookshelf add button renders through the Expo Router slot', async () => {
   const screen = await render(<Bookshelf />);
   expect(screen.getByRole('button', { name: '＋ 添加小说' })).toBeTruthy();
+  expect(screen.getByTestId('tab-page-header')).toBeTruthy();
 });
 
 test('bookshelf searches with recent update sorting by default', async () => {

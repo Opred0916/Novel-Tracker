@@ -12,8 +12,9 @@ export function BookCard({ book, matchedNoteSnippet, matchedImage, onPress, sele
     {selection ? <Text style={[styles.checkbox, { borderColor: theme.border, backgroundColor: selection.checked ? theme.primary : 'transparent' }]}>{selection.checked ? '✓' : ''}</Text> : null}
     <BookCover title={book.title} bookId={book.id} uri={book.coverUri} size="small" />
     <View style={styles.details}>
-      <Text style={[styles.title, { color: theme.text }]}>{book.title}</Text>
-      {book.author ? <Text style={[styles.author, { color: theme.mutedText }]}>{book.author}</Text> : null}
+      <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>{book.title}</Text>
+      {book.author ? <Text style={[styles.author, { color: theme.mutedText }]} numberOfLines={1}>{book.author}</Text> : null}
+      {book.ratingHalfStars !== null ? <Text style={[styles.rating, { color: theme.rating }]}>★ {(book.ratingHalfStars / 2).toFixed(1)}</Text> : null}
       {matchedNoteSnippet ? <View style={styles.noteMatch}>
         <Text style={[styles.noteLabel, { color: theme.primary }]}>匹配摘记</Text>
         <Text style={[styles.noteSnippet, { color: theme.mutedText }]} numberOfLines={2}>{matchedNoteSnippet}</Text>
@@ -23,12 +24,11 @@ export function BookCard({ book, matchedNoteSnippet, matchedImage, onPress, sele
         <Text style={[styles.noteSnippet, { color: theme.mutedText }]} numberOfLines={2}>{matchedImage.snippet}</Text>
       </View> : null}
     </View>
-    {book.ratingHalfStars !== null ? <Text style={[styles.rating, { color: theme.rating }]}>★ {(book.ratingHalfStars / 2).toFixed(1)}</Text> : null}
   </Pressable>{onQuickRecord && !isSelecting ? <Pressable accessibilityRole="button" accessibilityLabel={`快捷记录《${book.title}》`} onPress={onQuickRecord} style={({ pressed }) => [styles.quickAction, { backgroundColor: pressed ? theme.border : theme.primarySoft, borderColor: theme.border }]}><Text style={{ color: theme.primary, fontWeight: '700' }}>快捷记录</Text></Pressable> : null}</View>;
 }
 
 const styles = StyleSheet.create({
-  wrapper: { marginBottom: 12, borderRadius: 14 }, card: { backgroundColor: 'white', padding: 14, borderRadius: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }, selectionCard: { borderWidth: 1, borderColor: '#d6cec4' },
+  wrapper: { marginBottom: 10, borderRadius: 14 }, card: { backgroundColor: 'white', padding: 12, borderRadius: 14, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 88 }, selectionCard: { borderWidth: 1, borderColor: '#d6cec4' },
   quickAction: { alignSelf: 'flex-end', borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, minHeight: 44, justifyContent: 'center', marginRight: 12, marginBottom: 10 },
   checkbox: { width: 24, height: 24, borderWidth: 1, borderColor: '#b9afa5', borderRadius: 12, textAlign: 'center', lineHeight: 22, color: '#fff' }, checkboxChecked: { backgroundColor: '#28584E', borderColor: '#28584E' },
   details: { flex: 1, gap: 4 },
