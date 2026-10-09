@@ -42,6 +42,12 @@ test('dismissing the reminder does not navigate or hide management tools', async
   expect(router.push).not.toHaveBeenCalled();
 });
 
+test('keeps a permanent path to the data safety guide', async () => {
+  const screen = await render(<ManageTab />);
+  await fireEvent.press(screen.getByRole('button', { name: '使用与数据安全' }));
+  expect(router.push).toHaveBeenCalledWith('/settings/data-safety');
+});
+
 test.each([
   [{ ...counts, books: 0 }, null, false],
   [counts, '2026-10-09T08:00:00Z', false],

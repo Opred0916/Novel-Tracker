@@ -52,6 +52,7 @@ export default function ManageTab() {
     <Action label="追加旧记录" primary onPress={() => router.push('/settings/import')} />
     <Action label="导出开放格式" onPress={() => router.push('/settings/export')} />
     <Action label="备份与恢复" onPress={() => router.push('/settings/backup')} />
+    <Action label="使用与数据安全" onPress={() => router.push('/settings/data-safety')} />
     <Text style={[styles.section, { color: theme.text }]}>外观</Text>
     <Action label="主题颜色" onPress={() => router.push('/settings/appearance')} />
     <View style={styles.bottomSpace} />

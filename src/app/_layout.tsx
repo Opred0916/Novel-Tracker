@@ -12,6 +12,7 @@ function RootNavigator() {
     <Stack.Screen name="book/[id]/reading/[sessionId]" options={{ title: '阅读日期', headerBackTitle: '小说详情' }} />
     <Stack.Screen name="settings/tags" options={{ title: '快捷标签设置', headerBackTitle: '管理' }} />
     <Stack.Screen name="settings/backup" options={{ title: '备份与恢复', headerBackTitle: '管理' }} />
+    <Stack.Screen name="settings/data-safety" options={{ title: '使用与数据安全', headerBackTitle: '管理' }} />
     <Stack.Screen name="settings/export" options={{ title: '导出开放格式', headerBackTitle: '管理' }} />
     <Stack.Screen name="settings/data" options={{ title: '数据管理', headerBackTitle: '管理' }} />
     <Stack.Screen name="settings/import" options={{ title: '追加旧记录', headerBackTitle: '管理' }} />
