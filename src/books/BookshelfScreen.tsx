@@ -16,6 +16,9 @@ import { selectWantToReadBook } from './randomWantToRead';
 import { RandomWantToReadSheet } from './RandomWantToReadSheet';
 import { BulkSelectionBar } from './BulkSelectionBar';
 import { QuickRecordSheet, type QuickRecordResult } from './QuickRecordSheet';
+import { FirstUseCard } from '../dataSafety/FirstUseCard';
+import { dataSafetyPreferences } from '../dataSafety/preferences';
+import { shouldShowIntro } from '../dataSafety/visibility';
 
 const BOOK_SORT_OPTIONS: { value: BookSortOrder; label: string }[] = [
   { value: 'recently_updated', label: '最近修改' },
@@ -52,6 +55,8 @@ export default function Bookshelf() {
   const [randomBusy, setRandomBusy] = useState(false);
   const [randomError, setRandomError] = useState('');
   const [quickRecordBookId, setQuickRecordBookId] = useState<string | null>(null);
+  const [introSeen, setIntroSeen] = useState<boolean | null>(null);
+  const [introDismissedThisSession, setIntroDismissedThisSession] = useState(false);
   const previousRandomId = useRef<string | null>(null);
   const randomRequest = useRef(0);
   const hasFocused = useRef(false);
@@ -62,11 +67,19 @@ export default function Bookshelf() {
     else hasFocused.current = true;
     tagRepo.list().then(items => { if (active) { setTags(items); setTagError(''); } }).catch(() => { if (active) setTagError('读取标签失败'); });
     overviewRepository.getOverview(new Date().getFullYear()).then(value => { if (active) { setOverview(value); setOverviewError(''); } }).catch(() => { if (active) setOverviewError('状态数量暂时无法读取'); });
+    dataSafetyPreferences.read('introSeen').then(value => { if (active) setIntroSeen(value); }).catch(() => { if (active) setIntroSeen(null); });
     return () => { active = false; };
   }, [overviewRepository, retry, tagRepo]));
 
   const activeFilterCount = (bookType ? 1 : 0) + tagIds.length;
   const hasConditions = query.trim().length > 0 || activeFilterCount > 0;
+  const showIntro = shouldShowIntro({ introSeen: introDismissedThisSession ? true : introSeen, totalBooks: overview?.totalBooks ?? null, status, hasConditions, loading, resultsCurrent, bulkMode });
+
+  function handleIntro(learnMore: boolean) {
+    setIntroDismissedThisSession(true);
+    void dataSafetyPreferences.mark('introSeen').catch(() => undefined);
+    if (learnMore) router.push('/settings/data-safety');
+  }
 
   function clearFilters() {
     setBookType(null);
@@ -185,7 +198,7 @@ export default function Bookshelf() {
     {bulkMode ? <BulkSelectionBar selectedCount={selectedBooks.size} canSelectAll={Boolean(resultsCurrent && !loading && !searchError)} onCancel={cancelBulkMode} onSelectAll={selectAllCurrentResults} onContinue={() => setShowBulkPanel(true)} /> : null}
     <FlatList data={results} keyExtractor={item => item.book.id} contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 110 }]}
       ListHeaderComponent={null}
-      ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="正在搜索" color={theme.primary} /> : searchError ? null : <View style={styles.empty}><Text style={[styles.emptyTitle, { color: theme.text }]}>{status ? `还没有${status === 'want_to_read' ? '想读' : status === 'reading' ? '在读' : status === 'finished' ? '读完' : '弃读'}的小说` : hasConditions ? '没有符合筛选条件的小说' : '书架还是空的'}</Text><Text style={[styles.subheading, { color: theme.mutedText }]}>{status ? '先添加一本小说吧。' : hasConditions ? '可以调整筛选条件。' : '先记下一本想读的小说吧。'}</Text></View>}
+      ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="正在搜索" color={theme.primary} /> : searchError ? null : <View style={styles.empty}><Text style={[styles.emptyTitle, { color: theme.text }]}>{status ? `还没有${status === 'want_to_read' ? '想读' : status === 'reading' ? '在读' : status === 'finished' ? '读完' : '弃读'}的小说` : hasConditions ? '没有符合筛选条件的小说' : '书架还是空的'}</Text><Text style={[styles.subheading, { color: theme.mutedText }]}>{status ? '先添加一本小说吧。' : hasConditions ? '可以调整筛选条件。' : '先记下一本想读的小说吧。'}</Text>{showIntro ? <FirstUseCard onDismiss={() => handleIntro(false)} onLearnMore={() => handleIntro(true)} /> : null}</View>}
       renderItem={({ item }) => <BookCard book={item.book} matchedNoteSnippet={item.matchedNoteSnippet} matchedImage={item.matchedImage} onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book.id, ...(item.matchedImage ? { focusImageId: item.matchedImage.imageId } : {}) } })}
         selection={bulkMode ? { checked: selectedBooks.has(item.book.id), onToggle: () => toggleSelected(item.book) } : undefined}
         onQuickRecord={status === 'reading' && !bulkMode ? () => setQuickRecordBookId(item.book.id) : undefined} />}
