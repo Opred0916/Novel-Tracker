@@ -42,6 +42,7 @@ const repo = {
   get: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  endReading: jest.fn(),
 };
 const searchRepo = { search: jest.fn() };
 const bulkOrganizeRepo = { preview: jest.fn(), apply: jest.fn() };
@@ -163,6 +164,30 @@ test('bookshelf shows status counts at the top and filters by a tapped status', 
   await fireEvent.press(screen.getByRole('radio', { name: '在读 2 本' }));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'reading' })));
   expect(screen.getByRole('radio', { name: '在读 2 本' }).props.accessibilityState).toEqual({ checked: true });
+});
+
+test('quick record appears only on the reading shelf and opens the selected book', async () => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
+  expect(screen.queryByRole('button', { name: '快捷记录《长夜》' })).toBeNull();
+  await fireEvent.press(screen.getByRole('radio', { name: '在读 2 本' }));
+  await waitFor(() => expect(screen.getByRole('button', { name: '快捷记录《长夜》' })).toBeTruthy());
+  await fireEvent.press(screen.getByRole('button', { name: '快捷记录《长夜》' }));
+  await waitFor(() => expect(screen.getByText('写想法')).toBeTruthy());
+  expect(router.push).not.toHaveBeenCalled();
+});
+
+test('finishing from the quick sheet refreshes the reading list and counts', async () => {
+  const screen = await render(<Bookshelf />);
+  await fireEvent.press(await screen.findByRole('radio', { name: '在读 2 本' }));
+  await fireEvent.press(await screen.findByRole('button', { name: '快捷记录《长夜》' }));
+  await fireEvent.press(await screen.findByText('标记读完'));
+  const beforeSearch = searchRepo.search.mock.calls.length;
+  const beforeOverview = overviewRepo.getOverview.mock.calls.length;
+  await fireEvent.press(screen.getByText('确认读完'));
+  await waitFor(() => expect(repo.endReading).toHaveBeenCalledWith(book.id, expect.objectContaining({ outcome: 'finished' })));
+  await waitFor(() => expect(searchRepo.search.mock.calls.length).toBeGreaterThan(beforeSearch));
+  expect(overviewRepo.getOverview.mock.calls.length).toBeGreaterThan(beforeOverview);
 });
 
 test('bookshelf random pick uses the full library instead of search results', async () => {

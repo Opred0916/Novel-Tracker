@@ -12,7 +12,7 @@ function normalizeTagIds(value: unknown): string[] {
   return [...new Set(value)];
 }
 
-function normalizeRatingHalfStars(value: unknown): number | null {
+export function normalizeRatingHalfStars(value: unknown): number | null {
   if (value == null) return null;
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1 || value > 10) {
     throw new Error('评分必须是 0.5 到 5 星，并以半星递增');

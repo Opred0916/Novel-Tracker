@@ -1,8 +1,8 @@
 import { randomUUID } from 'expo-crypto';
 import type { Database } from '../storage/database';
 import type { BookRepository } from './repository';
-import type { Book, BookEditInput, BookInput, BookStatus, BookType, ImageAsset, Tag } from './types';
-import { normalizeBookCreate, normalizeBookEdit } from './validation';
+import type { Book, BookEditInput, BookInput, BookStatus, BookType, EndReadingInput, ImageAsset, Tag } from './types';
+import { normalizeBookCreate, normalizeBookEdit, normalizeRatingHalfStars } from './validation';
 import { normalizeReadingDates, todayLocalDate } from './readingDates';
 import { BookCoverFiles } from './bookCoverFiles';
 import { ImageDeletionQueue } from './imageDeletionQueue';
@@ -256,6 +256,24 @@ export class SqliteBookRepository implements BookRepository {
     } else if (edited.coverChange?.kind === 'remove' && oldCoverPath && !oldCoverRetained) {
       await this.coverFiles.removeFile(oldCoverPath).catch(() => undefined);
     }
+    const result = await this.get(id);
+    if (!result) throw new Error('找不到这本小说');
+    return result;
+  }
+
+  async endReading(id: string, input: EndReadingInput): Promise<Book> {
+    const dates = normalizeReadingDates(input.outcome, input.startedOn, input.endedOn);
+    const rating = input.outcome === 'finished' ? normalizeRatingHalfStars(input.ratingHalfStars) : undefined;
+    await this.db.withExclusiveTransactionAsync(async txn => {
+      const current = await txn.getFirstAsync<BookRow>('SELECT * FROM books WHERE id = ?', id);
+      if (!current) throw new Error('找不到这本小说');
+      if (current.status !== 'reading') throw new Error('这本书的阅读状态已经变化，请返回书架刷新');
+      await this.applyStatusTransition(txn, id, current, input.outcome, dates);
+      await txn.runAsync(
+        'UPDATE books SET status = ?, rating_half_stars = ?, updated_at = ? WHERE id = ?',
+        input.outcome, rating === undefined ? current.rating_half_stars : rating, new Date().toISOString(), id,
+      );
+    });
     const result = await this.get(id);
     if (!result) throw new Error('找不到这本小说');
     return result;

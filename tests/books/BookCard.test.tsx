@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { BookCard } from '../../src/books/BookCard';
 
 jest.mock('../../src/theme/ThemeProvider', () => ({
@@ -9,4 +9,14 @@ jest.mock('../../src/theme/ThemeProvider', () => ({
 test('uses compact star rating text on a readable card', async () => {
   const view = await render(<BookCard book={{ id: 'book-1', title: '长夜', author: '作者', status: 'finished', protagonists: [], ratingHalfStars: 10, bookType: null, tags: [], legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '', updatedAt: '', whyWantToRead: null, platform: null }} onPress={() => undefined} />);
   expect(view.getByText('★ 5.0')).toBeTruthy();
+});
+
+test('quick record button does not open the book card', async () => {
+  const onPress = jest.fn();
+  const onQuickRecord = jest.fn();
+  const book = { id: 'book-1', title: '长夜', author: '作者', status: 'reading' as const, protagonists: [], ratingHalfStars: null, bookType: null, tags: [], legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '', updatedAt: '', whyWantToRead: null, platform: null };
+  const view = await render(<BookCard book={book} onPress={onPress} onQuickRecord={onQuickRecord} />);
+  await fireEvent.press(view.getByRole('button', { name: '快捷记录《长夜》' }));
+  expect(onQuickRecord).toHaveBeenCalledTimes(1);
+  expect(onPress).not.toHaveBeenCalled();
 });

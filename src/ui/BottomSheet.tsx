@@ -27,7 +27,7 @@ export function BottomSheet({
             <Text style={[styles.close, { color: theme.primary }]}>关闭</Text>
           </Pressable>
         </View>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>{children}</ScrollView>
+        <ScrollView testID="bottom-sheet-scroll" keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content}>{children}</ScrollView>
       </View>
     </View>
   </Modal>;

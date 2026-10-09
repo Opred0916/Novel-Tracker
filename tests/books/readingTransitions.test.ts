@@ -146,3 +146,48 @@ test('invalid reading dates and repeated status saves cannot create extra record
     expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM reading_sessions')).toEqual({ count: 1 });
   } finally { db.close(); }
 });
+
+test('quick finish updates the active session and overall rating in one operation', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    const repo = new SqliteBookRepository(db, randomUUID, () => '2026-10-02');
+    const book = await repo.create({ title: '长夜', status: 'reading', readingDates: { startedOn: '2026-09-01' } });
+    const finished = await repo.endReading(book.id, { outcome: 'finished', startedOn: '2026-09-01', endedOn: '2026-10-01', ratingHalfStars: 9 });
+    expect(finished).toMatchObject({ status: 'finished', ratingHalfStars: 9 });
+    expect(await db.getAllAsync<SessionRow>('SELECT ordinal, started_on, ended_on, outcome FROM reading_sessions')).toEqual([
+      { ordinal: 1, started_on: '2026-09-01', ended_on: '2026-10-01', outcome: 'finished' },
+    ]);
+  } finally { db.close(); }
+});
+
+test('quick drop keeps an existing rating and stale quick finish creates no session', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    const repo = new SqliteBookRepository(db, randomUUID, () => '2026-10-02');
+    const finished = await repo.create({ title: '长夜', status: 'finished', ratingHalfStars: 8 });
+    const reading = await repo.update(finished.id, edit(finished, 'reading'));
+    const dropped = await repo.endReading(reading.id, { outcome: 'dropped', startedOn: '2026-10-02', endedOn: '2026-10-03' });
+    expect(dropped).toMatchObject({ status: 'dropped', ratingHalfStars: 8 });
+    await expect(repo.endReading(reading.id, { outcome: 'finished', startedOn: '2026-10-02', endedOn: '2026-10-03', ratingHalfStars: 10 })).rejects.toThrow('阅读状态已经变化');
+    expect(await db.getFirstAsync('SELECT COUNT(*) AS count FROM reading_sessions')).toEqual({ count: 2 });
+  } finally { db.close(); }
+});
+
+test('quick finish validates dates and fills a legacy reading row without an active session', async () => {
+  const db = createInMemoryDatabase();
+  try {
+    await migrateDatabase(db);
+    await db.runAsync("INSERT INTO books (id, title, status, created_at, updated_at) VALUES ('old', '旧书', 'reading', 'a', 'b')");
+    const repo = new SqliteBookRepository(db, randomUUID, () => '2026-10-02');
+    await expect(repo.endReading('old', { outcome: 'finished', startedOn: '2026-10-04', endedOn: '2026-10-03', ratingHalfStars: null })).rejects.toThrow('结束日期不能早于开始日期');
+    await expect(repo.endReading('old', { outcome: 'finished', startedOn: '2026-10-02', endedOn: '2026-10-03', ratingHalfStars: 11 })).rejects.toThrow('评分必须');
+    expect(await db.getAllAsync('SELECT * FROM reading_sessions')).toEqual([]);
+    const saved = await repo.endReading('old', { outcome: 'finished', startedOn: '2026-10-02', endedOn: '2026-10-03', ratingHalfStars: null });
+    expect(saved.status).toBe('finished');
+    expect(await db.getAllAsync<SessionRow>('SELECT ordinal, started_on, ended_on, outcome FROM reading_sessions')).toEqual([
+      { ordinal: 1, started_on: '2026-10-02', ended_on: '2026-10-03', outcome: 'finished' },
+    ]);
+  } finally { db.close(); }
+});
