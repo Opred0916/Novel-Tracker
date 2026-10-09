@@ -7,6 +7,7 @@ import type { BackupCounts, BackupProgressStage } from '../../backup/backupTypes
 import { BackupValidationError } from '../../backup/backupValidation';
 import { useBackupService, useImageOcr } from '../../storage/AppProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { UI_LAYOUT } from '../../ui/layout';
 
 type Overview = { counts: BackupCounts; lastGeneratedAt: string | null };
 const STAGE_LABELS: Record<BackupProgressStage, string> = {
@@ -160,7 +161,7 @@ export default function BackupPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 14, paddingBottom: 50 },
+  container: { padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 60 },
   heading: { fontSize: 26, fontWeight: '700', color: '#302a25' }, help: { color: '#766f68', lineHeight: 21 },
   card: { backgroundColor: '#fff', padding: 18, borderRadius: 14, gap: 8, borderWidth: 1, borderColor: '#e1dad1' },
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#302a25' }, value: { color: '#302a25', lineHeight: 22 },
