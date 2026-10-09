@@ -6,6 +6,7 @@ import type { RecapShareThemeId } from '../../books/recapShareSnapshot';
 import type { ThemeRecapBook, ThemedRecap } from '../../books/themedRecapRepository';
 import { useAnnualRecapRepository, useThemedRecapRepository } from '../../storage/AppProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { UI_LAYOUT } from '../../ui/layout';
 
 function ThemeBook({ book, onPress }: { book: ThemeRecapBook; onPress(): void }) {
   const { theme } = useTheme();
@@ -56,5 +57,5 @@ export default function ThemedRecapPage() {
 }
 
 const styles = StyleSheet.create({
-  page: { flexGrow: 1, padding: 24, gap: 16, paddingBottom: 50 }, heading: { fontSize: 26, fontWeight: '800' }, subtitle: { fontSize: 15 }, years: { gap: 8 }, year: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }, selectedYear: { fontSize: 20, fontWeight: '700' }, card: { borderWidth: 1, borderRadius: 16, padding: 16, gap: 8 }, cardTitle: { fontSize: 19, fontWeight: '800' }, description: { lineHeight: 20 }, imageButton: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 10 }, book: { flexDirection: 'row', gap: 12, borderTopWidth: 1, paddingTop: 12, marginTop: 4 }, bookInfo: { flex: 1, gap: 6, justifyContent: 'center' }, bookTitle: { fontSize: 17, fontWeight: '700' }, session: { fontSize: 13 }, empty: { paddingVertical: 8 }, errorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 }, error: { flex: 1 }, link: { fontWeight: '700' }, secondary: { borderWidth: 1, borderRadius: 12, padding: 15, alignItems: 'center' },
+  page: { flexGrow: 1, padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 100 }, heading: { fontSize: 26, fontWeight: '800' }, subtitle: { fontSize: 15 }, years: { gap: 8 }, year: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 9 }, selectedYear: { fontSize: 20, fontWeight: '700' }, card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: UI_LAYOUT.groupRadius, padding: 16, gap: 8 }, cardTitle: { fontSize: 19, fontWeight: '800' }, description: { lineHeight: 20 }, imageButton: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 15, paddingVertical: 10 }, book: { flexDirection: 'row', gap: 12, borderTopWidth: 1, paddingTop: 12, marginTop: 4 }, bookInfo: { flex: 1, gap: 6, justifyContent: 'center' }, bookTitle: { fontSize: 17, fontWeight: '700' }, session: { fontSize: 13 }, empty: { paddingVertical: 8 }, errorRow: { flexDirection: 'row', alignItems: 'center', gap: 12 }, error: { flex: 1 }, link: { fontWeight: '700' }, secondary: { borderWidth: 1, borderRadius: 12, padding: 15, alignItems: 'center' },
 });

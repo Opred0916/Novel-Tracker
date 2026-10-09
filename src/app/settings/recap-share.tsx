@@ -7,6 +7,7 @@ import { isRecapShareThemeId, makeRecapShareSnapshot, type RecapShareSnapshot } 
 import { useThemedRecapRepository } from '../../storage/AppProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 import type { ThemePalette } from '../../theme/theme';
+import { UI_LAYOUT } from '../../ui/layout';
 
 function messageFor(error: unknown, action: 'save' | 'share'): string {
   if (typeof error === 'object' && error !== null && 'code' in error) {
@@ -85,7 +86,7 @@ function RecapShareContent({ year, themeId, theme }: { year: number; themeId: 'r
 }
 
 const styles = StyleSheet.create({
-  page: { flexGrow: 1, padding: 20, paddingBottom: 50, gap: 16 }, heading: { fontSize: 24, fontWeight: '800' },
+  page: { flexGrow: 1, padding: UI_LAYOUT.pageInset, paddingBottom: 100, gap: UI_LAYOUT.sectionGap }, heading: { fontSize: 24, fontWeight: '800' },
   preview: { paddingRight: 2 }, primary: { padding: 16, borderRadius: 12, alignItems: 'center' },
   secondary: { padding: 15, borderRadius: 12, alignItems: 'center', borderWidth: 1 },
   buttonText: { fontWeight: '800', fontSize: 16 }, disabled: { opacity: 0.45 }, back: { paddingVertical: 12, alignItems: 'center' },

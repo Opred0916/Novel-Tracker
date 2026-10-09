@@ -7,10 +7,12 @@ import { BookCover } from './BookCover';
 import { useTheme } from '../theme/ThemeProvider';
 import { UI_LAYOUT } from '../ui/layout';
 
-export function BookDetail({ book, sessions = [], onEditReading }: {
+export function BookDetail({ book, sessions = [], onEditReading, onEditBook, editDisabled = false }: {
   book: Book;
   sessions?: ReadingSession[];
   onEditReading?: (sessionId: string) => void;
+  onEditBook?: () => void;
+  editDisabled?: boolean;
 }) {
   const { theme } = useTheme();
   const ordered = [...sessions].sort((a, b) => a.ordinal - b.ordinal);
@@ -22,6 +24,9 @@ export function BookDetail({ book, sessions = [], onEditReading }: {
         <Text style={[styles.author, { color: theme.mutedText }]}>{book.author ?? '未填写作者'}</Text>
         <Text style={[styles.status, { color: theme.primary, backgroundColor: theme.primarySoft }]}>{BOOK_STATUS_LABELS[book.status]}</Text>
         <Text style={[styles.rating, { color: book.ratingHalfStars === null ? theme.mutedText : theme.rating }]}>{book.ratingHalfStars === null ? '未评分' : `${book.ratingHalfStars / 2} / 5 星`}</Text>
+        {onEditBook ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: editDisabled }} disabled={editDisabled} onPress={onEditBook} style={styles.editBook}>
+          <Text style={[styles.link, { color: theme.primary }]}>编辑资料</Text>
+        </Pressable> : null}
       </View>
     </View>
     {book.whyWantToRead || book.platform ? <View style={styles.section}>
@@ -79,4 +84,5 @@ const styles = StyleSheet.create({
   historyItem: { gap: 5, paddingVertical: 6 },
   date: { fontSize: 14, color: '#766f68' },
   link: { fontSize: 14, color: '#28584E', fontWeight: '600', paddingVertical: 4 },
+  editBook: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center' },
 });

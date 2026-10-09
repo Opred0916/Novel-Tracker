@@ -5,6 +5,7 @@ import { BookCover } from '../../books/BookCover';
 import type { AnnualRecap, RecapNote, RecapBook } from '../../books/annualRecapRepository';
 import { useAnnualRecapRepository } from '../../storage/AppProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { UI_LAYOUT } from '../../ui/layout';
 
 function ordinalLabel(ordinal: number): string {
   if (ordinal === 1) return '首刷';
@@ -85,7 +86,7 @@ export default function AnnualRecapPage() {
     router.push({ pathname: '/book/[id]', params: { id: note.bookId, focusNoteId: note.id } });
   }
 
-  return <ScrollView contentContainerStyle={styles.container}>
+  return <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
     <Text style={[styles.heading, { color: theme.text }]}>年度阅读回顾</Text>
     <View style={styles.yearRow}>
       <Text style={[styles.yearLabel, { color: theme.mutedText }]}>选择年份</Text>
@@ -100,21 +101,21 @@ export default function AnnualRecapPage() {
     {recap ? <>
       <Text style={[styles.selectedYear, { color: theme.text }]}>{recap.year} 年</Text>
       <View style={styles.stats}>
-        <View style={[styles.stat, { backgroundColor: theme.primary }]}><Text style={styles.statNumber}>{recap.finishedBookCount}</Text><Text style={styles.statLabel}>读完 {recap.finishedBookCount} 本</Text></View>
-        <View style={[styles.stat, { backgroundColor: theme.primary }]}><Text style={styles.statNumber}>{recap.completedReadingCount}</Text><Text style={styles.statLabel}>完成阅读 {recap.completedReadingCount} 次</Text></View>
-        <View style={[styles.stat, { backgroundColor: theme.primary }]}><Text style={styles.statNumber}>{recap.thoughtCount}</Text><Text style={styles.statLabel}>留下 {recap.thoughtCount} 条想法</Text></View>
+        <View style={[styles.stat, { backgroundColor: theme.primarySoft }]}><Text style={[styles.statNumber, { color: theme.primary }]}>{recap.finishedBookCount}</Text><Text style={[styles.statLabel, { color: theme.text }]}>读完 {recap.finishedBookCount} 本</Text></View>
+        <View style={[styles.stat, { backgroundColor: theme.primarySoft }]}><Text style={[styles.statNumber, { color: theme.primary }]}>{recap.completedReadingCount}</Text><Text style={[styles.statLabel, { color: theme.text }]}>完成阅读 {recap.completedReadingCount} 次</Text></View>
+        <View style={[styles.stat, { backgroundColor: theme.primarySoft }]}><Text style={[styles.statNumber, { color: theme.primary }]}>{recap.thoughtCount}</Text><Text style={[styles.statLabel, { color: theme.text }]}>留下 {recap.thoughtCount} 条想法</Text></View>
       </View>
       <Text style={[styles.help, { color: theme.mutedText }]}>仅统计记录了结束日期的读完记录；同一本书多次读完会分别计入完成次数。</Text>
       <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/settings/themed-recap', params: { year: String(recap.year) } })} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>主题回顾卡片</Text></Pressable>
-      <View style={styles.section}>
+      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>这一年读过的书</Text>
         {recap.books.length ? recap.books.map(book => <BookRecapCard key={book.bookId} book={book} onPress={() => openBook(book.bookId)} />) : <Text style={[styles.empty, { color: theme.mutedText }]}>这一年还没有带完成日期的阅读记录</Text>}
       </View>
-      <View style={styles.section}>
+      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>那时的想法</Text>
         {recap.thoughts.length ? recap.thoughts.map(note => <ThoughtCard key={note.id} note={note} onPress={() => openThought(note)} />) : <Text style={[styles.empty, { color: theme.mutedText }]}>这一年还没有记录想法</Text>}
       </View>
-      <View style={styles.section}>
+      <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <Pressable accessibilityRole="button" style={styles.undatedHeading} onPress={() => setShowUndated(value => !value)}>
           <Text style={[styles.sectionTitle, { color: theme.text }]}>日期未记录</Text>
           <Text style={[styles.link, { color: theme.primary }]}>{showUndated ? '收起' : '展开'}</Text>
@@ -129,8 +130,8 @@ export default function AnnualRecapPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 16, paddingBottom: 50 },
-  heading: { fontSize: 26, fontWeight: '700', color: '#302a25' },
+  container: { padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 100 },
+  heading: { fontSize: 26, fontWeight: '700' },
   yearRow: { gap: 10 },
   yearLabel: { color: '#766f68', fontWeight: '600' },
   yearOptions: { gap: 8 },
@@ -140,10 +141,10 @@ const styles = StyleSheet.create({
   yearButtonTextActive: { color: '#fff' },
   selectedYear: { fontSize: 20, fontWeight: '700', color: '#302a25' },
   stats: { flexDirection: 'row', gap: 8 },
-  stat: { flex: 1, backgroundColor: '#28584E', borderRadius: 14, padding: 12, gap: 4 },
-  statNumber: { color: '#fff', fontSize: 24, fontWeight: '700' },
-  statLabel: { color: '#fff', fontSize: 12, lineHeight: 17 },
-  section: { backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 12 },
+  stat: { flex: 1, borderRadius: UI_LAYOUT.groupRadius, padding: 12, gap: 4 },
+  statNumber: { fontSize: 24, fontWeight: '700' },
+  statLabel: { fontSize: 12, lineHeight: 17 },
+  section: { borderWidth: StyleSheet.hairlineWidth, borderRadius: UI_LAYOUT.groupRadius, padding: 16, gap: 12 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: '#302a25' },
   undatedHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   bookCard: { flexDirection: 'row', gap: 12, borderTopWidth: 1, borderTopColor: '#eee7df', paddingTop: 12 },

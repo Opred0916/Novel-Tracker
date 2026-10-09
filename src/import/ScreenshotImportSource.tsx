@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { ScreenshotImportDraft } from './screenshotImportDraft';
 import { useTheme } from '../theme/ThemeProvider';
+import { UI_LAYOUT } from '../ui/layout';
 
 type Props = {
   draft: ScreenshotImportDraft;
@@ -19,7 +20,7 @@ type Props = {
 
 export function ScreenshotImportSource({ draft, done, total, error, onPick, onMove, onRemove, onRetry, onTextChange, onContinuationChange, onParse }: Props) {
   const { theme } = useTheme();
-  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+  return <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={[styles.heading, { color: theme.text }]}>导入截图旧记录</Text>
     <Text style={[styles.progress, { color: theme.mutedText }]}>已识别 {done}/{total} 张。图片只在本机处理，提交前都可以修改文字和顺序。</Text>
     {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
@@ -31,12 +32,12 @@ export function ScreenshotImportSource({ draft, done, total, error, onPick, onMo
         <Image source={{ uri: page.uri }} style={styles.image} resizeMode="contain" />
         <TextInput accessibilityLabel={`第 ${index + 1} 张文字`} multiline value={page.text} onChangeText={value => onTextChange(page.id, value)} placeholder="可手动输入或修正截图文字" placeholderTextColor={theme.mutedText} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} textAlignVertical="top" />
         <View style={styles.actions}>
-          <Pressable accessibilityLabel={`第 ${index + 1} 张上移`} disabled={index === 0} onPress={() => onMove(index, index - 1)} style={[styles.action, { backgroundColor: theme.primarySoft }, index === 0 && styles.disabled]}><Text style={{ color: theme.text }}>向上</Text></Pressable>
-          <Pressable accessibilityLabel={`第 ${index + 1} 张下移`} disabled={index === draft.pages.length - 1} onPress={() => onMove(index, index + 1)} style={[styles.action, { backgroundColor: theme.primarySoft }, index === draft.pages.length - 1 && styles.disabled]}><Text style={{ color: theme.text }}>向下</Text></Pressable>
-          <Pressable accessibilityLabel={`第 ${index + 1} 张删除`} onPress={() => onRemove(page.id)} style={[styles.action, { backgroundColor: theme.primarySoft }]}><Text style={{ color: theme.danger }}>删除</Text></Pressable>
-          {page.ocrState === 'failed' || page.ocrState === 'unavailable' ? <Pressable accessibilityLabel={`第 ${index + 1} 张重试识别`} onPress={() => onRetry(page.id)} style={[styles.action, { backgroundColor: theme.primarySoft }]}><Text style={{ color: theme.text }}>重试</Text></Pressable> : null}
+          <Pressable accessibilityRole="button" accessibilityLabel={`第 ${index + 1} 张上移`} disabled={index === 0} onPress={() => onMove(index, index - 1)} style={[styles.action, { backgroundColor: theme.primarySoft }, index === 0 && styles.disabled]}><Text style={{ color: theme.text }}>向上</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={`第 ${index + 1} 张下移`} disabled={index === draft.pages.length - 1} onPress={() => onMove(index, index + 1)} style={[styles.action, { backgroundColor: theme.primarySoft }, index === draft.pages.length - 1 && styles.disabled]}><Text style={{ color: theme.text }}>向下</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={`第 ${index + 1} 张删除`} onPress={() => onRemove(page.id)} style={[styles.action, { backgroundColor: theme.primarySoft }]}><Text style={{ color: theme.danger }}>删除</Text></Pressable>
+          {page.ocrState === 'failed' || page.ocrState === 'unavailable' ? <Pressable accessibilityRole="button" accessibilityLabel={`第 ${index + 1} 张重试识别`} onPress={() => onRetry(page.id)} style={[styles.action, { backgroundColor: theme.primarySoft }]}><Text style={{ color: theme.text }}>重试</Text></Pressable> : null}
         </View>
-        {index > 0 ? <Pressable accessibilityLabel={`第 ${index + 1} 张${page.continuesPrevious ? '取消接上一张' : '接上一张'}`} onPress={() => onContinuationChange(page.id, !page.continuesPrevious)} style={styles.continuation}><Text style={[styles.continuationText, { color: theme.primary }]}>{page.continuesPrevious ? '✓ 接上一张' : '接上一张'}</Text></Pressable> : null}
+        {index > 0 ? <Pressable accessibilityRole="button" accessibilityLabel={`第 ${index + 1} 张${page.continuesPrevious ? '取消接上一张' : '接上一张'}`} onPress={() => onContinuationChange(page.id, !page.continuesPrevious)} style={styles.continuation}><Text style={[styles.continuationText, { color: theme.primary }]}>{page.continuesPrevious ? '✓ 接上一张' : '接上一张'}</Text></Pressable> : null}
       </View>;
     })}
     <Pressable accessibilityRole="button" onPress={onParse} style={[styles.primary, { backgroundColor: theme.primary }]}><Text style={styles.primaryText}>生成导入预览</Text></Pressable>
@@ -44,17 +45,17 @@ export function ScreenshotImportSource({ draft, done, total, error, onPick, onMo
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 14, paddingBottom: 50 },
+  container: { padding: UI_LAYOUT.pageInset, gap: 14, paddingBottom: 100 },
   heading: { fontSize: 25, fontWeight: '700', color: '#302a25' },
   progress: { color: '#766f68', lineHeight: 21 },
-  card: { gap: 10, padding: 14, borderRadius: 14, backgroundColor: '#fff', borderWidth: 1, borderColor: '#d6cec4' },
+  card: { gap: 10, padding: 14, borderRadius: UI_LAYOUT.groupRadius, borderWidth: StyleSheet.hairlineWidth },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   pageTitle: { fontWeight: '700', color: '#302a25' },
   status: { color: '#766f68', flexShrink: 1, textAlign: 'right' },
   image: { width: '100%', height: 170, backgroundColor: '#f3efe9', borderRadius: 8 },
   input: { minHeight: 120, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 12, fontSize: 16 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  action: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: '#E8F1EC' },
+  action: { paddingHorizontal: 12, paddingVertical: 8, minHeight: 44, justifyContent: 'center', borderRadius: 10 },
   disabled: { opacity: 0.35 },
   continuation: { alignSelf: 'flex-start', paddingVertical: 4 },
   continuationText: { color: '#28584E', fontWeight: '600' },

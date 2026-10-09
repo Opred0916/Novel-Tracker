@@ -32,13 +32,9 @@ test('management groups maintenance tools and links to appearance', async () => 
   expect(view.getByText('备份与恢复')).toBeTruthy();
   expect(view.getByText('使用与数据安全')).toBeTruthy();
   expect(view.getByText('主题颜色')).toBeTruthy();
-  expect(view.getByText('整理书库')).toBeTruthy();
+  expect(view.getByText('数据管理')).toBeTruthy();
 });
 
-test('root route redirects to the tabs group', async () => {
-  const view = await render(<IndexRedirect />);
-  expect(view.getByText('/(tabs)')).toBeTruthy();
-});
 
 test('root route redirects to the tabs group', async () => {
   const view = await render(<IndexRedirect />);

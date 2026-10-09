@@ -130,7 +130,7 @@ export default function BookPage() {
   }
 
   return <ScrollView ref={detailScrollRef} testID="book-detail-scroll" style={styles.page} contentContainerStyle={styles.content}>
-    <BookDetail book={currentBook} sessions={sessions} onEditReading={sessionId => router.push({
+    <BookDetail book={currentBook} sessions={sessions} editDisabled={deleting} onEditBook={() => router.push({ pathname: '/book/[id]/edit', params: { id } })} onEditReading={sessionId => router.push({
       pathname: '/book/[id]/reading/[sessionId]', params: { id, sessionId },
     })} />
     <View testID="notes-section-container" style={styles.contentSection} onLayout={event => { setNotesSectionY(event.nativeEvent.layout.y); setNotesSectionLaidOut(true); }}>
@@ -139,9 +139,6 @@ export default function BookPage() {
     {focusNoteError ? <Text style={[styles.focusNoteError, { color: theme.danger }]}>{focusNoteError}</Text> : null}
     <View style={styles.contentSection}><HighlightsSection bookId={id} repository={notesRepo} onSelect={images => { if (images[0]) void showImage(images[0]); }} onChanged={handleImagesChanged} /></View>
     {ocrProgress && ocrProgress.total > 0 ? <Text style={[styles.ocrProgress, { color: theme.mutedText }]}>图片文字识别：{ocrProgress.done}/{ocrProgress.total}{ocrProgress.failed ? `（失败 ${ocrProgress.failed}）` : ''}</Text> : null}
-    <Pressable accessibilityRole="button" disabled={deleting} style={[styles.edit, { backgroundColor: theme.primary }, deleting && styles.disabled]} onPress={() => router.push({ pathname: '/book/[id]/edit', params: { id } })}>
-      <Text style={styles.editText}>编辑资料</Text>
-    </Pressable>
     {deleteError ? <Text style={[styles.deleteError, { color: theme.danger }]}>{deleteError}</Text> : null}
     <Pressable accessibilityRole="button" disabled={deleting} style={[styles.delete, { borderColor: theme.danger }, deleting && styles.disabled]} onPress={confirmDelete}>
       <Text style={[styles.deleteText, { color: theme.danger }]}>{deleting ? '正在删除…' : '删除小说'}</Text>
@@ -156,8 +153,6 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 14, padding: 24 },
   message: { fontSize: 17, color: '#302a25' },
   link: { fontSize: 16, color: '#28584E', fontWeight: '600' },
-  edit: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center', marginHorizontal: UI_LAYOUT.pageInset, marginTop: 8 },
-  editText: { color: '#fff', fontWeight: '700', fontSize: 16 },
   delete: { borderWidth: 1, borderColor: '#b52626', padding: 15, borderRadius: 12, alignItems: 'center', marginHorizontal: UI_LAYOUT.pageInset },
   deleteText: { color: '#b52626', fontWeight: '700', fontSize: 16 },
   deleteError: { color: '#b52626', textAlign: 'center', marginHorizontal: 24, marginTop: 14 },

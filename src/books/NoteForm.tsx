@@ -5,6 +5,7 @@ import { pickImages } from './imagePicker';
 import type { ImageAsset, Note, NoteInput } from './types';
 import type { SqliteNotesRepository } from './notesRepository';
 import { useTheme } from '../theme/ThemeProvider';
+import { UI_LAYOUT } from '../ui/layout';
 
 export type NoteFormRepository = Pick<SqliteNotesRepository, 'createNote' | 'updateNote' | 'registerImage' | 'addHighlights'>;
 
@@ -51,13 +52,13 @@ export function NoteForm({ bookId, note, highlights, repository, onSaved, onCanc
     {!embedded ? <Text style={[styles.title, { color: theme.text }]}>{note ? '编辑摘记' : '新增摘记'}</Text> : null}
     <Text style={[styles.label, { color: theme.text }]}>我的想法 *</Text>
     <TextInput multiline autoFocus={autoFocus} value={body} onChangeText={changeBody} placeholder="写下这次阅读的想法" placeholderTextColor={theme.mutedText} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} textAlignVertical="top" />
-    <View style={styles.actions}><Pressable onPress={addHighlightImages} style={[styles.secondary, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={{ color: theme.text }}>从精彩片段选择</Text></Pressable><Pressable onPress={() => void addAlbumImages()} style={[styles.secondary, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={{ color: theme.text }}>从相册添加</Text></Pressable></View>
+    <View style={styles.actions}><Pressable accessibilityRole="button" onPress={addHighlightImages} style={[styles.secondary, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={{ color: theme.text }}>从精彩片段选择</Text></Pressable><Pressable accessibilityRole="button" onPress={() => void addAlbumImages()} style={[styles.secondary, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={{ color: theme.text }}>从相册添加</Text></Pressable></View>
     {images.length ? <View style={styles.grid}>{images.map(image => <Image key={image.id} source={{ uri: image.localPath }} style={styles.image} />)}</View> : <Text style={[styles.hint, { color: theme.mutedText }]}>图片可选</Text>}
     {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
-    <Pressable disabled={saving} onPress={() => void save()} style={[styles.save, { backgroundColor: theme.primary, opacity: saving ? 0.6 : 1 }]}><Text style={styles.saveText}>保存摘记</Text></Pressable>
-    <Pressable disabled={saving} onPress={onCancel} style={styles.cancel}><Text>取消</Text></Pressable>
+    <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={[styles.save, { backgroundColor: theme.primary, opacity: saving ? 0.6 : 1 }]}><Text style={styles.saveText}>保存摘记</Text></Pressable>
+    <Pressable accessibilityRole="button" disabled={saving} onPress={onCancel} style={styles.cancel}><Text style={{ color: theme.primary }}>取消</Text></Pressable>
   </>;
-  return embedded ? <View style={styles.embedded}>{fields}</View> : <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>{fields}</ScrollView>;
+  return embedded ? <View style={styles.embedded}>{fields}</View> : <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>{fields}</ScrollView>;
 }
 
-const styles = StyleSheet.create({ container: { padding: 24, gap: 12, paddingBottom: 48 }, embedded: { gap: 12, paddingBottom: 12 }, title: { fontSize: 25, fontWeight: '700', color: '#302a25' }, label: { fontWeight: '700', color: '#302a25' }, input: { minHeight: 160, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, backgroundColor: '#fff', padding: 14, fontSize: 17 }, actions: { flexDirection: 'row', gap: 8 }, secondary: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 10, padding: 10, backgroundColor: '#fff' }, grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, image: { width: 86, height: 86, borderRadius: 8 }, hint: { color: '#766f68' }, error: { color: '#b52626' }, save: { backgroundColor: '#28584E', borderRadius: 12, padding: 16, alignItems: 'center' }, saveText: { color: '#fff', fontWeight: '700' }, cancel: { alignItems: 'center', padding: 10 }, });
+const styles = StyleSheet.create({ container: { padding: UI_LAYOUT.pageInset, gap: 12, paddingBottom: 100 }, embedded: { gap: 12, paddingBottom: 12 }, title: { fontSize: 24, fontWeight: '700' }, label: { fontWeight: '700' }, input: { minHeight: 160, borderWidth: 1, borderRadius: UI_LAYOUT.groupRadius, padding: 14, fontSize: 17 }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, secondary: { borderWidth: 1, borderRadius: 10, padding: 10, minHeight: 44, justifyContent: 'center' }, grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, image: { width: 86, height: 86, borderRadius: 8 }, hint: {}, error: {}, save: { borderRadius: UI_LAYOUT.groupRadius, padding: 16, alignItems: 'center' }, saveText: { color: '#fff', fontWeight: '700' }, cancel: { alignItems: 'center', padding: 12 }, });

@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../../theme/ThemeProvider';
+import { UI_LAYOUT } from '../../ui/layout';
 
 export default function DataSafetyPage() {
   const { theme } = useTheme();
@@ -35,10 +36,10 @@ export default function DataSafetyPage() {
 }
 
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, padding: 22, paddingBottom: 40, gap: 14 },
+  content: { flexGrow: 1, padding: UI_LAYOUT.pageInset, paddingBottom: 100, gap: UI_LAYOUT.sectionGap },
   heading: { fontSize: 26, fontWeight: '800', marginTop: 6 },
   intro: { fontSize: 15, lineHeight: 23, marginBottom: 2 },
-  card: { borderWidth: 1, borderRadius: 16, padding: 18, gap: 12 },
+  card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: UI_LAYOUT.groupRadius, padding: 16, gap: 12 },
   section: { fontSize: 18, fontWeight: '700' },
   body: { fontSize: 15, lineHeight: 24 },
   button: { borderRadius: 12, paddingVertical: 15, alignItems: 'center', marginTop: 4 },

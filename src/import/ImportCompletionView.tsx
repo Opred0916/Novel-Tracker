@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '../theme/ThemeProvider';
+import { UI_LAYOUT } from '../ui/layout';
 import type { ImportSummary } from './importReview';
 
 export function ImportCompletionView({ summary, onBookshelf, onAnnualRecap }: { summary: ImportSummary; onBookshelf(): void; onAnnualRecap(): void }) {
@@ -29,5 +30,5 @@ function Stat({ label, value, theme }: { label: string; value: string; theme: { 
 }
 
 const styles = StyleSheet.create({
-  page: { flexGrow: 1, padding: 24, gap: 18 }, hero: { alignItems: 'center', paddingTop: 24, gap: 8 }, emoji: { fontSize: 48, fontWeight: '800' }, title: { fontSize: 30, fontWeight: '800' }, subtitle: { fontSize: 15 }, card: { borderWidth: 1, borderRadius: 20, padding: 18, gap: 12 }, cardTitle: { fontSize: 19, fontWeight: '800' }, grid: { gap: 12 }, stat: { gap: 3 }, statValue: { fontSize: 16, fontWeight: '700' }, statLabel: { minHeight: 17, fontSize: 12 }, earliest: { marginTop: 3, fontSize: 13 }, actions: { gap: 10 }, primary: { alignItems: 'center', borderRadius: 14, padding: 15 }, primaryText: { color: '#fff', fontWeight: '800', fontSize: 16 }, secondary: { alignItems: 'center', borderWidth: 1, borderRadius: 14, padding: 15 },
+  page: { flexGrow: 1, padding: UI_LAYOUT.pageInset, paddingBottom: 100, gap: UI_LAYOUT.sectionGap }, hero: { alignItems: 'center', paddingTop: 24, gap: 8 }, emoji: { fontSize: 48, fontWeight: '800' }, title: { fontSize: 30, fontWeight: '800' }, subtitle: { fontSize: 15 }, card: { borderWidth: StyleSheet.hairlineWidth, borderRadius: UI_LAYOUT.groupRadius, padding: 16, gap: 12 }, cardTitle: { fontSize: 19, fontWeight: '800' }, grid: { gap: 12 }, stat: { gap: 3 }, statValue: { fontSize: 16, fontWeight: '700' }, statLabel: { minHeight: 17, fontSize: 12 }, earliest: { marginTop: 3, fontSize: 13 }, actions: { gap: 10 }, primary: { alignItems: 'center', borderRadius: UI_LAYOUT.groupRadius, padding: 15 }, primaryText: { color: '#fff', fontWeight: '800', fontSize: 16 }, secondary: { alignItems: 'center', borderWidth: 1, borderRadius: UI_LAYOUT.groupRadius, padding: 15 },
 });
