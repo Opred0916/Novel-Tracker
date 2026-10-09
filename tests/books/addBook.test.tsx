@@ -4,6 +4,23 @@ import { AddBookForm } from '../../src/books/AddBookForm';
 import { todayLocalDate } from '../../src/books/readingDates';
 import { chooseReadingDate } from './chooseReadingDate';
 
+test('groups cover and title before basic, reading and classification details', async () => {
+  const screen = await render(<AddBookForm onSave={async () => {}} />);
+  expect(screen.getByText('封面（可选）')).toBeTruthy();
+  expect(screen.getByText('从相册选择')).toBeTruthy();
+  expect(screen.getByText('使用图片链接')).toBeTruthy();
+  expect(screen.queryByPlaceholderText('粘贴 HTTPS 图片链接')).toBeNull();
+  await fireEvent.press(screen.getByText('使用图片链接'));
+  expect(screen.getByPlaceholderText('粘贴 HTTPS 图片链接')).toBeTruthy();
+  expect(screen.getByText('基本信息')).toBeTruthy();
+  expect(screen.getByText('阅读信息')).toBeTruthy();
+  expect(screen.getByText('分类与标签')).toBeTruthy();
+  const rendered = JSON.stringify(screen.toJSON());
+  expect(rendered.indexOf('封面（可选）')).toBeLessThan(rendered.indexOf('基本信息'));
+  expect(rendered.indexOf('基本信息')).toBeLessThan(rendered.indexOf('阅读信息'));
+  expect(rendered.indexOf('主角名字')).toBeLessThan(rendered.indexOf('阅读信息'));
+});
+
 test('adds work type and quick tags to a new novel', async () => {
   const onSave = jest.fn().mockResolvedValue(undefined);
   const quickTags = [

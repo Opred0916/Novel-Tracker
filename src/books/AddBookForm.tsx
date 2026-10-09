@@ -14,6 +14,8 @@ import type { StagedCover } from './bookCoverFiles';
 import { useTheme } from '../theme/ThemeProvider';
 import { BottomSheet } from '../ui/BottomSheet';
 import { SuggestionField } from './SuggestionField';
+import { GroupedSection } from '../ui/GroupedSection';
+import { UI_LAYOUT } from '../ui/layout';
 
 export function AddBookForm({ onSave, quickTags = [], allTags = [], authorSuggestions = [], platformSuggestions = [] }: { onSave: (input: BookInput) => Promise<void>; quickTags?: Tag[]; allTags?: Tag[]; authorSuggestions?: string[]; platformSuggestions?: string[] }) {
   const { theme } = useTheme();
@@ -62,32 +64,16 @@ export function AddBookForm({ onSave, quickTags = [], allTags = [], authorSugges
     finally { savingRef.current = false; setSaving(false); }
   }
 
-  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets keyboardDismissMode="interactive">
+    <GroupedSection><View style={styles.groupContent}>
+    <BookCoverField title={title} onChange={value => setCoverSource(value ?? undefined)} />
     <Text style={[styles.label, { color: theme.text }]}>书名 *</Text>
     <TextInput placeholder="输入小说书名" placeholderTextColor={theme.mutedText} value={title} onChangeText={setTitle} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} autoFocus />
     <Text style={[styles.help, { color: theme.mutedText }]}>只填书名也能保存，其他资料可以现在填写或以后补充。</Text>
-    <Text style={[styles.label, { color: theme.text }]}>阅读状态</Text>
-    <View style={styles.statusGroup}>
-      {BOOK_STATUSES.map(choice => <Pressable key={choice} accessibilityRole="radio"
-        accessibilityState={{ checked: status === choice }} onPress={() => setStatus(choice)}
-        style={[styles.statusOption, { borderColor: status === choice ? theme.primary : theme.border, backgroundColor: status === choice ? theme.primary : theme.card }]}>
-        <Text style={{ color: status === choice ? theme.card : theme.text, fontWeight: status === choice ? '700' : '500' }}>{BOOK_STATUS_LABELS[choice]}</Text>
-      </Pressable>)}
-    </View>
+    </View></GroupedSection>
+    <GroupedSection title="基本信息"><View style={styles.groupContent}>
     <SuggestionField label="作者" placeholder="作者名字" value={author} onChange={setAuthor} suggestions={authorSuggestions} />
     <SuggestionField label="首发平台" placeholder="首发平台（可选）" value={platform} onChange={setPlatform} suggestions={platformSuggestions} />
-    {status === 'want_to_read' ? <View>
-      <Text style={[styles.label, { color: theme.text }]}>为什么想看</Text>
-      <TextInput placeholder="为什么想看（可选）" placeholderTextColor={theme.mutedText} value={whyWantToRead} onChangeText={setWhyWantToRead}
-        style={[styles.input, styles.multiline, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} multiline textAlignVertical="top" />
-    </View> : null}
-    {status !== 'want_to_read' ? <ReadingDateFields startedOn={startedOn} endedOn={endedOn}
-      showEnd={status !== 'reading'} onStartChange={setStartedOn} onEndChange={setEndedOn} /> : null}
-    <Text style={[styles.label, { color: theme.text }]}>作品类型</Text>
-    <TypePicker value={bookType} onChange={setBookType} />
-    <Text style={[styles.label, { color: theme.text }]}>快捷标签</Text>
-    <TagPicker tags={quickTags} selectedIds={tagIds} onChange={setTagIds} />
-    <Pressable accessibilityRole="button" onPress={() => setShowAllTags(true)} style={[styles.allTagsButton, { borderColor: theme.primary }]}><Text style={[styles.allTagsText, { color: theme.primary }]}>全部标签</Text></Pressable>
     <Text style={[styles.label, { color: theme.text }]}>主角名字</Text>
     {protagonists.map((name, index) => <View key={index} style={styles.nameRow}>
       <Text style={[styles.nameLabel, { color: theme.mutedText }]}>主角 {index + 1}</Text>
@@ -97,8 +83,32 @@ export function AddBookForm({ onSave, quickTags = [], allTags = [], authorSugges
     <Pressable accessibilityRole="button" onPress={() => setProtagonists(current => [...current, ''])} style={styles.addName}>
       <Text style={[styles.addNameText, { color: theme.primary }]}>＋ 添加主角</Text>
     </Pressable>
+    </View></GroupedSection>
+    <GroupedSection title="阅读信息"><View style={styles.groupContent}>
+    <Text style={[styles.label, { color: theme.text }]}>阅读状态</Text>
+    <View style={styles.statusGroup}>
+      {BOOK_STATUSES.map(choice => <Pressable key={choice} accessibilityRole="radio"
+        accessibilityState={{ checked: status === choice }} onPress={() => setStatus(choice)}
+        style={[styles.statusOption, { borderColor: status === choice ? theme.primary : theme.border, backgroundColor: status === choice ? theme.primary : theme.card }]}>
+        <Text style={{ color: status === choice ? theme.card : theme.text, fontWeight: status === choice ? '700' : '500' }}>{BOOK_STATUS_LABELS[choice]}</Text>
+      </Pressable>)}
+    </View>
+    {status === 'want_to_read' ? <View>
+      <Text style={[styles.label, { color: theme.text }]}>为什么想看</Text>
+      <TextInput placeholder="为什么想看（可选）" placeholderTextColor={theme.mutedText} value={whyWantToRead} onChangeText={setWhyWantToRead}
+        style={[styles.input, styles.multiline, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} multiline textAlignVertical="top" />
+    </View> : null}
+    {status !== 'want_to_read' ? <ReadingDateFields startedOn={startedOn} endedOn={endedOn}
+      showEnd={status !== 'reading'} onStartChange={setStartedOn} onEndChange={setEndedOn} /> : null}
     {status === 'finished' ? <RatingField value={ratingHalfStars} onChange={setRatingHalfStars} allowNewValue /> : null}
-    <BookCoverField title={title} onChange={value => setCoverSource(value ?? undefined)} />
+    </View></GroupedSection>
+    <GroupedSection title="分类与标签"><View style={styles.groupContent}>
+    <Text style={[styles.label, { color: theme.text }]}>作品类型</Text>
+    <TypePicker value={bookType} onChange={setBookType} />
+    <Text style={[styles.label, { color: theme.text }]}>快捷标签</Text>
+    <TagPicker tags={quickTags} selectedIds={tagIds} onChange={setTagIds} />
+    <Pressable accessibilityRole="button" onPress={() => setShowAllTags(true)} style={[styles.allTagsButton, { borderColor: theme.primary }]}><Text style={[styles.allTagsText, { color: theme.primary }]}>全部标签</Text></Pressable>
+    </View></GroupedSection>
     {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
     <Pressable accessibilityRole="button" disabled={saving} onPress={save} style={[styles.button, { backgroundColor: theme.primary }]}>
       <Text style={styles.buttonText}>{saving ? '保存中…' : '保存小说'}</Text>
@@ -116,7 +126,8 @@ export function AddBookForm({ onSave, quickTags = [], allTags = [], authorSugges
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 12, paddingBottom: 50 },
+  container: { padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 120 },
+  groupContent: { padding: 16, gap: 10 },
   label: { fontSize: 15, fontWeight: '600', color: '#302a25', marginTop: 8 },
   input: { borderColor: '#d6cec4', borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 17, backgroundColor: '#fff' },
   multiline: { minHeight: 84 },

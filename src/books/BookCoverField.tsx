@@ -17,6 +17,7 @@ export function BookCoverField({ title, initialUri, files = defaultFiles, onChan
   const [staged, setStaged] = useState<StagedCover | null>(null);
   const [removed, setRemoved] = useState(false);
   const [url, setUrl] = useState('');
+  const [showLinkInput, setShowLinkInput] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const mounted = useRef(true);
@@ -67,15 +68,16 @@ export function BookCoverField({ title, initialUri, files = defaultFiles, onChan
     <View style={styles.previewRow}><BookCover title={title || '小说'} uri={previewUri} size="small" />
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" disabled={busy} onPress={choosePhoto} style={[styles.action, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={[styles.actionText, { color: theme.primary }]}>从相册选择</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setShowLinkInput(current => !current)} style={[styles.action, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={[styles.actionText, { color: theme.primary }]}>使用图片链接</Text></Pressable>
         {(previewUri || staged) ? <Pressable accessibilityRole="button" disabled={busy} onPress={remove} style={[styles.action, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={[styles.removeText, { color: theme.danger }]}>移除封面</Text></Pressable> : null}
       </View>
     </View>
-    <TextInput value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="粘贴 HTTPS 图片链接" placeholderTextColor={theme.mutedText} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />
+    {showLinkInput ? <><TextInput value={url} onChangeText={setUrl} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="粘贴 HTTPS 图片链接" placeholderTextColor={theme.mutedText} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />
     <Pressable accessibilityRole="button" disabled={busy || !url.trim()} onPress={useUrl} style={[styles.urlButton, { backgroundColor: theme.primary }, (!url.trim() || busy) && styles.disabled]}>
       {busy ? <ActivityIndicator color="#fff" /> : <Text style={styles.urlText}>使用链接</Text>}
-    </Pressable>
+    </Pressable></> : null}
     {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
-    <Text style={[styles.help, { color: theme.mutedText }]}>图片会保存在本机；网络链接仅用于下载，不会保存链接。</Text>
+    {showLinkInput ? <Text style={[styles.help, { color: theme.mutedText }]}>图片会保存在本机；网络链接仅用于下载，不会保存链接。</Text> : null}
   </View>;
 }
 
@@ -83,7 +85,7 @@ const styles = StyleSheet.create({
   container: { gap: 9, marginTop: 8 },
   label: { fontSize: 15, fontWeight: '600', color: '#302a25' },
   previewRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
-  actions: { gap: 8 },
+  actions: { flex: 1, gap: 8 },
   action: { borderColor: '#d6cec4', borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: '#fff' },
   actionText: { color: '#28584E', fontWeight: '600' },
   removeText: { color: '#a33b26', fontWeight: '600' },
