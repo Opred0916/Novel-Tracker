@@ -8,6 +8,7 @@ test('renders a titled sheet and closes from button, backdrop, and request close
   const view = await render(<BottomSheet visible title="筛选" onClose={onClose}><Text>内容</Text></BottomSheet>);
   expect(view.getByText('筛选')).toBeTruthy();
   expect(view.getByText('内容')).toBeTruthy();
+  expect(view.getByTestId('bottom-sheet-scroll').props.automaticallyAdjustKeyboardInsets).toBe(true);
   await fireEvent.press(view.getByLabelText('关闭筛选'));
   await fireEvent.press(view.getByLabelText('关闭筛选面板'));
   const modal = view.getByTestId('bottom-sheet-modal');
