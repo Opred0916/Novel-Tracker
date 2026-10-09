@@ -4,6 +4,7 @@ import { normalizeHistoricalReadingDates, normalizeReadingDates, todayLocalDate 
 import { ReadingDateFields } from './ReadingDateFields';
 import type { ReadingSession } from './types';
 import { useTheme } from '../theme/ThemeProvider';
+import { UI_LAYOUT } from '../ui/layout';
 
 export function ReadingHistoryForm({ session, legacy = false, onSave, onDelete }: {
   session?: ReadingSession;
@@ -52,7 +53,7 @@ export function ReadingHistoryForm({ session, legacy = false, onSave, onDelete }
     ]);
   }
 
-  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+  return <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={[styles.heading, { color: theme.text }]}>{legacy ? '补记首刷日期' : `编辑第 ${session?.ordinal} 次阅读`}</Text>
     <ReadingDateFields startedOn={startedOn} endedOn={endedOn} showEnd={outcome !== 'reading'}
       onStartChange={setStartedOn} onEndChange={setEndedOn} />
@@ -67,10 +68,10 @@ export function ReadingHistoryForm({ session, legacy = false, onSave, onDelete }
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 16, paddingBottom: 50 },
-  heading: { fontSize: 22, fontWeight: '700', color: '#302a25' },
+  container: { padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 100 },
+  heading: { fontSize: 24, fontWeight: '700' },
   error: { color: '#b52626' },
-  save: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center' },
+  save: { padding: 16, borderRadius: UI_LAYOUT.groupRadius, alignItems: 'center' },
   saveText: { color: '#fff', fontWeight: '700' },
   delete: { padding: 14, alignItems: 'center' },
   deleteText: { color: '#b52626', fontWeight: '600' },

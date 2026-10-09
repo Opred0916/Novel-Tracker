@@ -1,18 +1,15 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { BackupReminderCard } from '../../dataSafety/BackupReminderCard';
 import { dataSafetyPreferences } from '../../dataSafety/preferences';
 import { shouldShowBackupReminder } from '../../dataSafety/visibility';
 import { useBackupService } from '../../storage/AppProvider';
 import { useTheme } from '../../theme/ThemeProvider';
-
-function Action({ label, onPress, primary = false }: { label: string; onPress: () => void; primary?: boolean }) {
-  const { theme } = useTheme();
-  return <Pressable accessibilityRole="button" onPress={onPress} style={[styles.action, { backgroundColor: primary ? theme.primary : theme.card, borderColor: theme.primary }]}>
-    <Text style={{ color: primary ? theme.card : theme.primary, fontWeight: '700' }}>{label}</Text>
-  </Pressable>;
-}
+import { TabPageHeader } from '../../ui/TabPageHeader';
+import { GroupedSection } from '../../ui/GroupedSection';
+import { ActionRow } from '../../ui/ActionRow';
+import { UI_LAYOUT } from '../../ui/layout';
 
 export default function ManageTab() {
   const { theme } = useTheme();
@@ -40,25 +37,29 @@ export default function ManageTab() {
     if (openBackup) router.push('/settings/backup');
   }
 
+  const divider = <View style={[styles.divider, { backgroundColor: theme.border }]} />;
   return <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]}>
-    <Text style={[styles.heading, { color: theme.text }]}>管理</Text>
-    <Text style={[styles.help, { color: theme.mutedText }]}>维护标签、导入记录、备份数据和应用外观。</Text>
+    <TabPageHeader title="管理" subtitle="维护书库和应用设置" />
+    <View style={styles.body}>
     {showReminder ? <BackupReminderCard onBackup={() => handleReminder(true)} onDismiss={() => handleReminder(false)} /> : null}
-    <Text style={[styles.section, { color: theme.text }]}>整理书库</Text>
-    <Action label="快捷标签设置" onPress={() => router.push('/settings/tags')} />
-    <Action label="数据管理" onPress={() => router.push('/settings/data')} />
-    <Action label="书库概览" onPress={() => router.push('/settings/overview')} />
-    <Text style={[styles.section, { color: theme.text }]}>导入与导出</Text>
-    <Action label="追加旧记录" primary onPress={() => router.push('/settings/import')} />
-    <Action label="导出开放格式" onPress={() => router.push('/settings/export')} />
-    <Action label="备份与恢复" onPress={() => router.push('/settings/backup')} />
-    <Action label="使用与数据安全" onPress={() => router.push('/settings/data-safety')} />
-    <Text style={[styles.section, { color: theme.text }]}>外观</Text>
-    <Action label="主题颜色" onPress={() => router.push('/settings/appearance')} />
-    <View style={styles.bottomSpace} />
+    <GroupedSection title="书库维护">
+      <ActionRow label="快捷标签设置" detail="选择添加书目时显示的标签" onPress={() => router.push('/settings/tags')} />
+      {divider}<ActionRow label="数据管理" detail="整理和检查书库数据" onPress={() => router.push('/settings/data')} />
+      {divider}<ActionRow label="书库概览" detail="查看当前书库统计" onPress={() => router.push('/settings/overview')} />
+    </GroupedSection>
+    <GroupedSection title="数据与安全">
+      <ActionRow label="追加旧记录" detail="从文字、表格或截图导入" onPress={() => router.push('/settings/import')} />
+      {divider}<ActionRow label="导出开放格式" onPress={() => router.push('/settings/export')} />
+      {divider}<ActionRow label="备份与恢复" onPress={() => router.push('/settings/backup')} />
+      {divider}<ActionRow label="使用与数据安全" onPress={() => router.push('/settings/data-safety')} />
+    </GroupedSection>
+    <GroupedSection title="外观">
+      <ActionRow label="主题颜色" detail={`当前：${theme.name}`} onPress={() => router.push('/settings/appearance')} />
+    </GroupedSection>
+    </View>
   </ScrollView>;
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, padding: 22, gap: 12, paddingBottom: 36 }, heading: { fontSize: 28, fontWeight: '800', marginTop: 10 }, help: { lineHeight: 21 }, section: { fontSize: 18, fontWeight: '700', marginTop: 14 }, action: { borderWidth: 1, borderRadius: 14, padding: 16, alignItems: 'center' }, bottomSpace: { height: 24 },
+  container: { flexGrow: 1, paddingBottom: 36 }, body: { paddingHorizontal: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap }, divider: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
 });

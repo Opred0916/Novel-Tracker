@@ -40,3 +40,9 @@ test('opens_current_year_summary_from_recap_and_keeps_existing_recap_entries', a
   expect(screen.getByText('年度阅读回顾')).toBeTruthy();
   expect(screen.getByText('主题回顾卡片')).toBeTruthy();
 });
+
+test('recap tab uses a safe-area title and does not offer a redundant back button', async () => {
+  const screen = await render(<OverviewPage asTab />);
+  expect(screen.getByTestId('tab-page-header')).toBeTruthy();
+  expect(screen.queryByText('返回书架')).toBeNull();
+});

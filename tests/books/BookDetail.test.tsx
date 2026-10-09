@@ -36,6 +36,7 @@ test('explains when optional details have not been entered', async () => {
 test('shows the overall rating even when the book is now being reread', async () => {
   const screen = await render(<BookDetail book={{ ...baseBook, status: 'reading', ratingHalfStars: 9 }} />);
   expect(screen.getByText('4.5 / 5 星')).toBeTruthy();
+  expect(screen.getByTestId('book-detail-hero')).toBeTruthy();
 });
 
 test('shows optional motivation and platform when present', async () => {

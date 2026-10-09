@@ -6,6 +6,13 @@ import type { Book } from '../../src/books/types';
 import { todayLocalDate } from '../../src/books/readingDates';
 import { chooseReadingDate } from './chooseReadingDate';
 
+test('keeps cover and basic information above reading and classification', async () => {
+  const screen = await render(<BookEditForm book={baseBook} onSave={async () => {}} />);
+  expect(screen.getByText('基本信息')).toBeTruthy();
+  expect(screen.getByText('阅读信息')).toBeTruthy();
+  expect(screen.getByText('分类与标签')).toBeTruthy();
+});
+
 const baseBook: Book = {
   id: 'book-1', title: '长夜', author: null, status: 'want_to_read', protagonists: [], ratingHalfStars: null, bookType: null, tags: [],
   legacyReadCount: 0, coverImageId: null, coverUri: null, createdAt: '2026-09-29T10:00:00.000Z', updatedAt: '2026-09-29T10:00:00.000Z',

@@ -28,9 +28,9 @@ export function BookshelfToolbar({ status, statusCounts, onStatusChange, query, 
     <ScrollView testID="status-strip" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusStrip}>
       {statuses.map(item => {
         const selected = status === item.value;
-        return <Pressable key={item.value ?? 'all'} accessibilityRole="radio" accessibilityLabel={`${item.label} ${item.count} 本`} accessibilityState={{ checked: selected }} onPress={() => onStatusChange(item.value)} style={[styles.chip, { backgroundColor: selected ? theme.primary : theme.card, borderColor: selected ? theme.primary : theme.border }]}>
-          <Text style={{ color: selected ? theme.card : theme.text, fontWeight: selected ? '700' : '500' }}>{item.label}</Text>
-          <Text style={{ color: selected ? theme.card : theme.mutedText, fontSize: 12, marginTop: 2 }}>{item.count} 本</Text>
+        return <Pressable key={item.value ?? 'all'} accessibilityRole="radio" accessibilityLabel={`${item.label} ${item.count} 本`} accessibilityState={{ checked: selected }} onPress={() => onStatusChange(item.value)} style={[styles.chip, { backgroundColor: selected ? theme.primarySoft : theme.card, borderColor: selected ? theme.primary : theme.border }]}>
+          <Text style={{ color: selected ? theme.primary : theme.text, fontWeight: selected ? '700' : '500' }}>{item.label}</Text>
+          <Text style={{ color: selected ? theme.primary : theme.mutedText, fontSize: 12, marginTop: 2 }}>{item.count} 本</Text>
         </Pressable>;
       })}
     </ScrollView>
@@ -44,5 +44,5 @@ export function BookshelfToolbar({ status, statusCounts, onStatusChange, query, 
 }
 
 const styles = StyleSheet.create({
-  statusStrip: { gap: 8, paddingVertical: 12 }, chip: { minWidth: 74, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, alignItems: 'center' }, searchRow: { position: 'relative' }, search: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, paddingRight: 42, fontSize: 16 }, clearQuery: { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }, clearQueryText: { fontSize: 26, lineHeight: 28 }, toolRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10 }, toolButton: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 }, activeTool: { borderWidth: 2 },
+  statusStrip: { gap: 8, paddingBottom: 12 }, chip: { minWidth: 70, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 7, alignItems: 'center' }, searchRow: { position: 'relative' }, search: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, paddingRight: 42, fontSize: 16 }, clearQuery: { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }, clearQueryText: { fontSize: 26, lineHeight: 28 }, toolRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10 }, toolButton: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8 }, activeTool: { borderWidth: 2 },
 });

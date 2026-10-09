@@ -7,6 +7,7 @@ import { useOpenExportService } from '../../storage/AppProvider';
 import type { BackupCounts } from '../../backup/backupTypes';
 import { BackupValidationError } from '../../backup/backupValidation';
 import { useTheme } from '../../theme/ThemeProvider';
+import { UI_LAYOUT } from '../../ui/layout';
 
 const summary = (counts: BackupCounts): string =>
   `${counts.books} 本小说 · ${counts.readingSessions} 条阅读记录 · ${counts.notes} 条摘记 · ${counts.images} 张图片`;
@@ -90,7 +91,7 @@ export default function OpenExportPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 14, paddingBottom: 50 },
+  container: { padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 60 },
   heading: { fontSize: 26, fontWeight: '700', color: '#302a25' }, help: { color: '#766f68', lineHeight: 21 },
   card: { backgroundColor: '#fff', padding: 18, borderRadius: 14, gap: 8, borderWidth: 1, borderColor: '#e1dad1' },
   cardTitle: { fontSize: 18, fontWeight: '700', color: '#302a25' }, value: { color: '#302a25', lineHeight: 22 }, muted: { color: '#817871' },

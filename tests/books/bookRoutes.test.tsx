@@ -1,5 +1,5 @@
 import React from 'react';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor, within } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useBooks, useBookSearchRepository, useBulkOrganizeRepository, useImageOcr, useLibraryOverviewRepository, useNotes, useReadingHistory, useTags } from '../../src/storage/AppProvider';
@@ -148,6 +148,7 @@ test('bookshelf opens the tapped novel detail page', async () => {
 test('bookshelf add button renders through the Expo Router slot', async () => {
   const screen = await render(<Bookshelf />);
   expect(screen.getByRole('button', { name: '＋ 添加小说' })).toBeTruthy();
+  expect(screen.getByTestId('tab-page-header')).toBeTruthy();
 });
 
 test('bookshelf searches with recent update sorting by default', async () => {
@@ -365,6 +366,7 @@ test('detail page loads the novel and offers an edit entry', async () => {
   const screen = await render(<BookPage />);
   await waitFor(() => expect(screen.getByText('某作者')).toBeTruthy());
   expect(screen.getByText('阿青')).toBeTruthy();
+  expect(within(screen.getByTestId('book-detail-hero')).getByText('编辑资料')).toBeTruthy();
   await fireEvent.press(screen.getByText('编辑资料'));
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]/edit', params: { id: book.id } });
 });

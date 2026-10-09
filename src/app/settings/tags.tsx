@@ -6,6 +6,7 @@ import type { Tag } from '../../books/types';
 import { DEFAULT_QUICK_TAG_NAMES } from '../../storage/database';
 import { useTags } from '../../storage/AppProvider';
 import { useTheme } from '../../theme/ThemeProvider';
+import { UI_LAYOUT } from '../../ui/layout';
 
 export default function QuickTagsPage() {
   const { theme } = useTheme();
@@ -51,7 +52,7 @@ export default function QuickTagsPage() {
   }
 
   if (loading) return <View style={styles.container}><Text style={{ color: theme.text }}>正在读取标签…</Text></View>;
-  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+  return <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={[styles.heading, { color: theme.text }]}>快捷标签</Text>
     <Text style={[styles.help, { color: theme.mutedText }]}>选择添加小说时优先显示的标签。移除快捷标签不会删除书籍上已有的标签。</Text>
     <TagPicker tags={tags} selectedIds={selectedIds} onChange={setSelectedIds} searchable />
@@ -74,7 +75,7 @@ export default function QuickTagsPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 24, gap: 14, paddingBottom: 50 }, heading: { fontSize: 21, fontWeight: '700', color: '#302a25' },
+  container: { padding: UI_LAYOUT.pageInset, gap: 14, paddingBottom: 100 }, heading: { fontSize: 21, fontWeight: '700' },
   help: { color: '#766f68', lineHeight: 20 }, row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   orderName: { flex: 1, color: '#302a25' }, move: { padding: 10, backgroundColor: '#fff', borderRadius: 10 },
   link: { color: '#28584E', fontWeight: '600', paddingVertical: 12 }, error: { color: '#b52626' },

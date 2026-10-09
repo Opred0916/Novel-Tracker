@@ -47,6 +47,8 @@ test('uses pasted text and TXT files as the same preview flow', async () => {
 
 test('keeps pasted draft when TXT selection is cancelled', async () => {
   const screen = await render(<ImportPage />);
+  expect(screen.getByText('选择来源')).toBeTruthy();
+  expect(screen.getByText('解析设置')).toBeTruthy();
   await fireEvent.changeText(screen.getByPlaceholderText('粘贴旧书单或摘记文字'), '保留这段文字');
   await fireEvent.press(screen.getByText('选择 TXT 文件'));
   expect(screen.getByDisplayValue('保留这段文字')).toBeTruthy();

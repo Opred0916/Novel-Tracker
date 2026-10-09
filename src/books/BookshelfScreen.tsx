@@ -19,6 +19,8 @@ import { QuickRecordSheet, type QuickRecordResult } from './QuickRecordSheet';
 import { FirstUseCard } from '../dataSafety/FirstUseCard';
 import { dataSafetyPreferences } from '../dataSafety/preferences';
 import { shouldShowIntro } from '../dataSafety/visibility';
+import { TabPageHeader } from '../ui/TabPageHeader';
+import { UI_LAYOUT } from '../ui/layout';
 
 const BOOK_SORT_OPTIONS: { value: BookSortOrder; label: string }[] = [
   { value: 'recently_updated', label: '最近修改' },
@@ -177,8 +179,7 @@ export default function Bookshelf() {
   }
 
   return <View style={[styles.page, { backgroundColor: theme.background }]}>
-    <Text style={[styles.heading, { color: theme.text }]}>我的书架</Text>
-    <Text style={[styles.subheading, { color: theme.mutedText }]}>找书、记录和整理都在这里完成</Text>
+    <View style={styles.headerWrap}><TabPageHeader title="我的书架" subtitle="找书、记录和整理都在这里完成" /></View>
     <BookshelfToolbar
       status={status}
       statusCounts={{ all: overview?.totalBooks ?? 0, want_to_read: overview?.byStatus.want_to_read ?? 0, reading: overview?.byStatus.reading ?? 0, finished: overview?.byStatus.finished ?? 0, dropped: overview?.byStatus.dropped ?? 0 }}
@@ -214,7 +215,7 @@ export default function Bookshelf() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, padding: 22 }, heading: { fontSize: 26, fontWeight: '700', marginTop: 10 },
+  page: { flex: 1, paddingHorizontal: UI_LAYOUT.pageInset }, headerWrap: { marginHorizontal: -UI_LAYOUT.pageInset },
   subheading: { marginTop: 8 }, error: { color: '#b52626' }, list: { flexGrow: 1, paddingTop: 14 },
   errorRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 },
   inlineLoading: { alignSelf: 'flex-start', marginTop: 8 },
@@ -222,6 +223,6 @@ const styles = StyleSheet.create({
   filters: { gap: 10, paddingBottom: 20 }, filterTitle: { fontWeight: '600', marginTop: 8 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' }, emptyTitle: { fontSize: 20, fontWeight: '600', color: '#302a25' },
-  add: { position: 'absolute', left: 22, right: 22, padding: 17, borderRadius: 16, alignItems: 'center' }, addText: { color: 'white', fontWeight: '700', fontSize: 17 },
+  add: { position: 'absolute', left: UI_LAYOUT.pageInset, right: UI_LAYOUT.pageInset, padding: 15, borderRadius: 14, alignItems: 'center' }, addText: { color: 'white', fontWeight: '700', fontSize: 16 },
   modalBackdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.28)' }, modalDismiss: { flex: 1 }, modalSheet: { paddingBottom: 0 },
 });
