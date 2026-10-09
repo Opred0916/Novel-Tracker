@@ -50,6 +50,16 @@ test('keeps a permanent path to the data safety guide', async () => {
   expect(router.push).toHaveBeenCalledWith('/settings/data-safety');
 });
 
+test('shows import, export and backup only once without a duplicate data-management menu', async () => {
+  const screen = await render(<ManageTab />);
+  expect(screen.queryByText('数据管理')).toBeNull();
+  expect(screen.getAllByText('追加旧记录')).toHaveLength(1);
+  expect(screen.getAllByText('导出开放格式')).toHaveLength(1);
+  expect(screen.getAllByText('备份与恢复')).toHaveLength(1);
+  await fireEvent.press(screen.getByRole('button', { name: '导出开放格式' }));
+  expect(router.push).toHaveBeenCalledWith('/settings/export');
+});
+
 test.each([
   [{ ...counts, books: 0 }, null, false],
   [counts, '2026-10-09T08:00:00Z', false],

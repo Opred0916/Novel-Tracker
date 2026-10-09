@@ -7,6 +7,12 @@ import { useTheme } from '../theme/ThemeProvider';
 import { GroupedSection } from '../ui/GroupedSection';
 import { UI_LAYOUT } from '../ui/layout';
 
+const FORMAT_OPTIONS: { value: ImportMode; label: string; example: string }[] = [
+  { value: 'lines', label: '每行一本', example: '例如：残次品｜Priest｜已读（一行写一本书）' },
+  { value: 'blocks', label: '按书填写详细资料', example: '例如：书名：残次品\n作者：Priest\n状态：已读（不同书之间空一行）' },
+  { value: 'numbered_replies', label: '带编号的记录', example: '例如：1 残次品\n2026-10-01\n当时的想法' },
+];
+
 export function ImportSourceForm({ text, mode, defaultStatus, error, onTextChange, onModeChange, onStatusChange, onPickFile, onPickScreenshots, onPickTable, tableDelimiter, onTableDelimiterChange, onParse, onManualCandidate }: {
   text: string; mode: ImportMode; defaultStatus: BookStatus; error: string;
   onTextChange: (value: string) => void; onModeChange: (value: ImportMode) => void; onStatusChange: (value: BookStatus) => void;
@@ -16,7 +22,7 @@ export function ImportSourceForm({ text, mode, defaultStatus, error, onTextChang
   const { theme } = useTheme();
   return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={[styles.heading, { color: theme.text }]}>追加旧记录</Text>
-    <Text style={[styles.help, { color: theme.mutedText }]}>先粘贴文字或选择 UTF-8 TXT，解析后会进入预览；确认前不会写入书架。微博链接不会自动抓取；截图可在本机手工校对。</Text>
+    <Text style={[styles.help, { color: theme.mutedText }]}>粘贴文字或选择文件，先预览并核对，确认后才会加入书架。</Text>
     <GroupedSection title="选择来源"><View style={styles.groupContent}>
     <TextInput accessibilityLabel="要导入的文字" multiline value={text} onChangeText={onTextChange} placeholder="粘贴旧书单或摘记文字" placeholderTextColor={theme.mutedText} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} textAlignVertical="top" />
     <Pressable accessibilityRole="button" onPress={onPickFile} style={[styles.secondary, { backgroundColor: theme.card, borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>选择 TXT 文件</Text></Pressable>
@@ -25,9 +31,11 @@ export function ImportSourceForm({ text, mode, defaultStatus, error, onTextChang
     </View></GroupedSection>
     <GroupedSection title="解析设置"><View style={styles.groupContent}>
     <Text style={[styles.label, { color: theme.text }]}>记录格式</Text>
-    <View style={styles.row}>{([['lines', '每行一本书'], ['blocks', '字段段落'], ['numbered_replies', '编号＋回复']] as const).map(([value, label]) => { const selected = mode === value; return <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => onModeChange(value)} style={[styles.chip, { backgroundColor: selected ? theme.primary : theme.card, borderColor: selected ? theme.primary : theme.border }]}><Text style={{ color: selected ? theme.card : theme.text, fontWeight: selected ? '700' : '500' }}>{label}</Text></Pressable>; })}</View>
-    <Text style={[styles.label, { color: theme.text }]}>未填写状态时默认</Text>
-    <View style={styles.row}>{BOOK_STATUSES.map(value => { const selected = defaultStatus === value; return <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => onStatusChange(value)} style={[styles.chip, { backgroundColor: selected ? theme.primary : theme.card, borderColor: selected ? theme.primary : theme.border }]}><Text style={{ color: selected ? theme.card : theme.text, fontWeight: selected ? '700' : '500' }}>{BOOK_STATUS_LABELS[value]}</Text></Pressable>; })}</View>
+    <Text style={[styles.help, { color: theme.mutedText }]}>选择与你的旧记录最接近的一种，预览时还可以逐条修改。</Text>
+    <View style={styles.row}>{FORMAT_OPTIONS.map(({ value, label }) => { const selected = mode === value; return <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => onModeChange(value)} style={[styles.chip, { backgroundColor: selected ? theme.primary : theme.card, borderColor: selected ? theme.primary : theme.border }]}><Text style={{ color: selected ? theme.card : theme.text, fontWeight: selected ? '700' : '500' }}>{label}</Text></Pressable>; })}</View>
+    <Text style={[styles.example, { color: theme.mutedText }]}>{FORMAT_OPTIONS.find(option => option.value === mode)?.example}</Text>
+    <Text style={[styles.label, { color: theme.text }]}>没有写阅读状态时</Text>
+    <View style={styles.row}>{BOOK_STATUSES.map(value => { const selected = defaultStatus === value; return <Pressable key={value} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => onStatusChange(value)} style={[styles.chip, { backgroundColor: selected ? theme.primary : theme.card, borderColor: selected ? theme.primary : theme.border }]}><Text style={{ color: selected ? theme.card : theme.text, fontWeight: selected ? '700' : '500' }}>{value === 'finished' ? '已读' : BOOK_STATUS_LABELS[value]}</Text></Pressable>; })}</View>
     {onPickTable ? <><Text style={[styles.label, { color: theme.text }]}>表格分隔符（CSV）</Text><View style={styles.row}>{([[';', '分号'], [',', '逗号'], ['\t', '制表符']] as const).map(([value, label]) => { const selected = tableDelimiter === value; return <Pressable key={label} onPress={() => onTableDelimiterChange?.(value)} style={[styles.chip, { backgroundColor: selected ? theme.primary : theme.card, borderColor: selected ? theme.primary : theme.border }]}><Text style={{ color: selected ? theme.card : theme.text, fontWeight: selected ? '700' : '500' }}>{label}</Text></Pressable>; })}</View></> : null}
     </View></GroupedSection>
     {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
@@ -37,5 +45,5 @@ export function ImportSourceForm({ text, mode, defaultStatus, error, onTextChang
 }
 
 const styles = StyleSheet.create({
-  container: { padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 80 }, groupContent: { padding: 16, gap: 10 }, heading: { fontSize: 25, fontWeight: '700', color: '#302a25' }, help: { color: '#766f68', lineHeight: 21 }, label: { fontWeight: '700', color: '#302a25' }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderColor: '#d6cec4', backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 }, selected: { backgroundColor: '#28584E', borderColor: '#28584E' }, chipText: { color: '#302a25' }, selectedText: { color: '#fff', fontWeight: '700' }, input: { minHeight: 160, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, backgroundColor: '#fff', padding: 14, fontSize: 16 }, error: { color: '#b52626', lineHeight: 20 }, primary: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center' }, primaryText: { color: '#fff', fontWeight: '700' }, secondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#28584E', padding: 14, borderRadius: 12, alignItems: 'center' }, secondaryText: { color: '#28584E', fontWeight: '700' }, link: { alignItems: 'center', padding: 10 }, linkText: { color: '#28584E', fontWeight: '600' },
+  container: { padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 80 }, groupContent: { padding: 16, gap: 10 }, heading: { fontSize: 25, fontWeight: '700', color: '#302a25' }, help: { color: '#766f68', lineHeight: 21 }, example: { fontSize: 14, lineHeight: 21 }, label: { fontWeight: '700', color: '#302a25' }, row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, chip: { borderWidth: 1, borderColor: '#d6cec4', backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9 }, selected: { backgroundColor: '#28584E', borderColor: '#28584E' }, chipText: { color: '#302a25' }, selectedText: { color: '#fff', fontWeight: '700' }, input: { minHeight: 160, borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, backgroundColor: '#fff', padding: 14, fontSize: 16 }, error: { color: '#b52626', lineHeight: 20 }, primary: { backgroundColor: '#28584E', padding: 16, borderRadius: 12, alignItems: 'center' }, primaryText: { color: '#fff', fontWeight: '700' }, secondary: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#28584E', padding: 14, borderRadius: 12, alignItems: 'center' }, secondaryText: { color: '#28584E', fontWeight: '700' }, link: { alignItems: 'center', padding: 10 }, linkText: { color: '#28584E', fontWeight: '600' },
 });

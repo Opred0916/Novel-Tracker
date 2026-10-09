@@ -2,6 +2,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BookEditForm } from '../../../books/BookEditForm';
+import { suggestionHistory, type SuggestionKind } from '../../../books/suggestionHistory';
 import type { Book, ReadingSession, Tag } from '../../../books/types';
 import { useBooks, useReadingHistory, useTags } from '../../../storage/AppProvider';
 import { useTheme } from '../../../theme/ThemeProvider';
@@ -17,7 +18,8 @@ export default function EditBookPage() {
   const [book, setBook] = useState<Book | null>(null);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [quickTags, setQuickTags] = useState<Tag[]>([]);
-  const [existingBooks, setExistingBooks] = useState<Book[]>([]);
+  const [authorSuggestions, setAuthorSuggestions] = useState<string[]>([]);
+  const [platformSuggestions, setPlatformSuggestions] = useState<string[]>([]);
   const [sessions, setSessions] = useState<ReadingSession[]>([]);
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [retry, setRetry] = useState(0);
@@ -29,19 +31,31 @@ export default function EditBookPage() {
       setLoadState('missing');
       return () => { active = false; };
     }
-    Promise.all([repo.get(id), tagRepo.list(), tagRepo.listQuick(), historyRepo.list(id), repo.list()]).then(([result, tags, quick, records, books]) => {
+    Promise.all([repo.get(id), tagRepo.list(), tagRepo.listQuick(), historyRepo.list(id), repo.list()]).then(async ([result, tags, quick, records, books]) => {
+      const [authors, platforms] = await Promise.all([
+        suggestionHistory.list('author', books.map(item => item.author ?? '')),
+        suggestionHistory.list('platform', books.map(item => item.platform ?? '')),
+      ]);
       if (!active) return;
       setBook(result);
       setAllTags(tags);
       setQuickTags(quick);
       setSessions(records);
-      setExistingBooks(books);
+      setAuthorSuggestions(authors);
+      setPlatformSuggestions(platforms);
       setLoadState(result ? 'ready' : 'missing');
     }).catch(() => { if (active) setLoadState('error'); });
     return () => { active = false; };
   // `retry` intentionally invalidates this focus callback to trigger a fresh read.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, repo, tagRepo, historyRepo, retry]));
+
+  async function removeSuggestion(kind: SuggestionKind, value: string) {
+    try {
+      await suggestionHistory.remove(kind, value);
+      (kind === 'author' ? setAuthorSuggestions : setPlatformSuggestions)(current => current.filter(item => item !== value));
+    } catch { /* Leave the record visible if storage is unavailable. */ }
+  }
 
   if (loadState === 'loading') return <View style={styles.center}><ActivityIndicator color={theme.primary} /></View>;
   if (loadState === 'missing') return <View style={styles.center}>
@@ -55,8 +69,10 @@ export default function EditBookPage() {
   </View>;
   if (!book) return null;
 
-  return <BookEditForm book={book} allTags={allTags} quickTags={quickTags} authorSuggestions={existingBooks.map(item => item.author ?? '')} platformSuggestions={existingBooks.map(item => item.platform ?? '')} sessions={sessions} onSave={async input => {
+  return <BookEditForm book={book} allTags={allTags} quickTags={quickTags} authorSuggestions={authorSuggestions} platformSuggestions={platformSuggestions}
+    onRemoveAuthorSuggestion={value => { void removeSuggestion('author', value); }} onRemovePlatformSuggestion={value => { void removeSuggestion('platform', value); }} sessions={sessions} onSave={async input => {
     await repo.update(id, input);
+    await Promise.allSettled([suggestionHistory.remember('author', input.author ?? ''), suggestionHistory.remember('platform', input.platform ?? '')]);
     router.back();
   }} />;
 }

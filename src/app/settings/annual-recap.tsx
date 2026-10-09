@@ -1,4 +1,4 @@
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BookCover } from '../../books/BookCover';
@@ -44,7 +44,9 @@ function BookRecapCard({ book, onPress }: { book: RecapBook; onPress: () => void
 export default function AnnualRecapPage() {
   const { theme } = useTheme();
   const repository = useAnnualRecapRepository();
-  const [year, setYear] = useState(() => new Date().getFullYear());
+  const params = useLocalSearchParams<{ year?: string | string[] }>();
+  const requestedYear = typeof params.year === 'string' && /^\d{4}$/.test(params.year) && Number(params.year) > 0 ? Number(params.year) : new Date().getFullYear();
+  const [year, setYear] = useState(requestedYear);
   const [years, setYears] = useState<number[]>([]);
   const [recap, setRecap] = useState<AnnualRecap | null>(null);
   const [undatedThoughts, setUndatedThoughts] = useState<RecapNote[]>([]);
@@ -106,7 +108,6 @@ export default function AnnualRecapPage() {
         <View style={[styles.stat, { backgroundColor: theme.primarySoft }]}><Text style={[styles.statNumber, { color: theme.primary }]}>{recap.thoughtCount}</Text><Text style={[styles.statLabel, { color: theme.text }]}>留下 {recap.thoughtCount} 条想法</Text></View>
       </View>
       <Text style={[styles.help, { color: theme.mutedText }]}>仅统计记录了结束日期的读完记录；同一本书多次读完会分别计入完成次数。</Text>
-      <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/settings/themed-recap', params: { year: String(recap.year) } })} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>主题回顾卡片</Text></Pressable>
       <View style={[styles.section, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>这一年读过的书</Text>
         {recap.books.length ? recap.books.map(book => <BookRecapCard key={book.bookId} book={book} onPress={() => openBook(book.bookId)} />) : <Text style={[styles.empty, { color: theme.mutedText }]}>这一年还没有带完成日期的阅读记录</Text>}
@@ -125,7 +126,6 @@ export default function AnnualRecapPage() {
       </View>
       {!recap.books.length && !recap.thoughts.length ? <Pressable accessibilityRole="button" onPress={() => router.replace('/')} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>去书架添加或导入</Text></Pressable> : null}
     </> : null}
-    <Pressable accessibilityRole="button" onPress={() => router.back()} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>返回书库概览</Text></Pressable>
   </ScrollView>;
 }
 

@@ -9,7 +9,6 @@ import QuickTagsPage from '../../src/app/settings/tags';
 import BookPage from '../../src/app/book/[id]';
 import EditBookPage from '../../src/app/book/[id]/edit';
 import ReadingHistoryPage from '../../src/app/book/[id]/reading/[sessionId]';
-import DataManagementPage from '../../src/app/settings/data';
 import { BookCard } from '../../src/books/BookCard';
 import type { Book } from '../../src/books/types';
 import { chooseReadingDate } from './chooseReadingDate';
@@ -29,6 +28,11 @@ jest.mock('expo-router', () => ({
 }));
 jest.mock('../../src/storage/AppProvider', () => ({ useBooks: jest.fn(), useBookSearchRepository: jest.fn(), useBulkOrganizeRepository: jest.fn(), useLibraryOverviewRepository: jest.fn(), useTags: jest.fn(), useReadingHistory: jest.fn(), useNotes: jest.fn(), useImageOcr: jest.fn() }));
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'new-tag-id') }));
+jest.mock('../../src/books/suggestionHistory', () => ({ suggestionHistory: {
+  list: jest.fn(async (_kind: string, seed: string[] = []) => [...new Set(seed.filter(Boolean))]),
+  remember: jest.fn(async () => undefined),
+  remove: jest.fn(async () => undefined),
+} }));
 
 const book: Book = {
   id: 'book-1', title: '长夜', author: '某作者', status: 'reading', protagonists: ['阿青'], ratingHalfStars: null, bookType: null, tags: [],
@@ -305,18 +309,13 @@ test('bookshelf keeps maintenance tools in the management tab', async () => {
   expect(screen.queryByText('快捷标签设置')).toBeNull();
 });
 
-test('data management exposes the open export entry', async () => {
-  const screen = await render(<DataManagementPage />);
-  await fireEvent.press(screen.getByText('导出开放格式'));
-  expect(router.push).toHaveBeenCalledWith('/settings/export');
-});
-
 test('bookshelf submits status, type, and every selected tag then clears them together', async () => {
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   await fireEvent.press(screen.getByRole('radio', { name: '在读 2 本' }));
   await fireEvent.press(screen.getByText('筛选'));
   await fireEvent.press(screen.getByText('耽美'));
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索标签'), '古代');
   await fireEvent.press(screen.getByText('古代'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({
     query: '', status: 'reading', bookType: 'romance_male_male', tagIds: ['ancient'], sortOrder: 'recently_updated',

@@ -20,8 +20,8 @@ test('shows status totals and refreshes on focus', async () => {
   await waitFor(() => expect(screen.getByText('今年读完 1 本')).toBeTruthy());
   expect(screen.getByText('想读：1')).toBeTruthy();
   expect(screen.getByText('在读：1')).toBeTruthy();
-  await act(async () => { await fireEvent.press(screen.getByText('返回书架')); });
-  expect(router.back).toHaveBeenCalled();
+  expect(screen.queryByText('返回书架')).toBeNull();
+  expect(screen.getByText(/当前书架有多少本/)).toBeTruthy();
 });
 
 test('shows a retry action after a read failure', async () => {
@@ -32,17 +32,8 @@ test('shows a retry action after a read failure', async () => {
   await waitFor(() => expect(screen.getByText('今年读完 0 本')).toBeTruthy());
 });
 
-test('opens_current_year_summary_from_recap_and_keeps_existing_recap_entries', async () => {
+test('library overview stays focused on bookshelf statistics', async () => {
   const screen = await render(<OverviewPage />);
-  await waitFor(() => expect(screen.getByText(`查看 ${new Date().getFullYear()} 年度总结`)).toBeTruthy());
-  await fireEvent.press(screen.getByText(`查看 ${new Date().getFullYear()} 年度总结`));
-  expect(router.push).toHaveBeenCalledWith('/settings/annual-summary');
-  expect(screen.getByText('年度阅读回顾')).toBeTruthy();
-  expect(screen.getByText('主题回顾卡片')).toBeTruthy();
-});
-
-test('recap tab uses a safe-area title and does not offer a redundant back button', async () => {
-  const screen = await render(<OverviewPage asTab />);
-  expect(screen.getByTestId('tab-page-header')).toBeTruthy();
-  expect(screen.queryByText('返回书架')).toBeNull();
+  await waitFor(() => expect(screen.getByText('今年读完 1 本')).toBeTruthy());
+  expect(screen.queryByText('主题回顾卡片')).toBeNull();
 });

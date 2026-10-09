@@ -9,10 +9,11 @@ type Props = {
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   searchable?: boolean;
+  showSelectedWhenEmpty?: boolean;
   onCreateTag?: (name: string) => Promise<Tag>;
 };
 
-export function TagPicker({ tags, selectedIds, onChange, searchable = false, onCreateTag }: Props) {
+export function TagPicker({ tags, selectedIds, onChange, searchable = false, showSelectedWhenEmpty = false, onCreateTag }: Props) {
   const { theme } = useTheme();
   const selectedIdsRef = useRef(selectedIds);
   useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
@@ -20,7 +21,8 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, onC
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
-  const visible = tags.filter(tag => tag.name.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  const search = query.trim().toLocaleLowerCase();
+  const visible = tags.filter(tag => search ? tag.name.toLocaleLowerCase().includes(search) : !showSelectedWhenEmpty || selectedIds.includes(tag.id));
 
   function changeSelection(ids: string[]) {
     selectedIdsRef.current = ids;
@@ -55,7 +57,7 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, onC
             ? selectedIdsRef.current.filter(id => id !== tag.id)
             : [...selectedIdsRef.current, tag.id])} />;
       })}
-      {visible.length === 0 ? <Text style={styles.empty}>没有匹配的标签</Text> : null}
+      {visible.length === 0 ? <Text style={styles.empty}>{showSelectedWhenEmpty && !search ? '还没有选择标签，输入名称查找' : '没有匹配的标签'}</Text> : null}
     </View>
     {onCreateTag ? <View style={styles.createRow}>
       <TextInput placeholder="新标签名称" placeholderTextColor={theme.mutedText} value={newName} onChangeText={setNewName} style={[styles.input, styles.createInput, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />

@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import AnnualRecapPage from '../../src/app/settings/annual-recap';
 import { useAnnualRecapRepository } from '../../src/storage/AppProvider';
 
@@ -8,6 +8,7 @@ let focusCallback: (() => void | (() => void)) | undefined;
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), back: jest.fn() },
+  useLocalSearchParams: jest.fn(),
   useFocusEffect: (callback: () => void | (() => void)) => {
     focusCallback = callback;
     return require('react').useEffect(callback, [callback]);
@@ -34,6 +35,7 @@ const recap2026 = {
 beforeEach(() => {
   jest.clearAllMocks();
   focusCallback = undefined;
+  jest.mocked(useLocalSearchParams).mockReturnValue({} as never);
   jest.mocked(useAnnualRecapRepository).mockReturnValue(repository as never);
   repository.availableYears.mockResolvedValue([2026, 2025]);
   repository.getYear.mockResolvedValue(recap2026);
@@ -54,8 +56,7 @@ test('shows annual counts, reread sessions, thoughts and navigates to book or no
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: 'book-1' } });
   await fireEvent.press(screen.getByText('这一年最喜欢的段落'));
   expect(router.push).toHaveBeenCalledWith({ pathname: '/book/[id]', params: { id: 'book-1', focusNoteId: 'note-1' } });
-  await fireEvent.press(screen.getByText('主题回顾卡片'));
-  expect(router.push).toHaveBeenCalledWith({ pathname: '/settings/themed-recap', params: { year: '2026' } });
+  expect(screen.queryByText('主题回顾卡片')).toBeNull();
 });
 
 test('switches year and displays undated imported thoughts separately', async () => {
@@ -77,11 +78,16 @@ test('shows independent empty states and retries a failed load', async () => {
   expect(screen.getByText('这一年还没有记录想法')).toBeTruthy();
 });
 
-test('returns to the overview page', async () => {
+test('returns to the previous page', async () => {
   const screen = await render(<AnnualRecapPage />);
   await waitFor(() => expect(screen.getByText('年度阅读回顾')).toBeTruthy());
-  await fireEvent.press(screen.getByText('返回书库概览'));
-  expect(router.back).toHaveBeenCalled();
+  expect(screen.queryByText('返回书库概览')).toBeNull();
+});
+
+test('opens the year selected on the recap home', async () => {
+  jest.mocked(useLocalSearchParams).mockReturnValue({ year: '2025' } as never);
+  await render(<AnnualRecapPage />);
+  await waitFor(() => expect(repository.getYear).toHaveBeenCalledWith(2025));
 });
 
 test('cancels a retry result when the user switches years', async () => {
