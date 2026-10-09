@@ -37,6 +37,13 @@ test('shows filter controls and resets only type and tags', async () => {
   expect(props.onResetFilters).toHaveBeenCalled();
 });
 
+test('does not expand every available tag until the user searches', async () => {
+  const view = await render(<BookshelfToolsSheet {...props} sheet="filter" tags={[...props.tags, { id: 'suspense', name: '悬疑', isSystem: true }]} />);
+  expect(view.queryByText('古代')).toBeNull();
+  await fireEvent.changeText(view.getByPlaceholderText('搜索标签'), '悬疑');
+  expect(view.getByText('悬疑')).toBeTruthy();
+});
+
 test('puts bulk and random actions in the more sheet', async () => {
   const view = await render(<BookshelfToolsSheet {...props} sheet="more" />);
   await fireEvent.press(view.getByText('批量整理'));

@@ -61,6 +61,15 @@ test('adds optional motivation and reading platform', async () => {
   })));
 });
 
+test('can remove protagonist inputs and stops adding at eight', async () => {
+  const screen = await render(<AddBookForm onSave={async () => {}} />);
+  await fireEvent.press(screen.getByRole('button', { name: '删除主角 1' }));
+  expect(screen.getAllByPlaceholderText('主角名字')).toHaveLength(1);
+  for (let index = 0; index < 7; index++) await fireEvent.press(screen.getByText('＋ 添加主角'));
+  expect(screen.getAllByPlaceholderText('主角名字')).toHaveLength(8);
+  expect(screen.queryByText('＋ 添加主角')).toBeNull();
+});
+
 test('allows the form to scroll above the iPhone keyboard', async () => {
   const screen = await render(<AddBookForm onSave={async () => {}} />);
   const scroll = screen.root;

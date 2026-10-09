@@ -38,8 +38,8 @@ export function HighlightsSection({ bookId, repository, onChanged, onSelect }: {
     ]);
   }
   return <View style={[styles.container, { backgroundColor: theme.card, borderColor: theme.border }]}>
-    <Text style={[styles.label, { color: theme.text }]}>精彩片段</Text>
-    <Pressable accessibilityRole="button" onPress={add} style={[styles.button, { backgroundColor: theme.primary }]}><Text style={styles.buttonText}>添加图片</Text></Pressable>
+    <View style={styles.heading}><Text style={[styles.label, { color: theme.text }]}>精彩片段</Text>
+    <Pressable accessibilityRole="button" onPress={add}><Text style={[styles.add, { color: theme.primary }]}>添加图片</Text></Pressable></View>
     {images.length ? <View style={styles.grid}>{images.map(image => <Pressable key={image.id} accessibilityRole="button" accessibilityLabel="打开精彩片段图片" onPress={() => onSelect?.([image])} onLongPress={() => remove(image)}>
       <Image source={{ uri: image.localPath }} style={styles.image} />
     </Pressable>)}</View> : <Text style={[styles.empty, { color: theme.mutedText }]}>还没有精彩片段</Text>}
@@ -49,6 +49,6 @@ export function HighlightsSection({ bookId, repository, onChanged, onSelect }: {
 
 const styles = StyleSheet.create({
   container: { borderWidth: StyleSheet.hairlineWidth, padding: UI_LAYOUT.pageInset, borderRadius: UI_LAYOUT.groupRadius, gap: 10 },
-  label: { fontSize: 16, fontWeight: '700' }, button: { alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 10, minHeight: 44, borderRadius: 10 }, buttonText: { color: '#fff', fontWeight: '700' },
+  heading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, label: { fontSize: 16, fontWeight: '700' }, add: { fontWeight: '700', paddingVertical: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, image: { width: 88, height: 88, borderRadius: 8 }, empty: {}, error: {},
 });

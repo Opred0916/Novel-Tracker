@@ -13,3 +13,12 @@ test('deduplicates suggestions and fills the free-form field when tapped', async
   fireEvent.press(view.getByText('某作者'));
   expect(onChange).toHaveBeenCalledWith('某作者');
 });
+
+test('deletes a history suggestion without clearing the current input', async () => {
+  const onChange = jest.fn();
+  const onRemove = jest.fn();
+  const view = await render(<SuggestionField label="作者" placeholder="作者名字" value="当前作者" onChange={onChange} suggestions={['旧作者']} onRemoveSuggestion={onRemove} />);
+  fireEvent.press(view.getByRole('button', { name: '删除作者记录：旧作者' }));
+  expect(onRemove).toHaveBeenCalledWith('旧作者');
+  expect(onChange).not.toHaveBeenCalled();
+});

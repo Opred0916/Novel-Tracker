@@ -55,6 +55,21 @@ test('keeps pasted draft when TXT selection is cancelled', async () => {
   expect(commitService.commit).not.toHaveBeenCalled();
 });
 
+test('defaults old records without a status to read and explains the formats with examples', async () => {
+  const screen = await render(<ImportPage />);
+  expect(screen.getByRole('radio', { name: '已读' }).props.accessibilityState.checked).toBe(true);
+  expect(screen.getByText('按书填写详细资料')).toBeTruthy();
+  expect(screen.getByText(/书名：残次品/)).toBeTruthy();
+  expect(screen.queryByText(/微博链接/)).toBeNull();
+  await fireEvent.changeText(screen.getByPlaceholderText('粘贴旧书单或摘记文字'), '书名：残次品');
+  await fireEvent.press(screen.getByText('生成导入预览'));
+  await waitFor(() => expect(screen.getByDisplayValue('残次品')).toBeTruthy());
+  await fireEvent.press(screen.getByText('确认导入'));
+  await waitFor(() => expect(commitService.commit).toHaveBeenCalledWith(expect.objectContaining({
+    items: [expect.objectContaining({ candidate: expect.objectContaining({ status: 'finished' }) })],
+  })));
+});
+
 test('imports multiple screenshots through manual text when local OCR is unavailable', async () => {
   jest.mocked(pickImportScreenshots).mockResolvedValue(['file:///one.png', 'file:///two.png']);
   const screen = await render(<ImportPage />);

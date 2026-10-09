@@ -28,7 +28,7 @@ export default function ImportPage() {
   const service = useImportCommitService();
   const [text, setText] = useState('');
   const [mode, setMode] = useState<ImportMode>('blocks');
-  const [defaultStatus, setDefaultStatus] = useState<BookStatus>('want_to_read');
+  const [defaultStatus, setDefaultStatus] = useState<BookStatus>('finished');
   const [review, setReview] = useState<ImportReview | null>(null);
   const [hints, setHints] = useState<DuplicateHint[]>([]);
   const [error, setError] = useState('');

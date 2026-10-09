@@ -17,6 +17,14 @@ test('searches and selects from full tag list', async () => {
   expect(onChange).toHaveBeenCalledWith(['one', 'two']);
 });
 
+test('compact search initially shows only selected tags and finds others on demand', async () => {
+  const screen = await render(<TagPicker tags={tags} selectedIds={['one']} onChange={jest.fn()} searchable showSelectedWhenEmpty />);
+  expect(screen.getByText('古代')).toBeTruthy();
+  expect(screen.queryByText('悬疑')).toBeNull();
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索标签'), '悬疑');
+  expect(screen.getByText('悬疑')).toBeTruthy();
+});
+
 test('creates a custom tag and adds it to selection', async () => {
   const onChange = jest.fn();
   const onCreateTag = jest.fn().mockResolvedValue({ id: 'three', name: '赛博朋克', isSystem: false });

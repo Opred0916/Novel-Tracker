@@ -17,12 +17,14 @@ import { SuggestionField } from './SuggestionField';
 import { GroupedSection } from '../ui/GroupedSection';
 import { UI_LAYOUT } from '../ui/layout';
 
-export function BookEditForm({ book, onSave, allTags = [], quickTags = [], authorSuggestions = [], platformSuggestions = [], sessions = [] }: {
+export function BookEditForm({ book, onSave, allTags = [], quickTags = [], authorSuggestions = [], platformSuggestions = [], onRemoveAuthorSuggestion, onRemovePlatformSuggestion, sessions = [] }: {
   book: Book; onSave: (input: BookEditInput) => Promise<void>;
   allTags?: Tag[];
   quickTags?: Tag[];
   authorSuggestions?: string[];
   platformSuggestions?: string[];
+  onRemoveAuthorSuggestion?: (value: string) => void;
+  onRemovePlatformSuggestion?: (value: string) => void;
   sessions?: ReadingSession[];
 }) {
   const { theme } = useTheme();
@@ -125,17 +127,17 @@ export function BookEditForm({ book, onSave, allTags = [], quickTags = [], autho
     <TextInput placeholder="输入小说书名" placeholderTextColor={theme.mutedText} value={title} onChangeText={setTitle} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />
     </View></GroupedSection>
     <GroupedSection title="基本信息"><View style={styles.groupContent}>
-    <SuggestionField label="作者" placeholder="作者名字" value={author} onChange={setAuthor} suggestions={authorSuggestions} />
-    <SuggestionField label="首发平台" placeholder="首发平台（可选）" value={platform} onChange={setPlatform} suggestions={platformSuggestions} />
+    <SuggestionField label="作者" placeholder="作者名字" value={author} onChange={setAuthor} suggestions={authorSuggestions} onRemoveSuggestion={onRemoveAuthorSuggestion} />
+    <SuggestionField label="首发平台" placeholder="首发平台（可选）" value={platform} onChange={setPlatform} suggestions={platformSuggestions} onRemoveSuggestion={onRemovePlatformSuggestion} />
     <Text style={[styles.label, { color: theme.text }]}>主角名字</Text>
     {protagonists.map((name, index) => <View key={index} style={styles.nameRow}>
-      <Text style={[styles.nameLabel, { color: theme.mutedText }]}>主角 {index + 1}</Text>
+      <View style={styles.nameHeading}><Text style={[styles.nameLabel, { color: theme.mutedText }]}>主角 {index + 1}</Text><Pressable accessibilityRole="button" accessibilityLabel={`删除主角 ${index + 1}`} onPress={() => setProtagonists(current => current.filter((_, row) => row !== index))}><Text style={[styles.addNameText, { color: theme.primary }]}>删除</Text></Pressable></View>
       <TextInput accessibilityLabel={`主角 ${index + 1}`} placeholder="主角名字" placeholderTextColor={theme.mutedText} value={name}
         onChangeText={value => changeProtagonist(index, value)} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} />
     </View>)}
-    <Pressable accessibilityRole="button" onPress={() => setProtagonists(current => [...current, ''])} style={styles.addName}>
-      <Text style={[styles.addNameText, { color: theme.primary }]}>＋ 添加主角</Text>
-    </Pressable>
+    {protagonists.length < 8 ? <Pressable accessibilityRole="button" onPress={() => setProtagonists(current => current.length < 8 ? [...current, ''] : current)} style={styles.addName}>
+      <Text style={[styles.addNameText, { color: theme.primary }]}>＋ 添加主角</Text><Text style={[styles.nameLabel, { color: theme.mutedText }]}>最多 8 位</Text>
+    </Pressable> : null}
     </View></GroupedSection>
     <GroupedSection title="阅读信息"><View style={styles.groupContent}>
     <Text style={[styles.label, { color: theme.text }]}>阅读状态</Text>
@@ -195,9 +197,9 @@ const styles = StyleSheet.create({
   dateSection: { gap: 8 },
   datePreview: { color: '#28584E', fontWeight: '600' },
   warning: { color: '#a33b26' },
-  nameRow: { gap: 6 },
+  nameRow: { gap: 6 }, nameHeading: { flexDirection: 'row', justifyContent: 'space-between' },
   nameLabel: { color: '#766f68' },
-  addName: { padding: 12, alignSelf: 'flex-start' },
+  addName: { padding: 12, alignSelf: 'flex-start', flexDirection: 'row', gap: 8 },
   addNameText: { color: '#28584E', fontWeight: '600' },
   allTagsButton: { borderWidth: 1, borderRadius: 12, paddingVertical: 10, alignItems: 'center' }, allTagsText: { fontWeight: '700' },
   error: { color: '#b52626' },

@@ -44,8 +44,7 @@ export default function ManageTab() {
     {showReminder ? <BackupReminderCard onBackup={() => handleReminder(true)} onDismiss={() => handleReminder(false)} /> : null}
     <GroupedSection title="书库维护">
       <ActionRow label="快捷标签设置" detail="选择添加书目时显示的标签" onPress={() => router.push('/settings/tags')} />
-      {divider}<ActionRow label="数据管理" detail="整理和检查书库数据" onPress={() => router.push('/settings/data')} />
-      {divider}<ActionRow label="书库概览" detail="查看当前书库统计" onPress={() => router.push('/settings/overview')} />
+      {divider}<ActionRow label="书库概览" detail="查看书架本数和阅读状态" onPress={() => router.push('/settings/overview')} />
     </GroupedSection>
     <GroupedSection title="数据与安全">
       <ActionRow label="追加旧记录" detail="从文字、表格或截图导入" onPress={() => router.push('/settings/import')} />

@@ -4,7 +4,7 @@ import { ThemeProvider, useTheme } from '../theme/ThemeProvider';
 
 function RootNavigator() {
   const { theme } = useTheme();
-  return <Stack screenOptions={{ headerStyle: { backgroundColor: theme.background }, headerTintColor: theme.primary, headerTitleStyle: { color: theme.text, fontWeight: '600' }, contentStyle: { backgroundColor: theme.background } }}>
+  return <Stack screenOptions={{ headerStyle: { backgroundColor: theme.background }, headerTintColor: theme.primary, headerTitleStyle: { color: theme.text, fontWeight: '600' }, headerBackButtonDisplayMode: 'minimal', contentStyle: { backgroundColor: theme.background } }}>
     <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     <Stack.Screen name="book/new" options={{ title: '添加小说', headerBackTitle: '书架' }} />
     <Stack.Screen name="book/[id]" options={{ title: '小说详情', headerBackTitle: '书架' }} />
@@ -14,14 +14,11 @@ function RootNavigator() {
     <Stack.Screen name="settings/backup" options={{ title: '备份与恢复', headerTitle: '', headerBackTitle: '管理' }} />
     <Stack.Screen name="settings/data-safety" options={{ title: '使用与数据安全', headerTitle: '', headerBackTitle: '管理' }} />
     <Stack.Screen name="settings/export" options={{ title: '导出开放格式', headerTitle: '', headerBackTitle: '管理' }} />
-    <Stack.Screen name="settings/data" options={{ title: '数据管理', headerTitle: '', headerBackTitle: '管理' }} />
     <Stack.Screen name="settings/import" options={{ title: '追加旧记录', headerTitle: '', headerBackTitle: '管理' }} />
-    <Stack.Screen name="settings/overview" options={{ title: '书库概览', headerTitle: '', headerBackTitle: '回顾' }} />
+    <Stack.Screen name="settings/overview" options={{ title: '书库概览', headerTitle: '', headerBackTitle: '管理', headerBackButtonDisplayMode: 'default' }} />
     <Stack.Screen name="settings/appearance" options={{ title: '外观', headerTitle: '', headerBackTitle: '管理' }} />
-    <Stack.Screen name="settings/annual-recap" options={{ title: '年度阅读回顾', headerTitle: '' }} />
+    <Stack.Screen name="settings/annual-recap" options={{ title: '阅读记录', headerTitle: '' }} />
     <Stack.Screen name="settings/annual-summary" options={{ headerShown: false }} />
-    <Stack.Screen name="settings/themed-recap" options={{ title: '主题回顾卡片', headerTitle: '' }} />
-    <Stack.Screen name="settings/recap-share" options={{ title: '回顾图片预览', headerTitle: '' }} />
   </Stack>;
 }
 

@@ -13,4 +13,5 @@ test('keeps appearance settings on their own page', async () => {
   const view = await render(<AppearancePage />);
   expect(view.getByText('外观')).toBeTruthy();
   expect(view.getByText('主题颜色')).toBeTruthy();
+  expect(view.queryByText('返回管理')).toBeNull();
 });

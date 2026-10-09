@@ -1,4 +1,4 @@
-import { Stack, router, useFocusEffect } from 'expo-router';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useContext, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
@@ -13,7 +13,9 @@ export default function AnnualSummaryPage() {
   const insets = useContext(SafeAreaInsetsContext) ?? { top: 0, right: 0, bottom: 0, left: 0 };
   const repository = useAnnualSummaryRepository();
   const currentYear = new Date().getFullYear();
-  const [year, setYear] = useState(currentYear);
+  const params = useLocalSearchParams<{ year?: string | string[] }>();
+  const requestedYear = typeof params.year === 'string' && /^\d{4}$/.test(params.year) && Number(params.year) > 0 ? Number(params.year) : currentYear;
+  const [year, setYear] = useState(requestedYear);
   const [years, setYears] = useState<number[]>([]);
   const [summary, setSummary] = useState<AnnualStorySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,7 @@ export default function AnnualSummaryPage() {
   return <View style={[styles.screen, { backgroundColor: theme.background, paddingTop: insets.top + 8, paddingBottom: insets.bottom }]}>
     <Stack.Screen options={{ headerShown: false }} />
     <View style={styles.topBar}>
-      <Pressable accessibilityRole="button" accessibilityLabel="关闭年度总结" onPress={() => router.back()} style={[styles.closeButton, { backgroundColor: theme.card, borderColor: theme.border }]}><Text style={[styles.closeText, { color: theme.primary }]}>关闭</Text></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="返回回顾" onPress={() => router.back()} style={styles.backButton}><Text style={[styles.backChevron, { color: theme.primary }]}>‹</Text></Pressable>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.yearRow}>
         {(years.length ? years : [year]).map(option => <Pressable key={option} accessibilityRole="button" accessibilityLabel={`查看 ${option} 年`} accessibilityState={{ selected: option === year }} onPress={() => setYear(option)} style={[styles.yearButton, { borderColor: option === year ? theme.primary : theme.border, backgroundColor: option === year ? theme.primarySoft : theme.card }]}><Text style={[styles.yearText, { color: option === year ? theme.primary : theme.mutedText }]}>{option}</Text></Pressable>)}
       </ScrollView>
@@ -58,9 +60,9 @@ export default function AnnualSummaryPage() {
     {!loading && !error && summary && pages.length ? <AnnualStoryPager key={summary.year} summary={summary} pages={pages} onOpenBook={bookId => router.push({ pathname: '/book/[id]', params: { id: bookId } })} /> : null}
     {!loading && !error && summary && pages.length === 0 ? <View style={styles.center}>
       <Text style={[styles.emptyTitle, { color: theme.text }]}>这一年还没有带完成日期的读完记录</Text>
-      <Text style={[styles.muted, { color: theme.mutedText }]}>没有可靠日期时，Novel Tracker 不会替你推测。</Text>
-      <Pressable accessibilityRole="button" onPress={() => router.push('/settings/annual-recap')} style={[styles.action, { backgroundColor: theme.primary }]}><Text style={styles.actionText}>添加阅读日期</Text></Pressable>
-      <Pressable accessibilityRole="button" onPress={() => router.push('/settings/annual-recap')} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>查看基础年度回顾</Text></Pressable>
+      <Text style={[styles.muted, { color: theme.mutedText }]}>可以到书架打开小说，补充读完日期；没有可靠日期时不会推测。</Text>
+      <Pressable accessibilityRole="button" onPress={() => router.push('/')} style={[styles.action, { backgroundColor: theme.primary }]}><Text style={styles.actionText}>去书架补充日期</Text></Pressable>
+      <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/settings/annual-recap', params: { year: String(year) } })} style={[styles.secondary, { borderColor: theme.primary }]}><Text style={[styles.secondaryText, { color: theme.primary }]}>查看阅读记录</Text></Pressable>
     </View> : null}
   </View>;
 }
@@ -68,8 +70,8 @@ export default function AnnualSummaryPage() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   topBar: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16 },
-  closeButton: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 9 },
-  closeText: { fontWeight: '800' },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  backChevron: { fontSize: 38, lineHeight: 42, fontWeight: '300' },
   yearRow: { gap: 8, alignItems: 'center' },
   yearButton: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 13, paddingVertical: 8 },
   yearText: { fontWeight: '700' },
