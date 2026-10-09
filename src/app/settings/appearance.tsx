@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { ThemePicker } from '../../theme/ThemePicker';
 import { useTheme } from '../../theme/ThemeProvider';
+import { UI_LAYOUT } from '../../ui/layout';
 
 export default function AppearancePage() {
   const { theme } = useTheme();
@@ -13,4 +14,4 @@ export default function AppearancePage() {
   </ScrollView>;
 }
 
-const styles = StyleSheet.create({ container: { flexGrow: 1, padding: 22, gap: 14, paddingBottom: 36 }, heading: { fontSize: 28, fontWeight: '800', marginTop: 10 }, help: { lineHeight: 21 }, back: { borderWidth: 1, borderRadius: 12, padding: 15, alignItems: 'center' } });
+const styles = StyleSheet.create({ container: { flexGrow: 1, padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 36 }, heading: { fontSize: 28, fontWeight: '800', marginTop: 10 }, help: { lineHeight: 21 }, back: { borderWidth: 1, borderRadius: 12, padding: 15, alignItems: 'center' } });
