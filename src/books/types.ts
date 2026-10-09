@@ -8,6 +8,9 @@ export const BOOK_TYPES = ['romance_male_male', 'romance_female_male', 'romance_
 export type BookType = (typeof BOOK_TYPES)[number];
 export type Tag = { id: string; name: string; isSystem: boolean };
 export type ReadingDatesInput = { startedOn: string; endedOn?: string | null };
+export type EndReadingInput =
+  | { outcome: 'finished'; startedOn: string; endedOn: string; ratingHalfStars: number | null }
+  | { outcome: 'dropped'; startedOn: string; endedOn: string };
 export type ReadingSession = {
   id: string;
   bookId: string;
