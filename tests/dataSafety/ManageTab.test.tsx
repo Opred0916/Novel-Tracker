@@ -60,19 +60,13 @@ test.each([
   expect(screen.queryByText(/书库已有记录/)).toBeNull();
 });
 
-test('overview or preference failure never blocks the management menu', async () => {
-  service.getOverview.mockRejectedValueOnce(new Error('offline'));
-  const first = await render(<ManageTab />);
+test.each(['overview', 'preference'] as const)('%s failure never blocks the management menu', async failure => {
+  if (failure === 'overview') service.getOverview.mockRejectedValueOnce(new Error('offline'));
+  else jest.mocked(dataSafetyPreferences.read).mockRejectedValueOnce(new Error('storage'));
+  const screen = await render(<ManageTab />);
   await waitFor(() => expect(service.getOverview).toHaveBeenCalled());
-  expect(first.queryByText(/书库已有记录/)).toBeNull();
-  expect(first.getByText('备份与恢复')).toBeTruthy();
-  first.unmount();
-
-  jest.mocked(dataSafetyPreferences.read).mockRejectedValueOnce(new Error('storage'));
-  const second = await render(<ManageTab />);
-  await waitFor(() => expect(dataSafetyPreferences.read).toHaveBeenCalled());
-  expect(second.queryByText(/书库已有记录/)).toBeNull();
-  expect(second.getByText('备份与恢复')).toBeTruthy();
+  expect(screen.queryByText(/书库已有记录/)).toBeNull();
+  expect(screen.getByText('备份与恢复')).toBeTruthy();
 });
 
 test('a late overview response after unmount does not navigate or mark a prompt', async () => {

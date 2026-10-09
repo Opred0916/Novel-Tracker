@@ -63,6 +63,8 @@ export default function Bookshelf() {
   const { results, loading, error: searchError, resultsCurrent, retry } = useBookSearch(searchRepo, { query, status, bookType, tagIds, sortOrder });
   useFocusEffect(useCallback(() => {
     let active = true;
+    setOverview(null);
+    setIntroSeen(null);
     if (hasFocused.current) retry();
     else hasFocused.current = true;
     tagRepo.list().then(items => { if (active) { setTags(items); setTagError(''); } }).catch(() => { if (active) setTagError('读取标签失败'); });

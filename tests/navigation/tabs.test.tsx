@@ -9,9 +9,10 @@ jest.mock('expo-router', () => {
   const { Text } = require('react-native');
   const Tabs = ({ children }: { children: React.ReactNode }) => <>{children}</>;
   Tabs.Screen = ({ options }: { options: { title: string } }) => <Text>{options.title}</Text>;
-  return { Tabs, Redirect: ({ href }: { href: string }) => <Text>{href}</Text>, router: { push: jest.fn() } };
+  return { Tabs, Redirect: ({ href }: { href: string }) => <Text>{href}</Text>, router: { push: jest.fn() }, useFocusEffect: () => undefined };
 });
 jest.mock('@expo/vector-icons', () => ({ Ionicons: () => null }));
+jest.mock('../../src/storage/AppProvider', () => ({ useBackupService: () => ({ getOverview: jest.fn() }) }));
 
 jest.mock('../../src/theme/ThemeProvider', () => ({
   useTheme: () => ({ theme: { primary: '#28584E', primarySoft: '#E8F1EC', primaryPressed: '#224B42', background: '#F6F3EC', card: '#FFFFFF', text: '#292D29', border: '#D8D5CD', mutedText: '#716F68', rating: '#B77B24', danger: '#9B3030', name: '墨绿' }, themeId: 'forest', setTheme: jest.fn(), saveError: null }),
@@ -29,6 +30,7 @@ test('management groups maintenance tools and links to appearance', async () => 
   expect(view.getByText('快捷标签设置')).toBeTruthy();
   expect(view.getByText('追加旧记录')).toBeTruthy();
   expect(view.getByText('备份与恢复')).toBeTruthy();
+  expect(view.getByText('使用与数据安全')).toBeTruthy();
   expect(view.getByText('主题颜色')).toBeTruthy();
   expect(view.getByText('整理书库')).toBeTruthy();
 });

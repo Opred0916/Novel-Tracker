@@ -57,3 +57,14 @@ test('existing library never sees the first-use card even if search is empty', a
   await waitFor(() => expect(screen.getByText('书架还是空的')).toBeTruthy());
   expect(screen.queryByText(/记录保存在这台设备/)).toBeNull();
 });
+
+test('a failed overview refocus does not reuse stale empty-shelf evidence', async () => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText(/记录保存在这台设备/)).toBeTruthy());
+  const failedOverview = jest.fn().mockRejectedValue(new Error('overview unavailable'));
+  jest.mocked(useLibraryOverviewRepository).mockReturnValue({ getOverview: failedOverview } as unknown as ReturnType<typeof useLibraryOverviewRepository>);
+  await screen.rerender(<Bookshelf />);
+  await waitFor(() => expect(screen.getByText('状态数量暂时无法读取')).toBeTruthy());
+  expect(failedOverview).toHaveBeenCalled();
+  expect(screen.queryByText(/记录保存在这台设备/)).toBeNull();
+});

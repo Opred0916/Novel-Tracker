@@ -15,7 +15,7 @@ export default function DataSafetyPage() {
 
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <Text style={[styles.section, { color: theme.text }]}>怎样留下可用的备份</Text>
-      <Text style={[styles.body, { color: theme.text }]}>进入“备份与恢复”，生成 .noveltracker 文件，再在系统分享界面保存到“文件”或其他设备外部的安全位置。页面显示“已生成”只代表文件生成，不代表你已完成保存。</Text>
+      <Text style={[styles.body, { color: theme.text }]}>进入“备份与恢复”，生成 .noveltracker 文件，再在系统分享界面保存到“文件”或其他设备外部的安全位置。分享完成后，确认能够在“文件”中找到这份备份。页面显示“已生成”只代表文件生成，不代表你已完成保存。</Text>
       <Pressable accessibilityRole="button" onPress={() => router.push('/settings/backup')} style={[styles.button, { backgroundColor: theme.primary }]}>
         <Text style={[styles.buttonText, { color: theme.card }]}>前往备份与恢复</Text>
       </Pressable>
@@ -24,7 +24,7 @@ export default function DataSafetyPage() {
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <Text style={[styles.section, { color: theme.text }]}>从 Expo Go 迁移</Text>
       <Text style={[styles.body, { color: theme.text }]}>Expo Go 和独立安装版不会自动共享书库。请先在旧版本生成并保存备份文件，再在独立安装版的“备份与恢复”中选择该文件。</Text>
-      <Text style={[styles.body, { color: theme.text }]}>恢复会完整替换当前书库。如果独立安装版里已经有记录，请先备份独立安装版里已有的记录，再决定是否恢复旧备份。恢复结束后，请核对小说、阅读历史、摘记和图片。</Text>
+      <Text style={[styles.body, { color: theme.text }]}>恢复会完整替换当前书库。如果独立安装版里已经有记录，请先备份独立安装版里已有的记录，再决定是否恢复旧备份。恢复结束后，请核对小说、阅读历史、摘记和图片；确认之前不要清除 Expo Go 中的原记录。</Text>
     </View>
 
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
