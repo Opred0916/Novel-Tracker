@@ -8,13 +8,14 @@ import { BookCard } from './BookCard';
 import { BulkOrganizePanel } from './BulkOrganizePanel';
 import { useBookSearch } from './useBookSearch';
 import type { LibraryOverview } from './libraryOverviewRepository';
-import { useBookSearchRepository, useBooks, useBulkOrganizeRepository, useLibraryOverviewRepository, useTags } from '../storage/AppProvider';
+import { useBookSearchRepository, useBooks, useBulkOrganizeRepository, useLibraryOverviewRepository, useNotes, useReadingHistory, useTags } from '../storage/AppProvider';
 import { BookshelfToolbar } from './BookshelfToolbar';
 import { BookshelfToolsSheet, type BookshelfSheet } from './BookshelfToolsSheet';
 import { useTheme } from '../theme/ThemeProvider';
 import { selectWantToReadBook } from './randomWantToRead';
 import { RandomWantToReadSheet } from './RandomWantToReadSheet';
 import { BulkSelectionBar } from './BulkSelectionBar';
+import { QuickRecordSheet, type QuickRecordResult } from './QuickRecordSheet';
 
 const BOOK_SORT_OPTIONS: { value: BookSortOrder; label: string }[] = [
   { value: 'recently_updated', label: '最近修改' },
@@ -28,6 +29,8 @@ export default function Bookshelf() {
   const insets = useContext(SafeAreaInsetsContext) ?? { top: 0, right: 0, bottom: 0, left: 0 };
   const searchRepo = useBookSearchRepository();
   const booksRepo = useBooks();
+  const historyRepo = useReadingHistory();
+  const notesRepo = useNotes();
   const bulkOrganizeRepository = useBulkOrganizeRepository();
   const overviewRepository = useLibraryOverviewRepository();
   const tagRepo = useTags();
@@ -48,6 +51,7 @@ export default function Bookshelf() {
   const [randomVisible, setRandomVisible] = useState(false);
   const [randomBusy, setRandomBusy] = useState(false);
   const [randomError, setRandomError] = useState('');
+  const [quickRecordBookId, setQuickRecordBookId] = useState<string | null>(null);
   const previousRandomId = useRef<string | null>(null);
   const randomRequest = useRef(0);
   const hasFocused = useRef(false);
@@ -136,6 +140,15 @@ export default function Bookshelf() {
     }
   }
 
+  function quickRecordChanged(result: QuickRecordResult) {
+    retry();
+    if (result !== 'note_saved') {
+      void overviewRepository.getOverview(new Date().getFullYear())
+        .then(value => { setOverview(value); setOverviewError(''); })
+        .catch(() => setOverviewError('状态数量暂时无法读取'));
+    }
+  }
+
   if (showBulkPanel) {
     return <View style={styles.page}>
       <BulkOrganizePanel
@@ -174,8 +187,10 @@ export default function Bookshelf() {
       ListHeaderComponent={null}
       ListEmptyComponent={loading ? <ActivityIndicator accessibilityLabel="正在搜索" color={theme.primary} /> : searchError ? null : <View style={styles.empty}><Text style={[styles.emptyTitle, { color: theme.text }]}>{status ? `还没有${status === 'want_to_read' ? '想读' : status === 'reading' ? '在读' : status === 'finished' ? '读完' : '弃读'}的小说` : hasConditions ? '没有符合筛选条件的小说' : '书架还是空的'}</Text><Text style={[styles.subheading, { color: theme.mutedText }]}>{status ? '先添加一本小说吧。' : hasConditions ? '可以调整筛选条件。' : '先记下一本想读的小说吧。'}</Text></View>}
       renderItem={({ item }) => <BookCard book={item.book} matchedNoteSnippet={item.matchedNoteSnippet} matchedImage={item.matchedImage} onPress={() => router.push({ pathname: '/book/[id]', params: { id: item.book.id, ...(item.matchedImage ? { focusImageId: item.matchedImage.imageId } : {}) } })}
-        selection={bulkMode ? { checked: selectedBooks.has(item.book.id), onToggle: () => toggleSelected(item.book) } : undefined} />}
+        selection={bulkMode ? { checked: selectedBooks.has(item.book.id), onToggle: () => toggleSelected(item.book) } : undefined}
+        onQuickRecord={status === 'reading' && !bulkMode ? () => setQuickRecordBookId(item.book.id) : undefined} />}
     />
+    <QuickRecordSheet visible={quickRecordBookId !== null} bookId={quickRecordBookId} books={booksRepo} history={historyRepo} notes={notesRepo} onClose={() => setQuickRecordBookId(null)} onChanged={quickRecordChanged} />
     {!bulkMode ? <Link href="/book/new" asChild><Pressable accessibilityRole="button" style={StyleSheet.flatten([styles.add, { bottom: insets.bottom + 8, backgroundColor: theme.primary }])}><Text style={styles.addText}>＋ 添加小说</Text></Pressable></Link> : null}
     <Modal visible={randomVisible} transparent animationType="slide" onRequestClose={closeRandomSheet}>
       <View style={styles.modalBackdrop}><Pressable accessibilityRole="button" accessibilityLabel="关闭随机抽取" style={styles.modalDismiss} onPress={closeRandomSheet} /><View style={styles.modalSheet}><RandomWantToReadSheet book={randomPick?.book ?? null} candidateCount={randomPick?.candidateCount ?? 0} loading={randomBusy} error={randomError || null} onClose={closeRandomSheet} onReroll={() => { void pickRandomWantToRead(); }} onRetry={() => { void pickRandomWantToRead(); }} onAddBook={() => { closeRandomSheet(); router.push('/book/new'); }} onOpenBook={id => { closeRandomSheet(); router.push({ pathname: '/book/[id]', params: { id } }); }} /></View></View>
