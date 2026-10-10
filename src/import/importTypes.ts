@@ -37,6 +37,7 @@ export type ImportCandidate = {
   whyWantToRead: string | null;
   platform: string | null;
   sourceRef?: ImportSourceRef;
+  fieldReview?: Partial<Record<'title' | 'author' | 'ratingHalfStars' | 'status' | 'notes', string>>;
 };
 
 export type ImportFragment = { id: string; sourceLine: number; text: string; reason: string; sourceRef?: ImportSourceRef; recordedAtHint?: string; candidateId?: string };

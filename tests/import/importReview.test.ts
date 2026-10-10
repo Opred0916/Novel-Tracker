@@ -57,3 +57,12 @@ test('summarizes create, note append, and skip actions', () => {
   current.items.push({ ...current.items[0], candidate: { ...current.items[0].candidate, id: 'candidate-3' }, action: 'append_notes', targetBookId: 'book-1' });
   expect(summarizeImport(current)).toEqual({ createdBooks: 1, createdNotes: 1, appendedNotes: 1, skippedItems: 1, createdSessions: 2, appendedBookCount: 1, rereadSessions: 1, fiveStarBooks: 1, earliestRecordedOn: '2026-01-02' });
 });
+
+test('blocks uncertain fields until confirmed but not when candidate is skipped', () => {
+  const current = review();
+  current.items[0].candidate.fieldReview = { author: '作者位置不明确' };
+  expect(validateImportReview(current)).toEqual(expect.arrayContaining([
+    expect.objectContaining({ code: 'unconfirmed_field', candidateId: 'candidate-1' }),
+  ]));
+  expect(validateImportReview({ ...current, items: [{ ...current.items[0], action: 'skip' }] })).toEqual([]);
+});

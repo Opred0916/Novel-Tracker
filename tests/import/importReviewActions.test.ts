@@ -101,3 +101,15 @@ test('cannot merge away a fragment that was explicitly assigned as a new book', 
   expect(() => applyImportReviewAction(withBook, { type: 'merge_candidates', sourceCandidateId: 'candidate-3', targetCandidateId: 'candidate-1' })).toThrow('原文片段');
   expect(withBook.fragmentDecisions['fragment-1']).toEqual({ kind: 'book', candidateId: 'candidate-3' });
 });
+
+test('confirming an uncertain field clears only that field warning and keeps source evidence', () => {
+  const current = review();
+  current.fragments = [];
+  current.items[0].candidate.fieldReview = { author: '作者不明确', ratingHalfStars: '评分不明确' };
+  const sourceText = current.items[0].candidate.sourceText;
+  const next = applyImportReviewAction(current, { type: 'confirm_field', candidateId: 'candidate-1', field: 'author' });
+  expect(next.items[0].candidate.sourceText).toBe(sourceText);
+  expect(next.items[0].confirmedFields).toEqual(['author']);
+  expect(validateImportReview(next).filter(issue => issue.code === 'unconfirmed_field')).toHaveLength(1);
+  expect(validateImportReview(current).filter(issue => issue.code === 'unconfirmed_field')).toHaveLength(2);
+});

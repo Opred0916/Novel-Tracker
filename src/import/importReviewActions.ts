@@ -23,6 +23,11 @@ function withItems(review: ImportReview, items: ImportReview['items'], fragmentD
 }
 
 export function applyImportReviewAction(review: ImportReview, action: ImportReviewAction): ImportReview {
+  if (action.type === 'confirm_field') {
+    return withItems(review, review.items.map(item => item.candidate.id === action.candidateId
+      ? { ...item, confirmedFields: [...new Set([...(item.confirmedFields ?? []), action.field])] }
+      : item));
+  }
   if (action.type === 'ignore_fragment') {
     if (!review.fragments.some(fragment => fragment.id === action.fragmentId)) return review;
     return withItems(review, review.items, { ...review.fragmentDecisions, [action.fragmentId]: { kind: 'ignore' } });

@@ -8,11 +8,13 @@ export type ImportReviewItem = {
   acknowledgedDuplicateBookIds: string[];
   acknowledgedDuplicateCandidateIds?: string[];
   acknowledgedDuplicateNoteIds: string[];
+  confirmedFields?: string[];
 };
 
 export type ImportFragmentDecision = { kind: 'ignore' } | { kind: 'book'; candidateId: string } | { kind: 'note'; noteId: string };
 export type ImportReview = { items: ImportReviewItem[]; fragments: ImportFragment[]; fragmentDecisions: Record<string, ImportFragmentDecision>; warnings?: string[] };
 export type ImportReviewAction =
+  | { type: 'confirm_field'; candidateId: string; field: keyof NonNullable<ImportCandidate['fieldReview']> }
   | { type: 'ignore_fragment'; fragmentId: string }
   | { type: 'fragment_to_book'; fragmentId: string; candidateId: string; title: string }
   | { type: 'fragment_to_note'; fragmentId: string; candidateId: string; noteId: string; body: string }
@@ -101,6 +103,9 @@ export function validateImportReview(review: ImportReview): ImportValidationIssu
   }
   for (const item of review.items) {
     const candidate = item.candidate;
+    if (item.action !== 'skip') for (const [field, reason] of Object.entries(candidate.fieldReview ?? {})) {
+      if (reason && !(item.confirmedFields ?? []).includes(field)) issues.push(issue('unconfirmed_field', `请核对${field}：${reason}`, candidate.id));
+    }
     if (!candidate.title.trim()) issues.push(issue('empty_title', '书名不能为空', candidate.id));
     if (candidate.ratingHalfStars !== null && candidate.status !== 'finished') issues.push(issue('rating_requires_finished', '只有已读书籍可以填写评分', candidate.id));
     if (item.action === 'append_notes' && !item.targetBookId) issues.push(issue('append_target_required', '追加摘记必须选择目标书籍', candidate.id));
