@@ -13,9 +13,17 @@ test('lets users type a date gradually before final validation', async () => {
   const latest = { current: null as ImportReview | null };
   const screen = await render(<ImportReviewList review={review()} hints={[]} busy={false} onChange={next => { latest.current = next; }} onConfirm={jest.fn()} onCancel={jest.fn()} />);
 
+  await fireEvent.press(screen.getByRole('button', { name: '第1条更多资料' }));
   await fireEvent.changeText(screen.getByLabelText('第1条摘记1原记录日期'), '2024');
 
   expect(latest.current?.items[0].candidate.notes[0].originalRecordedOn).toBe('2024');
+});
+
+test('shows the untouched pasted line beside editable import fields', async () => {
+  const value = review();
+  value.items[0].candidate.sourceText = '水千丞 针锋对决 5分';
+  const screen = await render(<ImportReviewList review={value} hints={[]} busy={false} onChange={jest.fn()} onConfirm={jest.fn()} onCancel={jest.fn()} />);
+  expect(screen.getByText('原文：水千丞 针锋对决 5分')).toBeTruthy();
 });
 
 test('shows screenshot and line for the candidate and its note', async () => {
@@ -24,6 +32,7 @@ test('shows screenshot and line for the candidate and its note', async () => {
   value.items[0].candidate.notes[0].sourceRef = { kind: 'screenshot', pageId: 'page-b', line: 5 };
   const screen = await render(<ImportReviewList review={value} hints={[]} busy={false} sourcePages={[{ id: 'page-a', uri: 'file:///record.jpg' }, { id: 'page-b', uri: 'file:///reply.jpg' }]} onChange={jest.fn()} onConfirm={jest.fn()} onCancel={jest.fn()} />);
 
+  await fireEvent.press(screen.getByRole('button', { name: '第1条更多资料' }));
   expect(screen.getByText('第 1 张截图 · 第 3 行')).toBeTruthy();
   expect(screen.getByText('来源：第 2 张截图 · 第 5 行')).toBeTruthy();
   expect(screen.getByLabelText('第1张截图').props.source).toEqual({ uri: 'file:///record.jpg' });
@@ -42,12 +51,14 @@ test('can split one thought into a new book and merge candidates back', async ()
   const onChange = (next: ImportReview) => { current = next; };
   const screen = await render(<ImportReviewList review={current} hints={[]} busy={false} onChange={onChange} onConfirm={jest.fn()} onCancel={jest.fn()} />);
 
+  await fireEvent.press(screen.getByRole('button', { name: '第1条更多资料' }));
   await fireEvent.press(screen.getByRole('button', { name: '拆出第1条摘记为新书' }));
   expect(current.items).toHaveLength(2);
   expect(current.items[0].candidate.notes.map(note => note.body)).toEqual(['另一条想法']);
   expect(current.items[1].candidate.notes.map(note => note.body)).toEqual(['一条想法']);
   await screen.rerender(<ImportReviewList review={current} hints={[]} busy={false} onChange={onChange} onConfirm={jest.fn()} onCancel={jest.fn()} />);
 
+  await fireEvent.press(screen.getByRole('button', { name: '第2条更多资料' }));
   await fireEvent.press(screen.getByRole('button', { name: '将第2条候选合并到《残次品》' }));
   expect(current.items).toHaveLength(1);
   expect(current.items[0].candidate.notes.map(note => note.body)).toEqual(['另一条想法', '一条想法']);
@@ -81,4 +92,40 @@ test('allows explicitly keeping two same-title books in one import batch', async
   await screen.rerender(<ImportReviewList review={current} hints={hints} busy={false} onChange={next => { current = next; }} onConfirm={jest.fn()} onCancel={jest.fn()} />);
   await fireEvent.changeText(screen.getByLabelText('第2条书名'), '另一本书');
   expect(current.items[1].acknowledgedDuplicateCandidateIds).toEqual([]);
+});
+
+test('shows a compact book card and reveals optional fields on demand', async () => {
+  const screen = await render(<ImportReviewList review={review()} hints={[]} busy={false} onChange={jest.fn()} onConfirm={jest.fn()} onCancel={jest.fn()} />);
+  expect(screen.getByLabelText('第1条书名')).toBeTruthy();
+  expect(screen.queryByLabelText('第1条主角')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: '第1条更多资料' }));
+  expect(screen.getByLabelText('第1条主角')).toBeTruthy();
+});
+
+test('highlights uncertain fields and confirms them without removing original text', async () => {
+  const value = review();
+  value.items[0].candidate.fieldReview = { author: '作者未标注' };
+  let current = value;
+  const screen = await render(<ImportReviewList review={current} hints={[]} busy={false} onChange={next => { current = next; }} onConfirm={jest.fn()} onCancel={jest.fn()} />);
+  expect(screen.getByText(/作者未标注/)).toBeTruthy();
+  await fireEvent.press(screen.getByRole('button', { name: '确认第1条作者' }));
+  expect(current.items[0].confirmedFields).toContain('author');
+  expect(current.items[0].candidate.sourceText).toBe('书名：残次品\n摘记：一条想法');
+});
+
+test('filters to unresolved books while retaining fragment triage and confirm controls', async () => {
+  const value = review();
+  value.items.push({ ...value.items[0], candidate: { ...value.items[0].candidate, id: 'candidate-2', title: '第二本', fieldReview: { title: '需要核对' } } });
+  value.fragments = [{ id: 'fragment-1', sourceLine: 3, text: '随手感想', reason: '无法确认' }];
+  const screen = await render(<ImportReviewList review={value} hints={[]} busy={false} onChange={jest.fn()} onConfirm={jest.fn()} onCancel={jest.fn()} />);
+  await fireEvent.press(screen.getByRole('button', { name: '只看待确认' }));
+  expect(screen.queryByLabelText('第1条书名')).toBeNull();
+  expect(screen.getByLabelText('第2条书名')).toBeTruthy();
+  expect(screen.getByText(/随手感想/)).toBeTruthy();
+  expect(screen.getByText('确认导入')).toBeTruthy();
+});
+
+test('keeps review inputs reachable when the keyboard opens', async () => {
+  const screen = await render(<ImportReviewList review={review()} hints={[]} busy={false} onChange={jest.fn()} onConfirm={jest.fn()} onCancel={jest.fn()} />);
+  expect(screen.getByTestId('import-review-list').props.automaticallyAdjustKeyboardInsets).toBe(true);
 });

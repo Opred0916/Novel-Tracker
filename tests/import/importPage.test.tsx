@@ -125,3 +125,13 @@ test('refreshes duplicate hints when a candidate title is corrected in preview',
   await fireEvent.changeText(screen.getByLabelText('第1条书名'), '默读');
   await waitFor(() => expect(screen.queryByText('书名可能已存在：残次品')).toBeNull());
 });
+
+test('opens review for uncertain pasted text so it can become a manual book', async () => {
+  const screen = await render(<ImportPage />);
+  await fireEvent.changeText(screen.getByPlaceholderText('粘贴旧书单或摘记文字'), '也许是《针锋对决》？');
+  await fireEvent.press(screen.getByText('生成导入预览'));
+  await waitFor(() => expect(screen.getByText(/也许是《针锋对决》？/)).toBeTruthy());
+  await fireEvent.press(screen.getByText('设为新书'));
+  await waitFor(() => expect(screen.getByLabelText('第1条书名')).toBeTruthy());
+  expect(commitService.commit).not.toHaveBeenCalled();
+});
