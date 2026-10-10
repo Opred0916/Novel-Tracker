@@ -16,6 +16,11 @@ function possiblePlainTitle(line: string): boolean {
     && !/^[0-5](?:\.5)?\s*(?:分|星|\/5)$/.test(line);
 }
 
+function withoutInlineChatPrefix(line: string): string {
+  if (!/《[^》]+》/.test(line)) return line;
+  return line.replace(/^\d{1,2}:\d{2}\s+[^：:]{1,30}[：:]\s*/, '');
+}
+
 export function extractLocalText(text: string, defaultStatus: BookStatus): ImportParseResult {
   if (!text.trim()) throw new Error('请输入要导入的文字');
   if (new TextEncoder().encode(text).length > MAX_IMPORT_BYTES) throw new Error('导入文字不能超过 1 MiB');
@@ -24,20 +29,21 @@ export function extractLocalText(text: string, defaultStatus: BookStatus): Impor
   const hasStructuredBook = entries.some(entry => structuredBookLine(entry.text));
   const result: ImportParseResult = { candidates: [], fragments: [], warnings: [] };
   for (const entry of entries) {
-    const confident = structuredBookLine(entry.text);
+    const content = withoutInlineChatPrefix(entry.text);
+    const confident = structuredBookLine(content);
     const plainTitle = !hasStructuredBook && possiblePlainTitle(entry.text);
     if (!confident && !plainTitle) {
       result.fragments.push({ id: `fragment-${entry.sourceLine}`, sourceLine: entry.sourceLine, text: entry.text, reason: '无法确定是否是书目，请核对原文' });
       continue;
     }
-    const parsed = parseTextImport(entry.text, 'lines', defaultStatus);
+    const parsed = parseTextImport(content, 'lines', defaultStatus);
     const candidate: ImportCandidate = {
       ...parsed.candidates[0],
       id: `candidate-${result.candidates.length + 1}`,
       sourceLine: entry.sourceLine,
       sourceText: entry.text,
     };
-    if (entry.text.includes('《') && candidate.author && !/(?:作者\s*[:：]|\bby\s+)/i.test(entry.text)) {
+    if (content.includes('《') && candidate.author && !/(?:作者\s*[:：]|\bby\s+)/i.test(content)) {
       candidate.fieldReview = { ...candidate.fieldReview, author: '作者未标注，请核对是否确为作者' };
     }
     if (/\d+\.\d+\s*分\s*$/.test(entry.text) && candidate.ratingHalfStars === null) {
