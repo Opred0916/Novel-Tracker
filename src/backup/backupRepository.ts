@@ -1,5 +1,5 @@
 import type { Database } from '../storage/database';
-import { BACKUP_FORMAT_VERSION, CURRENT_BACKUP_FORMAT_VERSION, type BackupCounts, type BackupDataCollections, type BackupManifestV1 } from './backupTypes';
+import { BACKUP_FORMAT_VERSION, CURRENT_BACKUP_FORMAT_VERSION, type BackupCounts, type BackupDataCollections, type BackupManifestV1, type BackupManifestV4 } from './backupTypes';
 import { validateBackupManifest } from './backupValidation';
 
 export type BackupImageSource = {
@@ -107,13 +107,17 @@ export class SqliteBackupRepository {
     return result;
   }
 
-  async replaceAll(manifestInput: BackupManifestV1, restoredImagePaths: ReadonlyMap<string, string>): Promise<string[]> {
+  async replaceAll(manifestInput: BackupManifestV1 | BackupManifestV4, restoredImagePaths: ReadonlyMap<string, string>, expectedLocalRevision?: number): Promise<string[]> {
     const manifest = validateBackupManifest(manifestInput);
     for (const image of manifest.images) {
       if (!restoredImagePaths.has(image.id)) throw new Error(`缺少恢复图片：${image.id}`);
     }
     let oldPaths: string[] = [];
     await this.db.withExclusiveTransactionAsync(async txn => {
+      if (expectedLocalRevision !== undefined) {
+        const current = await txn.getFirstAsync<{ local_revision: number }>('SELECT local_revision FROM sync_state WHERE id = 1');
+        if (current?.local_revision !== expectedLocalRevision) throw new Error('本地书库已变化，请重新同步');
+      }
       oldPaths = (await txn.getAllAsync<{ local_path: string }>('SELECT local_path FROM image_assets ORDER BY id ASC')).map(row => row.local_path);
       await txn.execAsync(`
         DELETE FROM note_images; DELETE FROM highlight_images; DELETE FROM notes; DELETE FROM image_assets;

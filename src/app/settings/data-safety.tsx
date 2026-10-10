@@ -11,7 +11,7 @@ export default function DataSafetyPage() {
 
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <Text style={[styles.section, { color: theme.text }]}>记录存在哪里</Text>
-      <Text style={[styles.body, { color: theme.text }]}>小说、阅读历史、摘记和图片等记录保存在当前设备的应用数据中。清除应用数据或卸载应用，可能让尚未导出的记录无法找回。</Text>
+      <Text style={[styles.body, { color: theme.text }]}>未登录书库只保存在当前设备。登录账号后，账号书库与图片会保存在本机并同步到你配置的云服务；两种书库互不自动合并。尚未完成同步的修改在清除应用数据或卸载应用后可能无法找回。</Text>
     </View>
 
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>

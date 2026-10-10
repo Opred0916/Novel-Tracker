@@ -3,6 +3,8 @@ import {
   BACKUP_FORMAT_VERSION,
   CURRENT_BACKUP_FORMAT_VERSION,
   type BackupCounts,
+  type BackupDataCollections,
+  type BackupImageEntry,
   type BackupErrorCode,
   type BackupManifestV1,
 } from './backupTypes';
@@ -95,7 +97,7 @@ export function isSafeArchivePath(path: string): boolean {
   return parts.length === 2 && parts[0] === 'images' && parts[1].length > 0 && parts.every(part => part !== '.' && part !== '..');
 }
 
-export function countsFromManifest(manifest: BackupManifestV1): BackupCounts {
+export function countsFromManifest(manifest: BackupDataCollections & { images: BackupImageEntry[] }): BackupCounts {
   return {
     books: manifest.books.length,
     protagonists: manifest.protagonists.length,

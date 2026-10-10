@@ -1,6 +1,8 @@
 import { Stack } from 'expo-router';
 import { AppProvider } from '../storage/AppProvider';
 import { ThemeProvider, useTheme } from '../theme/ThemeProvider';
+import { AccountProvider, useAccount } from '../account/AccountProvider';
+import { SyncProvider } from '../sync/SyncProvider';
 
 function RootNavigator() {
   const { theme } = useTheme();
@@ -17,11 +19,18 @@ function RootNavigator() {
     <Stack.Screen name="settings/import" options={{ title: '追加旧记录', headerTitle: '', headerBackTitle: '管理' }} />
     <Stack.Screen name="settings/overview" options={{ title: '书库概览', headerTitle: '', headerBackTitle: '管理', headerBackButtonDisplayMode: 'default' }} />
     <Stack.Screen name="settings/appearance" options={{ title: '外观', headerTitle: '', headerBackTitle: '管理' }} />
+    <Stack.Screen name="settings/account" options={{ title: '账号与同步', headerTitle: '', headerBackTitle: '管理' }} />
+    <Stack.Screen name="settings/sync-conflicts" options={{ title: '处理同步冲突', headerTitle: '', headerBackTitle: '账号与同步' }} />
     <Stack.Screen name="settings/annual-recap" options={{ title: '阅读记录', headerTitle: '' }} />
     <Stack.Screen name="settings/annual-summary" options={{ headerShown: false }} />
   </Stack>;
 }
 
+function AccountLibrary() {
+  const { user } = useAccount();
+  return <AppProvider key={user?.id ?? 'guest'} accountId={user?.id}><SyncProvider><RootNavigator /></SyncProvider></AppProvider>;
+}
+
 export default function RootLayout() {
-  return <ThemeProvider><AppProvider><RootNavigator /></AppProvider></ThemeProvider>;
+  return <ThemeProvider><AccountProvider><AccountLibrary /></AccountProvider></ThemeProvider>;
 }
