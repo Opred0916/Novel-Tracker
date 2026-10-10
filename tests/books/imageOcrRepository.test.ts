@@ -22,7 +22,7 @@ async function setup() {
 test('migrates v10 without changing existing image relationships', async () => {
   const { db, repository } = await setup();
   try {
-    expect((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version).toBe(11);
+    expect((await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version'))?.user_version).toBe(12);
     expect(await db.getFirstAsync<{ image_id: string }>('SELECT image_id FROM highlight_images WHERE book_id = ?', 'book-1')).toEqual({ image_id: 'image-shared' });
     await repository.reconcile(true);
     expect(await db.getAllAsync<{ image_id: string; status: string }>('SELECT image_id, status FROM image_ocr ORDER BY image_id')).toEqual([

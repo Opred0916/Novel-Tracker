@@ -1,5 +1,6 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import type { ValidatedBackupArchive } from './backupArchive';
+import { accountImageDirectory } from '../account/accountStorage';
 
 export type BackupStorageRoots = { operations: string; generations: string; preferences: string };
 export type BackupOperation = { id: string; directoryUri: string; archiveUri: string };
@@ -57,10 +58,10 @@ export class ExpoBackupStorageBackend implements BackupStorageBackend {
   }
 }
 
-const defaultRoots = (): BackupStorageRoots => ({
-  operations: new Directory(Paths.cache, 'novel-tracker-backup-operations').uri.replace(/\/$/, ''),
-  generations: new Directory(Paths.document, 'novel-tracker-restored-images').uri.replace(/\/$/, ''),
-  preferences: new Directory(Paths.document, 'novel-tracker-preferences').uri.replace(/\/$/, ''),
+const defaultRoots = (accountId?: string): BackupStorageRoots => ({
+  operations: new Directory(Paths.cache, `${accountImageDirectory(accountId)}-backup-operations`).uri.replace(/\/$/, ''),
+  generations: new Directory(Paths.document, `${accountImageDirectory(accountId)}-restored-images`).uri.replace(/\/$/, ''),
+  preferences: new Directory(Paths.document, `${accountImageDirectory(accountId)}-preferences`).uri.replace(/\/$/, ''),
 });
 
 export class BackupFileStorage {
@@ -69,8 +70,9 @@ export class BackupFileStorage {
   constructor(
     private readonly backend: BackupStorageBackend = new ExpoBackupStorageBackend(),
     roots?: BackupStorageRoots,
+    accountId?: string,
   ) {
-    this.roots = roots ?? defaultRoots();
+    this.roots = roots ?? defaultRoots(accountId);
   }
 
   async createOperation(kind: 'export' | 'restore', id: string): Promise<BackupOperation> {

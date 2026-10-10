@@ -95,12 +95,13 @@ export class BookCoverFiles {
     private readonly idFactory: () => string = randomUUID,
     private readonly fetchImpl: CoverFetch = expoFetch as unknown as CoverFetch,
     private readonly decodeImage: (uri: string) => Promise<unknown> = async uri => ExpoImage.loadAsync(uri),
+    private readonly directoryName = 'novel-tracker',
   ) {}
 
   private async stagingPath(id: string, extension: string): Promise<string> {
     const base = this.fileSystem.cacheDirectory ?? this.fileSystem.documentDirectory;
     if (!base) throw new Error('无法打开图片暂存目录');
-    const directory = `${base}novel-tracker/staging/`;
+    const directory = `${base}${this.directoryName}/staging/`;
     await this.fileSystem.makeDirectoryAsync(directory, { intermediates: true });
     return `${directory}${id}.${extension}`;
   }
@@ -173,7 +174,7 @@ export class BookCoverFiles {
   async copyToBook(stage: StagedCover, bookId: string, imageId: string): Promise<ImageAsset> {
     const base = this.fileSystem.documentDirectory ?? this.fileSystem.cacheDirectory;
     if (!base) throw new Error('无法打开图片存储目录');
-    const directory = `${base}novel-tracker/${bookId}/`;
+    const directory = `${base}${this.directoryName}/${bookId}/`;
     await this.fileSystem.makeDirectoryAsync(directory, { intermediates: true });
     const localPath = `${directory}${imageId}.${stage.extension}`;
     await this.fileSystem.copyAsync({ from: stage.uri, to: localPath });

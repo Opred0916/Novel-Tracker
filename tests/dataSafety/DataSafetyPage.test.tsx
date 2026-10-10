@@ -7,7 +7,8 @@ jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
 
 test('explains local data, a real external backup, and careful migration', async () => {
   const screen = await render(<DataSafetyPage />);
-  expect(screen.getByText(/记录保存在当前设备/)).toBeTruthy();
+  expect(screen.getByText(/未登录书库只保存在当前设备/)).toBeTruthy();
+  expect(screen.getByText(/账号书库与图片会保存在本机并同步/)).toBeTruthy();
   expect(screen.getByText(/\.noveltracker/)).toBeTruthy();
   expect(screen.getByText(/保存到“文件”或其他设备外部的安全位置/)).toBeTruthy();
   expect(screen.getByText(/确认能够在“文件”中找到这份备份/)).toBeTruthy();

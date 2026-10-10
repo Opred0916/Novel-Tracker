@@ -6,6 +6,7 @@ import type { ImageAsset, Note, NoteInput } from './types';
 import type { SqliteNotesRepository } from './notesRepository';
 import { useTheme } from '../theme/ThemeProvider';
 import { UI_LAYOUT } from '../ui/layout';
+import { useLibraryImageDirectory } from '../account/LibraryNamespace';
 
 export type NoteFormRepository = Pick<SqliteNotesRepository, 'createNote' | 'updateNote' | 'registerImage' | 'addHighlights'>;
 
@@ -14,6 +15,7 @@ export function NoteForm({ bookId, note, highlights, repository, onSaved, onCanc
   embedded?: boolean; autoFocus?: boolean; onDirtyChange?: (dirty: boolean) => void;
 }) {
   const { theme } = useTheme();
+  const imageDirectory = useLibraryImageDirectory();
   const [body, setBody] = useState(note?.body ?? '');
   const [images, setImages] = useState<ImageAsset[]>(note?.images ?? []);
   const [error, setError] = useState('');
@@ -31,7 +33,7 @@ export function NoteForm({ bookId, note, highlights, repository, onSaved, onCanc
       const sync = await new Promise<boolean>(resolve => Alert.alert('加入精彩片段？', '是否同时加入“精彩片段”？', [
         { text: '否', onPress: () => resolve(false) }, { text: '是', onPress: () => resolve(true) },
       ]));
-      const assets = await Promise.all(uris.map(uri => new ImageStorage().copyFromPicker(uri, bookId)));
+      const assets = await Promise.all(uris.map(uri => new ImageStorage(undefined, imageDirectory).copyFromPicker(uri, bookId)));
       for (const asset of assets) await repository.registerImage(asset);
       if (sync) await repository.addHighlights(bookId, assets.map(asset => asset.id));
       changeImages([...images, ...assets]);

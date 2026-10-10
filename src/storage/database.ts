@@ -1,4 +1,5 @@
 import type * as SQLite from 'expo-sqlite';
+import { accountDatabaseName } from '../account/accountStorage';
 
 export type Database = Pick<SQLite.SQLiteDatabase, 'execAsync' | 'runAsync' | 'getAllAsync' | 'getFirstAsync' | 'withExclusiveTransactionAsync'>;
 
@@ -215,12 +216,37 @@ export async function migrateDatabase(db: Database): Promise<void> {
   if (!noteColumns.some(column => column.name === 'original_recorded_time')) {
     await db.execAsync('ALTER TABLE notes ADD COLUMN original_recorded_time TEXT');
   }
-  await db.execAsync('PRAGMA user_version = 11');
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS sync_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      local_revision INTEGER NOT NULL DEFAULT 0,
+      remote_revision INTEGER NOT NULL DEFAULT 0,
+      baseline_json TEXT
+    );
+    INSERT OR IGNORE INTO sync_state (id) VALUES (1);
+    CREATE TABLE IF NOT EXISTS guest_import_state (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      completed INTEGER NOT NULL DEFAULT 0 CHECK (completed IN (0, 1))
+    );
+    INSERT OR IGNORE INTO guest_import_state (id) VALUES (1);
+  `);
+  const syncedTables = [
+    'books', 'book_protagonists', 'tags', 'book_tags', 'quick_tags',
+    'reading_sessions', 'notes', 'image_assets', 'note_images', 'highlight_images',
+  ];
+  for (const table of syncedTables) {
+    for (const operation of ['INSERT', 'UPDATE', 'DELETE']) {
+      await db.execAsync(`CREATE TRIGGER IF NOT EXISTS sync_revision_${table}_${operation.toLowerCase()}
+        AFTER ${operation} ON ${table}
+        BEGIN UPDATE sync_state SET local_revision = local_revision + 1 WHERE id = 1; END;`);
+    }
+  }
+  await db.execAsync('PRAGMA user_version = 12');
 }
 
-export async function openDatabase(): Promise<SQLite.SQLiteDatabase> {
+export async function openDatabase(accountId?: string): Promise<SQLite.SQLiteDatabase> {
   const sqlite = await import('expo-sqlite');
-  const db = await sqlite.openDatabaseAsync('novel-tracker.db');
+  const db = await sqlite.openDatabaseAsync(accountDatabaseName(accountId));
   await migrateDatabase(db);
   return db;
 }

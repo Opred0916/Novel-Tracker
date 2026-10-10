@@ -6,14 +6,16 @@ import type { ImageAsset } from './types';
 import type { SqliteNotesRepository } from './notesRepository';
 import { useTheme } from '../theme/ThemeProvider';
 import { UI_LAYOUT } from '../ui/layout';
+import { useLibraryImageDirectory } from '../account/LibraryNamespace';
 
 export function HighlightsSection({ bookId, repository, onChanged, onSelect }: {
   bookId: string; repository: SqliteNotesRepository; onChanged?: () => void; onSelect?: (images: ImageAsset[]) => void;
 }) {
   const { theme } = useTheme();
+  const imageDirectory = useLibraryImageDirectory();
   const [images, setImages] = useState<ImageAsset[]>([]);
   const [error, setError] = useState('');
-  const storage = new ImageStorage();
+  const storage = new ImageStorage(undefined, imageDirectory);
   async function refresh() { setImages(await repository.listHighlights(bookId)); }
   useEffect(() => {
     let active = true;

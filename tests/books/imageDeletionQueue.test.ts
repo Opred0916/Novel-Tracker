@@ -17,7 +17,7 @@ test('migration creates a durable image deletion queue at version 9', async () =
   const db = createInMemoryDatabase();
   try {
     await migrateDatabase(db);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 11 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 12 });
     expect(await db.getFirstAsync("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'pending_image_deletions'")).toEqual({
       name: 'pending_image_deletions',
     });
