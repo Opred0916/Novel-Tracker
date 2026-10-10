@@ -47,7 +47,7 @@ export default function ManageTab() {
       {divider}<ActionRow label="书库概览" detail="查看书架本数和阅读状态" onPress={() => router.push('/settings/overview')} />
     </GroupedSection>
     <GroupedSection title="数据与安全">
-      <ActionRow label="账号与同步" detail="登录账号，在设备间保存阅读记录" onPress={() => router.push('/settings/account')} />
+      <ActionRow label="账号与同步" detail="登录账号，在设备间保存阅读记录" onPress={() => router.push('/settings/account' as never)} />
       {divider}
       <ActionRow label="追加旧记录" detail="从文字、表格或截图导入" onPress={() => router.push('/settings/import')} />
       {divider}<ActionRow label="导出开放格式" onPress={() => router.push('/settings/export')} />

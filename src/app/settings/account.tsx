@@ -102,7 +102,7 @@ export default function AccountPage() {
       <Text style={[styles.body, { color: theme.text }]}>同步状态：{{ syncing: '正在同步', synced: '已同步', retry: '等待重试', conflict: '需要处理冲突', error: '同步失败', guest: '未登录' }[sync.status]}</Text>
       {sync.error ? <Text accessibilityRole="alert" style={[styles.body, { color: theme.danger }]}>{sync.error}</Text> : null}
       {sync.status === 'conflict' ? <><Text style={[styles.body, { color: theme.danger }]}>发现 {sync.conflicts.length} 处冲突。为保护两边记录，自动同步已暂停。</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/settings/sync-conflicts')} style={[styles.secondaryButton, { borderColor: theme.primary }]}><Text style={{ color: theme.primary, fontWeight: '700' }}>处理冲突</Text></Pressable></> : null}
+        <Pressable accessibilityRole="button" onPress={() => router.push('/settings/sync-conflicts' as never)} style={[styles.secondaryButton, { borderColor: theme.primary }]}><Text style={{ color: theme.primary, fontWeight: '700' }}>处理冲突</Text></Pressable></> : null}
       <Pressable accessibilityRole="button" disabled={busy || sync.status === 'syncing' || sync.status === 'conflict'} onPress={() => { void sync.syncNow(); }} style={[styles.button, { backgroundColor: theme.primary }]}><Text style={[styles.buttonText, { color: theme.card }]}>立即同步</Text></Pressable>
       <Pressable accessibilityRole="button" disabled={busy} onPress={() => Alert.alert('退出账号', '退出后切回本机未登录书库；账号本地记录会保留。', [
         { text: '取消', style: 'cancel' },
