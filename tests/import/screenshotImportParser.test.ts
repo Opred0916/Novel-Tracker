@@ -94,6 +94,20 @@ test('auto screenshot mode still recognizes labeled blocks and numbered replies'
   expect(numbered.fragments.some(item => item.text === 'top1')).toBe(true);
 });
 
+test('auto screenshot blocks keep complete source and expose titleless lines for review', () => {
+  const result = parseScreenshotImport(pages(['作者：孤立\n\n书名：第一本\n作者：甲\n评分：4.3分']).pages, null, 'finished');
+  expect(result.candidates).toHaveLength(1);
+  expect(result.candidates[0].sourceText).toContain('作者：甲');
+  expect(result.candidates[0].fieldReview?.ratingHalfStars).toBeTruthy();
+  expect(result.fragments.map(item => item.text)).toContain('作者：孤立');
+});
+
+test('auto numbered screenshots preserve date and interface lines as reviewable evidence', () => {
+  const result = parseScreenshotImport(pages(['小A 博主：1第一本\n24-10-27 12:12 来自 江苏\n点赞 2\n小A 博主：一条想法']).pages, null, 'finished');
+  expect(result.candidates[0].title).toBe('第一本');
+  expect(result.fragments.map(item => item.text)).toEqual(expect.arrayContaining(['24-10-27 12:12 来自 江苏', '点赞 2']));
+});
+
 function parseScreenshotImportImport(texts: string[], continuations: boolean[]) {
   return parseScreenshotImport(pages(texts, continuations).pages, 'numbered_replies', 'finished');
 }

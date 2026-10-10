@@ -12,5 +12,6 @@ export function detectTextImportMode(text: string): ImportMode {
 
 export function parseAutoTextImport(text: string, defaultStatus: BookStatus): ImportParseResult {
   const mode = detectTextImportMode(text);
+  if (mode === 'blocks' && !/(?:^|\n)\s*(?:书名|标题|title)\s*[:：]/im.test(text)) return extractLocalText(text, defaultStatus);
   return mode === 'lines' ? extractLocalText(text, defaultStatus) : parseTextImport(text, mode, defaultStatus);
 }

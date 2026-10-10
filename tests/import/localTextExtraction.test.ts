@@ -26,3 +26,9 @@ test('fixture: separates inline chat metadata from a book while preserving every
   expect(result.candidates[1].sourceText).toBe('18:01 书友A：水千丞《火焰戎装》4.5分');
   expect(result.fragments.map(item => item.text)).toEqual(['真好看，值得再读', '三体 4.3分']);
 });
+
+test('does not treat a scored reaction as certain book metadata', () => {
+  const result = extractLocalText('真好看 值得读 5分', 'finished');
+  expect(result.candidates[0].fieldReview).toMatchObject({ title: expect.any(String), author: expect.any(String) });
+  expect(result.candidates[0].sourceText).toBe('真好看 值得读 5分');
+});

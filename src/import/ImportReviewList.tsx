@@ -53,8 +53,12 @@ export function ImportReviewList({ review, hints, busy, error, sourcePages = [],
     apply({ type: 'split_candidate', sourceCandidateId: candidateId, newCandidateId: nextId, noteIds: [noteId] });
   }
   const summary = summarizeImport(review);
-  const unresolved = (item: ImportReviewItem) => item.action !== 'skip' && (Object.keys(item.candidate.fieldReview ?? {}).some(field =>
-    !(item.confirmedFields ?? []).includes(field)) || hints.some(hint => hint.candidateId === item.candidate.id));
+  const pendingHint = (item: ImportReviewItem, hint: DuplicateHint) => hint.kind === 'book'
+    ? Boolean((hint.existingBookId && !item.acknowledgedDuplicateBookIds.includes(hint.existingBookId))
+      || (hint.otherCandidateId && !(item.acknowledgedDuplicateCandidateIds ?? []).includes(hint.otherCandidateId)))
+    : Boolean(hint.existingNoteId && !item.acknowledgedDuplicateNoteIds.includes(hint.existingNoteId));
+  const unresolved = (item: ImportReviewItem) => item.action !== 'skip' && (Object.entries(item.candidate.fieldReview ?? {}).some(([field, reason]) =>
+    Boolean(reason) && !(item.confirmedFields ?? []).includes(field)) || hints.some(hint => hint.candidateId === item.candidate.id && pendingHint(item, hint)));
   const unresolvedCount = review.items.filter(unresolved).length + review.fragments.filter(fragment => !review.fragmentDecisions[fragment.id]).length;
   const visibleItems = review.items.map((item, index) => ({ item, index })).filter(({ item }) => !onlyUnresolved || unresolved(item));
   return <View style={styles.container}>

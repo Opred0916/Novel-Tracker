@@ -46,6 +46,9 @@ export function extractLocalText(text: string, defaultStatus: BookStatus): Impor
     if (content.includes('《') && candidate.author && !/(?:作者\s*[:：]|\bby\s+)/i.test(content)) {
       candidate.fieldReview = { ...candidate.fieldReview, author: '作者未标注，请核对是否确为作者' };
     }
+    if (!/[《|｜]/.test(content) && candidate.author && candidate.ratingHalfStars !== null) {
+      candidate.fieldReview = { ...candidate.fieldReview, title: '未标注书名，请核对是否为作品', author: '未标注作者，请核对是否为作者' };
+    }
     if (/\d+\.\d+\s*分\s*$/.test(entry.text) && candidate.ratingHalfStars === null) {
       candidate.fieldReview = { ...candidate.fieldReview, title: '末尾似乎包含无效评分，请核对书名' };
     }

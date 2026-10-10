@@ -56,13 +56,17 @@ function pageGroups(pages: ScreenshotPageDraft[]): ScreenshotPageDraft[][] {
   return groups;
 }
 
-function parseNumberedGroup(pages: ScreenshotPageDraft[], status: BookStatus, result: ImportParseResult, nextCandidateId: () => string): void {
+function parseNumberedGroup(pages: ScreenshotPageDraft[], status: BookStatus, result: ImportParseResult, nextCandidateId: () => string, preserveAll = false): void {
   let current: ImportCandidate | null = null;
   let hint: string | null = null;
   let fragmentIndex = result.fragments.length + 1;
   for (const line of pages.flatMap(splitLines)) {
     const foundDate = dateHint(line.text);
-    if (foundDate) { hint = foundDate; continue; }
+    if (foundDate) {
+      hint = foundDate;
+      if (preserveAll) addFragment(result, `fragment-${fragmentIndex++}`, line, line.raw, '日期或界面文字，请核对', current, foundDate);
+      continue;
+    }
     const title = numberedTitle(line.text);
     const prefixed = authorPrefix(line.text);
     if (title) {
@@ -73,6 +77,7 @@ function parseNumberedGroup(pages: ScreenshotPageDraft[], status: BookStatus, re
     const count = line.text.match(/^共\d+条回复/);
     if (count) {
       result.warnings.push(`“${line.text}”未展开，可能有回复未被导入`);
+      if (preserveAll) addFragment(result, `fragment-${fragmentIndex++}`, line, line.raw, '回复数量提示，请核对', current, hint);
       hint = null;
       continue;
     }
@@ -84,7 +89,7 @@ function parseNumberedGroup(pages: ScreenshotPageDraft[], status: BookStatus, re
       hint = null;
       continue;
     }
-    if (!isUiNoise(line.text)) addFragment(result, `fragment-${fragmentIndex++}`, line, line.text, current ? '回复归属待确认' : '无法确认书目', current, hint);
+    if (preserveAll || !isUiNoise(line.text)) addFragment(result, `fragment-${fragmentIndex++}`, line, line.raw, current ? '回复归属待确认' : '无法确认书目', current, hint);
     hint = null;
   }
 }
@@ -100,7 +105,12 @@ function addBlockNote(candidate: ImportCandidate, line: SourceLine, body: string
 }
 function parseFieldBlock(lines: SourceLine[], status: BookStatus, result: ImportParseResult, nextCandidateId: () => string): void {
   if (!lines.length) return;
-  const candidate = addCandidate(result, emptyCandidate(nextCandidateId(), lines[0], lines[0].text, status));
+  const titleLine = lines.find(line => ['书名', '标题', 'title'].includes(field(line.text)?.[0] ?? '') && Boolean(field(line.text)?.[1]?.trim()));
+  if (!titleLine) {
+    for (const line of lines) addFragment(result, `fragment-${result.fragments.length + 1}`, line, line.raw, '缺少书名，请核对原文', null, null);
+    return;
+  }
+  const candidate = addCandidate(result, { ...emptyCandidate(nextCandidateId(), titleLine, field(titleLine.text)![1], status), sourceText: lines.map(line => line.raw).join('\n') });
   let hint: string | null = null;
   for (const line of lines) {
     const parsed = field(line.text);
@@ -118,6 +128,11 @@ function parseFieldBlock(lines: SourceLine[], status: BookStatus, result: Import
     else if (key === '作者' || key === 'author') candidate.author = value || null;
     else if (key === '主角' || key === '角色' || key === 'protagonists') candidate.protagonists = value.split(/[、,，/&和]+/).map(item => item.trim()).filter(Boolean);
     else if (key === '状态' || key === 'status') candidate.status = STATUS_LABELS[value.trim()] ?? candidate.status;
+    else if (key === '评分' || key === 'rating') {
+      const match = value.trim().match(/^([0-5](?:\.5)?)(?:\s*(?:分|星|\/5))?$/);
+      candidate.ratingHalfStars = match && Number(match[1]) >= 0.5 ? Math.round(Number(match[1]) * 2) : null;
+      if (value.trim() && candidate.ratingHalfStars === null) candidate.fieldReview = { ...candidate.fieldReview, ratingHalfStars: `原评分“${value}”无法识别，请核对` };
+    }
     else if (key === '摘记' || key === '想法' || key === '我的想法' || key === '备注') addBlockNote(candidate, line, value, hint);
   }
 }
@@ -126,9 +141,9 @@ function parseBlocksGroup(pages: ScreenshotPageDraft[], status: BookStatus, resu
   const blocks: SourceLine[][] = [];
   for (const line of lines) {
     const previous = blocks.at(-1)?.at(-1);
-    const startsNewBook = Boolean(previous && field(line.text)?.[0] === '书名' && (
+    const startsNewBook = Boolean(previous && ['书名', '标题', 'title'].includes(field(line.text)?.[0] ?? '') && (
       (line.pageId === previous.pageId && line.line > previous.line + 1)
-      || blocks.at(-1)?.some(entry => field(entry.text)?.[0] === '书名')
+      || blocks.at(-1)?.some(entry => field(entry.text) !== null)
     ));
     if (!blocks.length || startsNewBook) blocks.push([]);
     blocks.at(-1)!.push(line);
@@ -156,7 +171,7 @@ function parseAutoGroup(pages: ScreenshotPageDraft[], status: BookStatus, result
   if (!combined.trim()) return;
   const detectedMode = detectTextImportMode(combined);
   if (detectedMode === 'numbered_replies' || (sourceLines.some(line => numberedTitle(line.text)) && sourceLines.some(line => dateHint(line.text)))) {
-    return parseNumberedGroup(pages, status, result, nextCandidateId);
+    return parseNumberedGroup(pages, status, result, nextCandidateId, true);
   }
   if (detectedMode === 'blocks') return parseBlocksGroup(pages, status, result, nextCandidateId);
   const extracted = extractLocalText(combined, status);

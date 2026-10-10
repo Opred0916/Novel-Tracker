@@ -1,5 +1,17 @@
 import { parseAutoTextImport } from '../../src/import/autoTextImport';
 
+test('keeps a titleless field block as reviewable source instead of inventing a book', () => {
+  const result = parseAutoTextImport('作者：甲\n评分：4.3分', 'finished');
+  expect(result.candidates).toEqual([]);
+  expect(result.fragments.map(item => item.text)).toEqual(['作者：甲', '评分：4.3分']);
+});
+
+test('flags an invalid explicit score in a titled block', () => {
+  const result = parseAutoTextImport('书名：甲\n评分：4.3分', 'finished');
+  expect(result.candidates[0].fieldReview?.ratingHalfStars).toBeTruthy();
+  expect(result.candidates[0].ratingHalfStars).toBeNull();
+});
+
 test('recognizes detailed book blocks without choosing a format first', () => {
   const result = parseAutoTextImport('书名：第一本\n作者：甲\n状态：已读\n\n书名：第二本\n作者：乙', 'finished');
   expect(result.candidates.map(item => [item.title, item.author])).toEqual([['第一本', '甲'], ['第二本', '乙']]);

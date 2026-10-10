@@ -78,6 +78,7 @@ export function applyImportReviewAction(review: ImportReview, action: ImportRevi
       bookType: null, tagIds: [], sessions: [], whyWantToRead: null, platform: null, notes: moved,
       sourceLine: moved[0].sourceRef?.line ?? source.candidate.sourceLine,
       sourceText: moved[0].sourceText, sourceRef: moved[0].sourceRef,
+      fieldReview: undefined,
     };
     const items = [...review.items]; items[sourceIndex] = nextSource; items.push({ candidate: newCandidate, action: 'create', targetBookId: null, acknowledgedDuplicateBookIds: [], acknowledgedDuplicateNoteIds: [] });
     return withItems(review, items);
@@ -88,6 +89,9 @@ export function applyImportReviewAction(review: ImportReview, action: ImportRevi
     if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return review;
     const source = review.items[sourceIndex];
     const target = review.items[targetIndex];
+    if (Object.keys(source.candidate.fieldReview ?? {}).some(field => !(source.confirmedFields ?? []).includes(field))) {
+      throw new Error('来源候选还有待核对字段，请先确认后再合并');
+    }
     if (review.fragments.some(fragment => {
       const decision = review.fragmentDecisions[fragment.id];
       return decision?.kind === 'book' && decision.candidateId === source.candidate.id && fragment.text !== target.candidate.title;
@@ -100,6 +104,7 @@ export function applyImportReviewAction(review: ImportReview, action: ImportRevi
     }
     const merged: ImportCandidate = {
       ...target.candidate,
+      sourceText: [target.candidate.sourceText, source.candidate.sourceText].filter(Boolean).join('\n'),
       author: target.candidate.author ?? source.candidate.author,
       protagonists: [...new Set([...target.candidate.protagonists, ...source.candidate.protagonists])],
       ratingHalfStars: target.candidate.ratingHalfStars ?? source.candidate.ratingHalfStars,

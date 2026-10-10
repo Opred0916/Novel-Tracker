@@ -151,6 +151,7 @@ function parseLines(text: string, defaultStatus: BookStatus, result: ImportParse
       if (parts[2]) item.status = statusValue(parts[2]) ?? item.status;
       if (parts[3]) {
         item.ratingHalfStars = halfStars(parts[3]);
+        if (item.ratingHalfStars === null) item.fieldReview = { ...item.fieldReview, ratingHalfStars: `原评分“${parts[3]}”无法识别，请核对` };
       }
     }
     addCandidate(result.candidates, item);
@@ -175,7 +176,11 @@ function parseBlocks(text: string, defaultStatus: BookStatus, result: ImportPars
     const sourceLine = group.sourceLine;
     const block = blockLines.join('\n');
     if (!blockLines.length) continue;
-    const firstTitle = blockLines.flatMap(fieldsOnLine).find(([key]) => ['书名', '标题', 'title'].includes(key))?.[1] ?? blockLines[0];
+    const firstTitle = blockLines.flatMap(fieldsOnLine).find(([key]) => ['书名', '标题', 'title'].includes(key))?.[1];
+    if (!firstTitle?.trim()) {
+      for (let offset = 0; offset < blockLines.length; offset++) result.fragments.push({ id: `fragment-${sourceLine + offset}`, sourceLine: sourceLine + offset, text: blockLines[offset], reason: '缺少书名，请核对原文' });
+      continue;
+    }
     if (isUrlOnly(firstTitle)) { result.fragments.push({ id: `fragment-${sourceLine}`, sourceLine, text: firstTitle, reason: '链接不会自动抓取，请改为粘贴文字' }); continue; }
     const item = candidate(`candidate-${result.candidates.length + 1}`, sourceLine, block, firstTitle, defaultStatus);
     let currentDate: ParsedDate = null;
@@ -188,6 +193,9 @@ function parseBlocks(text: string, defaultStatus: BookStatus, result: ImportPars
             if (currentDate?.warning) result.warnings.push(currentDate.warning);
           }
           applyField(item, parsedField[0], parsedField[1], line, currentDate, result.warnings);
+          if ((parsedField[0] === '评分' || parsedField[0] === 'rating') && parsedField[1].trim() && item.ratingHalfStars === null) {
+            item.fieldReview = { ...item.fieldReview, ratingHalfStars: `原评分“${parsedField[1]}”无法识别，请核对` };
+          }
         }
       } else if (line !== firstTitle && !isUiNoise(line)) {
         result.fragments.push({ id: `fragment-${sourceLine}-${result.fragments.length + 1}`, sourceLine, text: line, reason: '无法确认字段归属' });
