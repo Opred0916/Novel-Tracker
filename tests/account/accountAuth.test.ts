@@ -38,3 +38,9 @@ test('surfaces provider errors and signs out locally only', async () => {
   await service.signOut();
   expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
 });
+
+test('explains a secure connection failure without claiming the email was sent', async () => {
+  auth.signInWithOtp.mockRejectedValue(new Error('fetch failed: UnexpectedException: An SSL error has occurred'));
+  const service = new AccountAuthService(auth);
+  await expect(service.sendCode('reader@example.com')).rejects.toThrow('安全连接失败');
+});

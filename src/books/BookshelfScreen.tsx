@@ -76,6 +76,11 @@ export default function Bookshelf() {
   }, [overviewRepository, retry, tagRepo]));
 
   const activeFilterCount = (bookType ? 1 : 0) + tagIds.length;
+  const sortOptions = status === 'want_to_read' ? BOOK_SORT_OPTIONS.filter(option => option.value !== 'recently_finished') : BOOK_SORT_OPTIONS;
+  function changeStatus(next: BookStatus | null) {
+    setStatus(next);
+    if (next === 'want_to_read' && sortOrder === 'recently_finished') setSortOrder('recently_updated');
+  }
   const hasConditions = query.trim().length > 0 || activeFilterCount > 0;
   const showIntro = shouldShowIntro({ introSeen: introDismissedThisSession ? true : introSeen, totalBooks: overview?.totalBooks ?? null, status, hasConditions, loading, resultsCurrent, bulkMode });
 
@@ -183,7 +188,7 @@ export default function Bookshelf() {
     <BookshelfToolbar
       status={status}
       statusCounts={{ all: overview?.totalBooks ?? 0, want_to_read: overview?.byStatus.want_to_read ?? 0, reading: overview?.byStatus.reading ?? 0, finished: overview?.byStatus.finished ?? 0, dropped: overview?.byStatus.dropped ?? 0 }}
-      onStatusChange={setStatus}
+      onStatusChange={changeStatus}
       query={query}
       onQueryChange={setQuery}
       onClearQuery={() => setQuery('')}
@@ -192,7 +197,7 @@ export default function Bookshelf() {
       onOpenSheet={setActiveSheet}
       activeFilterCount={activeFilterCount}
     />
-    <BookshelfToolsSheet visible={activeSheet !== null} sheet={activeSheet} sortOptions={BOOK_SORT_OPTIONS} sortOrder={sortOrder} bookType={bookType} tags={tags} tagIds={tagIds} onSortChange={value => setSortOrder(value)} onBookTypeChange={setBookType} onTagIdsChange={setTagIds} onResetFilters={clearFilters} onEnterBulk={enterBulkMode} onRandomPick={() => { void pickRandomWantToRead(); }} onClose={() => setActiveSheet(null)} />
+    <BookshelfToolsSheet visible={activeSheet !== null} sheet={activeSheet} sortOptions={sortOptions} sortOrder={sortOrder} bookType={bookType} tags={tags} tagIds={tagIds} onSortChange={value => setSortOrder(value)} onBookTypeChange={setBookType} onTagIdsChange={setTagIds} onResetFilters={clearFilters} onEnterBulk={enterBulkMode} onRandomPick={() => { void pickRandomWantToRead(); }} onClose={() => setActiveSheet(null)} />
     {randomError ? <View style={styles.errorRow}><Text style={[styles.error, { color: theme.danger }]}>{randomError}</Text><Pressable accessibilityRole="button" onPress={() => { void pickRandomWantToRead(); }}><Text style={[styles.link, { color: theme.primary }]}>重试</Text></Pressable></View> : null}
     {overviewError ? <Text style={[styles.error, { color: theme.danger }]}>{overviewError}</Text> : null}
     {tagError ? <Text style={[styles.error, { color: theme.danger }]}>{tagError}</Text> : null}

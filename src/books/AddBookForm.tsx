@@ -94,8 +94,8 @@ export function AddBookForm({ onSave, quickTags = [], allTags = [], authorSugges
       </Pressable>)}
     </View>
     {status === 'want_to_read' ? <View>
-      <Text style={[styles.label, { color: theme.text }]}>为什么想看</Text>
-      <TextInput placeholder="为什么想看（可选）" placeholderTextColor={theme.mutedText} value={whyWantToRead} onChangeText={setWhyWantToRead}
+      <Text style={[styles.label, { color: theme.text }]}>想读理由（可选）</Text>
+      <TextInput placeholder="记下吸引你的原因" placeholderTextColor={theme.mutedText} value={whyWantToRead} onChangeText={setWhyWantToRead}
         style={[styles.input, styles.multiline, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} multiline textAlignVertical="top" />
     </View> : null}
     {status !== 'want_to_read' ? <ReadingDateFields startedOn={startedOn} endedOn={endedOn}
@@ -114,7 +114,7 @@ export function AddBookForm({ onSave, quickTags = [], allTags = [], authorSugges
       <Text style={styles.buttonText}>{saving ? '保存中…' : '保存小说'}</Text>
     </Pressable>
     <BottomSheet visible={showAllTags} title="全部标签" onClose={() => setShowAllTags(false)}>
-      <TagPicker tags={[...allTags, ...pendingTags]} selectedIds={tagIds} onChange={setTagIds} searchable onCreateTag={async name => {
+      <TagPicker tags={[...allTags, ...pendingTags]} selectedIds={tagIds} onChange={setTagIds} searchable grouped collapsible onCreateTag={async name => {
         const normalized = name.trim();
         if ([...allTags, ...pendingTags].some(tag => tag.name.toLocaleLowerCase() === normalized.toLocaleLowerCase())) throw new Error('标签名称已存在');
         const tag = { id: randomUUID(), name: normalized, isSystem: false };

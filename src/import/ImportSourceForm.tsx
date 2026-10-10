@@ -8,9 +8,9 @@ import { GroupedSection } from '../ui/GroupedSection';
 import { UI_LAYOUT } from '../ui/layout';
 
 const FORMAT_OPTIONS: { value: ImportMode; label: string; example: string }[] = [
-  { value: 'lines', label: '每行一本', example: '例如：残次品｜Priest｜已读（一行写一本书）' },
-  { value: 'blocks', label: '按书填写详细资料', example: '例如：书名：残次品\n作者：Priest\n状态：已读（不同书之间空一行）' },
-  { value: 'numbered_replies', label: '带编号的记录', example: '例如：1 残次品\n2026-10-01\n当时的想法' },
+  { value: 'lines', label: '每行一本', example: '例如：示例小说｜示例作者｜已读（一行写一本书）' },
+  { value: 'blocks', label: '按书填写详细资料', example: '例如：书名：示例小说\n作者：示例作者\n状态：已读（不同书之间空一行）' },
+  { value: 'numbered_replies', label: '带编号的记录', example: '例如：1 示例小说\n2026-10-01\n当时的想法' },
 ];
 
 export function ImportSourceForm({ text, mode, defaultStatus, error, onTextChange, onModeChange, onStatusChange, onPickFile, onPickScreenshots, onPickTable, tableDelimiter, onTableDelimiterChange, onParse, onManualCandidate }: {

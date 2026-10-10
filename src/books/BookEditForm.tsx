@@ -149,8 +149,8 @@ export function BookEditForm({ book, onSave, allTags = [], quickTags = [], autho
       </Pressable>)}
     </View>
     {status === 'want_to_read' || book.whyWantToRead ? <View>
-      <Text style={[styles.label, { color: theme.text }]}>为什么想看</Text>
-      <TextInput placeholder="为什么想看（可选）" placeholderTextColor={theme.mutedText} value={whyWantToRead} onChangeText={setWhyWantToRead}
+      <Text style={[styles.label, { color: theme.text }]}>想读理由（可选）</Text>
+      <TextInput placeholder="记下吸引你的原因" placeholderTextColor={theme.mutedText} value={whyWantToRead} onChangeText={setWhyWantToRead}
         style={[styles.input, styles.multiline, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} multiline textAlignVertical="top" />
     </View> : null}
     {changingStatus && status !== 'want_to_read' ? <View style={styles.dateSection}>
@@ -178,7 +178,7 @@ export function BookEditForm({ book, onSave, allTags = [], quickTags = [], autho
       <Text style={styles.saveText}>{saving ? '保存中…' : '保存修改'}</Text>
     </Pressable>
     <BottomSheet visible={showAllTags} title="全部标签" onClose={() => setShowAllTags(false)}>
-      <TagPicker tags={[...allTags, ...pendingTags]} selectedIds={tagIds} onChange={setTagIds} searchable onCreateTag={createPendingTag} />
+      <TagPicker tags={[...allTags, ...pendingTags]} selectedIds={tagIds} onChange={setTagIds} searchable grouped collapsible onCreateTag={createPendingTag} />
     </BottomSheet>
   </ScrollView>;
 }

@@ -31,7 +31,7 @@ export function BookDetail({ book, sessions = [], onEditReading, onEditBook, edi
     </View>
     {book.whyWantToRead || book.platform ? <View style={styles.section}>
       {book.whyWantToRead ? <>
-        <Text style={styles.label}>为什么想看</Text>
+        <Text style={styles.label}>想读理由</Text>
         <Text style={styles.value}>{book.whyWantToRead}</Text>
       </> : null}
       {book.platform ? <>

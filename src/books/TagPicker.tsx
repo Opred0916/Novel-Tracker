@@ -12,10 +12,11 @@ type Props = {
   searchable?: boolean;
   showSelectedWhenEmpty?: boolean;
   grouped?: boolean;
+  collapsible?: boolean;
   onCreateTag?: (name: string) => Promise<Tag>;
 };
 
-export function TagPicker({ tags, selectedIds, onChange, searchable = false, showSelectedWhenEmpty = false, grouped = false, onCreateTag }: Props) {
+export function TagPicker({ tags, selectedIds, onChange, searchable = false, showSelectedWhenEmpty = false, grouped = false, collapsible = false, onCreateTag }: Props) {
   const { theme } = useTheme();
   const selectedIdsRef = useRef(selectedIds);
   useEffect(() => { selectedIdsRef.current = selectedIds; }, [selectedIds]);
@@ -23,6 +24,7 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, sho
   const [newName, setNewName] = useState('');
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [expanded, setExpanded] = useState<string[]>(() => groupTags(tags.filter(tag => selectedIds.includes(tag.id))).map(group => group.title));
   const search = query.trim().toLocaleLowerCase();
   const visible = tags.filter(tag => search ? tag.name.toLocaleLowerCase().includes(search) : !showSelectedWhenEmpty || selectedIds.includes(tag.id));
 
@@ -41,7 +43,7 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, sho
       const tag = await onCreateTag(name);
       changeSelection([...new Set([...selectedIdsRef.current, tag.id])]);
       setNewName('');
-      setQuery('');
+      setQuery(name);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : '添加标签失败');
     } finally {
@@ -62,8 +64,11 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, sho
   return <View style={styles.container}>
     {searchable ? <TextInput placeholder="搜索标签" placeholderTextColor={theme.mutedText} value={query} onChangeText={setQuery} style={[styles.input, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} /> : null}
     {grouped ? groupTags(visible).map(group => <View key={group.title} style={styles.category}>
-      <Text style={[styles.categoryTitle, { color: theme.mutedText }]}>{group.title}</Text>
-      <View style={styles.group}>{chips(group.tags)}</View>
+      {collapsible && !search ? <Pressable accessibilityRole="button" accessibilityLabel={`${expanded.includes(group.title) ? '收起' : '展开'}${group.title}`} onPress={() => setExpanded(current => current.includes(group.title) ? current.filter(title => title !== group.title) : [...current, group.title])} style={[styles.categoryRow, { borderColor: theme.border }]}>
+        <Text style={[styles.categoryTitle, { color: theme.text }]}>{group.title}</Text>
+        <Text style={{ color: theme.mutedText }}>{group.tags.filter(tag => selectedIds.includes(tag.id)).length ? `已选 ${group.tags.filter(tag => selectedIds.includes(tag.id)).length} · ` : ''}{group.tags.length} 个　{expanded.includes(group.title) ? '⌃' : '⌄'}</Text>
+      </Pressable> : <Text style={[styles.categoryTitle, { color: theme.mutedText }]}>{group.title}</Text>}
+      {!collapsible || search || expanded.includes(group.title) ? <View style={styles.group}>{chips(group.tags)}</View> : null}
     </View>) : <View style={styles.group}>{chips(visible)}</View>}
     {visible.length === 0 ? <Text style={styles.empty}>{showSelectedWhenEmpty && !search ? '还没有选择标签，输入名称查找' : '没有匹配的标签'}</Text> : null}
     {onCreateTag ? <View style={styles.createRow}>
@@ -77,7 +82,7 @@ export function TagPicker({ tags, selectedIds, onChange, searchable = false, sho
 }
 
 const styles = StyleSheet.create({
-  container: { gap: 12 }, group: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, category: { gap: 8 }, categoryTitle: { fontSize: 14, fontWeight: '700' },
+  container: { gap: 12 }, group: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, category: { gap: 8 }, categoryTitle: { fontSize: 15, fontWeight: '700' }, categoryRow: { borderBottomWidth: StyleSheet.hairlineWidth, minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   input: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, padding: 12, fontSize: 16, backgroundColor: '#fff' },
   createRow: { flexDirection: 'row', gap: 8 }, createInput: { flex: 1 },
   add: { backgroundColor: '#28584E', borderRadius: 12, justifyContent: 'center', paddingHorizontal: 12 }, addText: { color: '#fff', fontWeight: '600' },

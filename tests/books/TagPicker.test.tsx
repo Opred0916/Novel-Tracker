@@ -17,6 +17,16 @@ test('searches and selects from full tag list', async () => {
   expect(onChange).toHaveBeenCalledWith(['one', 'two']);
 });
 
+test('groups tags behind expandable category rows while search reveals matches', async () => {
+  const screen = await render(<TagPicker tags={tags} selectedIds={[]} onChange={jest.fn()} searchable grouped collapsible />);
+  expect(screen.getByText('背景与世界')).toBeTruthy();
+  expect(screen.queryByText('古代')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: /展开背景与世界/ }));
+  expect(screen.getByText('古代')).toBeTruthy();
+  await fireEvent.changeText(screen.getByPlaceholderText('搜索标签'), '悬疑');
+  expect(screen.getByText('悬疑')).toBeTruthy();
+});
+
 test('compact search initially shows only selected tags and finds others on demand', async () => {
   const screen = await render(<TagPicker tags={tags} selectedIds={['one']} onChange={jest.fn()} searchable showSelectedWhenEmpty />);
   expect(screen.getByText('古代')).toBeTruthy();

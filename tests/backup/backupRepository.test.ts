@@ -138,7 +138,7 @@ describe('SqliteBackupRepository', () => {
     expect(await db.getAllAsync('SELECT id, local_path FROM image_assets')).toEqual([{ id: 'image-1', local_path: 'file:///restored/image-1.jpg' }]);
     expect(await db.getAllAsync('SELECT note_id, image_id FROM note_images')).toEqual([{ note_id: 'note-1', image_id: 'image-1' }]);
     expect(await db.getAllAsync('SELECT book_id, image_id FROM highlight_images')).toEqual([{ book_id: 'book-1', image_id: 'image-1' }]);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 12 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 13 });
   });
 
   test('round-trips optional book details through snapshot and restore', async () => {

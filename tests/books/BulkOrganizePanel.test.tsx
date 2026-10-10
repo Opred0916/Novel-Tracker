@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { BulkOrganizePanel } from '../../src/books/BulkOrganizePanel';
 import type { BulkOrganizePreview } from '../../src/books/bulkOrganize';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 jest.mock('expo-crypto', () => ({ randomUUID: jest.fn(() => 'new-tag-id') }));
 
@@ -22,6 +23,12 @@ const preview: BulkOrganizePreview = {
   selectedCount: 2, changedCount: 2, unchangedCount: 0, addAffectedBookCount: 2, removeAffectedBookCount: 0, typeAffectedBookCount: 2,
 };
 
+test('keeps its heading below the top safe area', async () => {
+  const repository = { preview: jest.fn(), apply: jest.fn() };
+  const view = await render(<SafeAreaInsetsContext.Provider value={{ top: 54, right: 0, bottom: 34, left: 0 }}><BulkOrganizePanel selectedBooks={selectedBooks} tags={tags} repository={repository as never} onComplete={jest.fn()} onCancel={jest.fn()} /></SafeAreaInsetsContext.Provider>);
+  expect(view.getByTestId('bulk-organize-scroll').props.contentContainerStyle.paddingTop).toBeGreaterThanOrEqual(54);
+});
+
 async function setup(overrides: Partial<{ preview: BulkOrganizePreview; apply: jest.Mock }> = {}) {
   const repository = { preview: jest.fn().mockResolvedValue(overrides.preview ?? preview), apply: overrides.apply ?? jest.fn().mockResolvedValue({ changedCount: 2 }) };
   const onComplete = jest.fn();
@@ -32,6 +39,7 @@ async function setup(overrides: Partial<{ preview: BulkOrganizePreview; apply: j
 
 test('builds a preview for tag and type operations and shows each book before and after', async () => {
   const { repository, view } = await setup();
+  await fireEvent.press(view.getAllByRole('button', { name: /展开背景与世界/ })[0]);
   await fireEvent.press(view.getAllByRole('checkbox')[0]);
   await fireEvent.press(view.getByText('其他'));
   await fireEvent.press(view.getByText('生成预览'));
@@ -55,7 +63,7 @@ test('keeps custom tags in the draft until a successful confirmation', async () 
 test('disables confirmation when every selected book is unchanged and preserves draft on cancel', async () => {
   const unchanged: BulkOrganizePreview = { ...preview, changedCount: 0, unchangedCount: 2, items: preview.items.map(item => ({ ...item, addedTagIds: [], typeChanged: false, changed: false, after: item.before })) };
   const { repository, onCancel, view } = await setup({ preview: unchanged });
-  await fireEvent.press(view.getByText('耽美'));
+  await fireEvent.press(view.getByText('BL'));
   await fireEvent.press(view.getByText('生成预览'));
   await waitFor(() => expect(view.getByText('没有需要修改的内容')).toBeTruthy());
   expect(view.getByRole('button', { name: '确认修改' }).props.accessibilityState).toEqual({ disabled: true });
@@ -67,7 +75,7 @@ test('disables confirmation when every selected book is unchanged and preserves 
 test('reports stale previews and does not call completion', async () => {
   const apply = jest.fn().mockRejectedValue(new Error('预览已过期，请重新生成'));
   const { onComplete, view } = await setup({ apply });
-  await fireEvent.press(view.getByText('耽美'));
+  await fireEvent.press(view.getByText('BL'));
   await fireEvent.press(view.getByText('生成预览'));
   await waitFor(() => expect(view.getByText('确认修改')).toBeTruthy());
   await fireEvent.press(view.getByText('确认修改'));

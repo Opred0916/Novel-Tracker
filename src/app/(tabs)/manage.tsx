@@ -50,9 +50,9 @@ export default function ManageTab() {
       <ActionRow label="账号与同步" detail="登录账号，在设备间保存阅读记录" onPress={() => router.push('/settings/account' as never)} />
       {divider}
       <ActionRow label="追加旧记录" detail="从文字、表格或截图导入" onPress={() => router.push('/settings/import')} />
-      {divider}<ActionRow label="导出开放格式" onPress={() => router.push('/settings/export')} />
-      {divider}<ActionRow label="备份与恢复" onPress={() => router.push('/settings/backup')} />
-      {divider}<ActionRow label="使用与数据安全" onPress={() => router.push('/settings/data-safety')} />
+      {divider}<ActionRow label="导出开放格式" detail="导出便于迁移和整理的文件" onPress={() => router.push('/settings/export')} />
+      {divider}<ActionRow label="备份与恢复" detail="保存完整书库或从备份恢复" onPress={() => router.push('/settings/backup')} />
+      {divider}<ActionRow label="使用与数据安全" detail="了解保存位置与换机步骤" onPress={() => router.push('/settings/data-safety')} />
     </GroupedSection>
     <GroupedSection title="外观">
       <ActionRow label="主题颜色" detail={`当前：${theme.name}`} onPress={() => router.push('/settings/appearance')} />

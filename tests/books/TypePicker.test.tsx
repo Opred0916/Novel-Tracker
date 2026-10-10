@@ -5,8 +5,10 @@ import { TypePicker } from '../../src/books/TypePicker';
 test('selects one work type and can clear it', async () => {
   const onChange = jest.fn();
   const screen = await render(<TypePicker value={null} onChange={onChange} />);
-  await fireEvent.press(screen.getByText('耽美'));
+  await fireEvent.press(screen.getByText('BL'));
   expect(onChange).toHaveBeenCalledWith('romance_male_male');
+  await fireEvent.press(screen.getByText('GB'));
+  expect(onChange).toHaveBeenCalledWith('romance_female_male_reverse');
   await fireEvent.press(screen.getByText('其他'));
   expect(onChange).toHaveBeenCalledWith('other');
   await fireEvent.press(screen.getByText('不分类'));

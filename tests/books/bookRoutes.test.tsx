@@ -120,7 +120,8 @@ test('quick tag settings save the chosen tags without deleting the library', asy
   ]);
   tagRepo.setQuick.mockResolvedValue(undefined);
   const screen = await render(<QuickTagsPage />);
-  await waitFor(() => expect(screen.getByText('悬疑')).toBeTruthy());
+  await waitFor(() => expect(screen.getByRole('button', { name: '展开情节与设定' })).toBeTruthy());
+  await fireEvent.press(screen.getByRole('button', { name: '展开情节与设定' }));
   await fireEvent.press(screen.getAllByText('现代')[0]);
   await fireEvent.press(screen.getByText('悬疑'));
   await fireEvent.press(screen.getByText('保存快捷标签'));
@@ -222,6 +223,17 @@ test('bookshelf changes sort order and keeps it when filters are cleared', async
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({ query: '', status: null, bookType: null, tagIds: [], sortOrder: 'recently_finished' }));
 });
 
+test('want-to-read sorting excludes recently finished and resets an incompatible selection', async () => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getByText('排序：最近修改'));
+  await fireEvent.press(screen.getByText('最近读完'));
+  await fireEvent.press(screen.getByRole('radio', { name: '想读 1 本' }));
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'want_to_read', sortOrder: 'recently_updated' })));
+  await fireEvent.press(screen.getByText('排序：最近修改'));
+  expect(screen.queryByText('最近读完')).toBeNull();
+});
+
 test('bookshelf refreshes a nondefault sort after returning from detail', async () => {
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
@@ -271,6 +283,7 @@ test('bookshelf opens the bulk organizer and confirms the preview', async () => 
   await fireEvent.press(screen.getByRole('checkbox', { name: '选择长夜' }));
   await fireEvent.press(screen.getByTestId('bulk-continue'));
   await waitFor(() => expect(screen.getByText('批量整理 1 本小说')).toBeTruthy());
+  await fireEvent.press(screen.getAllByRole('button', { name: '展开背景与世界' })[0]);
   await fireEvent.press(screen.getAllByRole('checkbox')[0]);
   await fireEvent.press(screen.getByText('生成预览'));
   await waitFor(() => expect(screen.getByText('实际会变化 1 本')).toBeTruthy());
@@ -314,7 +327,7 @@ test('bookshelf submits status, type, and every selected tag then clears them to
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
   await fireEvent.press(screen.getByRole('radio', { name: '在读 2 本' }));
   await fireEvent.press(screen.getByText('筛选'));
-  await fireEvent.press(screen.getByText('耽美'));
+  await fireEvent.press(screen.getByText('BL'));
   await fireEvent.changeText(screen.getByPlaceholderText('搜索标签'), '古代');
   await fireEvent.press(screen.getByText('古代'));
   await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith({

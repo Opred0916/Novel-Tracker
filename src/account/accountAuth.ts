@@ -12,7 +12,15 @@ function normalizedEmail(value: string): string {
 }
 
 async function assertSuccess(response: AuthResponse): Promise<void> {
-  const { error } = await response;
+  let result: Awaited<AuthResponse>;
+  try { result = await response; }
+  catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+    if (/ssl|secure connection|certificate/i.test(message)) throw new Error('安全连接失败，验证码未发送。请切换 Wi‑Fi 或蜂窝网络后重试；若仍失败，请检查设备网络或代理设置。');
+    if (/fetch failed|network request failed/i.test(message)) throw new Error('无法连接云服务，验证码未发送。请检查网络后重试。');
+    throw cause;
+  }
+  const { error } = result;
   if (error) throw new Error(error.message);
 }
 

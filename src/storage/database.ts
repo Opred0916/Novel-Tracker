@@ -10,11 +10,12 @@ export const SYSTEM_TAG_NAMES = [
   '先婚后爱', '双向暗恋', '追妻火葬场', '替身', '白月光', '宿敌', '万人迷', '复仇',
   '权谋', '救赎', '美强惨', '日常向', 'HE', 'BE', 'OE', '短篇', '长篇', '交通发达',
   '荤素搭配', '清水', '大女主', 'ABO', '第一人称', '第二人称', '主攻', '主受', '破镜重圆',
+  '历史', '武侠', '科幻', '灵异', '冒险', '推理', '竞技', '成长', '养成', '师徒', '相爱相杀', '搞笑', '烧脑',
 ] as const;
 
 export const DEFAULT_QUICK_TAG_NAMES = ['古代', '现代', '悬疑', '群像', '慢热'] as const;
 
-const TYPE_CHECK = "type IN ('romance_male_male', 'romance_female_male', 'romance_female_female', 'no_romance', 'other')";
+const TYPE_CHECK = "type IN ('romance_male_male', 'romance_female_male', 'romance_female_female', 'romance_female_male_reverse', 'no_romance', 'other')";
 
 export async function migrateDatabase(db: Database): Promise<void> {
   await db.execAsync(`
@@ -230,6 +231,33 @@ export async function migrateDatabase(db: Database): Promise<void> {
     );
     INSERT OR IGNORE INTO guest_import_state (id) VALUES (1);
   `);
+  if (version < 13) {
+    const booksSchema = await db.getFirstAsync<{ sql: string }>("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'books'");
+    if (booksSchema && !booksSchema.sql.includes('romance_female_male_reverse')) {
+      await db.execAsync(`
+        PRAGMA foreign_keys = OFF;
+        CREATE TABLE books_v13 (
+          id TEXT PRIMARY KEY NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL,
+          created_at TEXT NOT NULL, updated_at TEXT NOT NULL, author TEXT,
+          type TEXT CHECK (type IS NULL OR ${TYPE_CHECK}),
+          legacy_read_count INTEGER NOT NULL DEFAULT 0 CHECK (legacy_read_count IN (0, 1)),
+          rating_half_stars INTEGER CHECK (rating_half_stars IS NULL OR (typeof(rating_half_stars) = 'integer' AND rating_half_stars BETWEEN 1 AND 10)),
+          why_want_to_read TEXT, platform TEXT, cover_image_id TEXT,
+          FOREIGN KEY (cover_image_id) REFERENCES image_assets(id) ON DELETE SET NULL
+        );
+        INSERT INTO books_v13 (id, title, status, created_at, updated_at, author, type, legacy_read_count, rating_half_stars, why_want_to_read, platform, cover_image_id)
+          SELECT id, title, status, created_at, updated_at, author, type, legacy_read_count, rating_half_stars, why_want_to_read, platform, cover_image_id FROM books;
+        DROP TABLE books;
+        ALTER TABLE books_v13 RENAME TO books;
+        PRAGMA foreign_keys = ON;
+      `);
+    }
+    await db.withExclusiveTransactionAsync(async txn => {
+      for (const name of SYSTEM_TAG_NAMES) {
+        await txn.runAsync('INSERT OR IGNORE INTO tags (id, name, is_system) VALUES (?, ?, 1)', `system:${name}`, name);
+      }
+    });
+  }
   const syncedTables = [
     'books', 'book_protagonists', 'tags', 'book_tags', 'quick_tags',
     'reading_sessions', 'notes', 'image_assets', 'note_images', 'highlight_images',
@@ -241,7 +269,7 @@ export async function migrateDatabase(db: Database): Promise<void> {
         BEGIN UPDATE sync_state SET local_revision = local_revision + 1 WHERE id = 1; END;`);
     }
   }
-  await db.execAsync('PRAGMA user_version = 12');
+  await db.execAsync('PRAGMA user_version = 13');
 }
 
 export async function openDatabase(accountId?: string): Promise<SQLite.SQLiteDatabase> {

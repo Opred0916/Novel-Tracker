@@ -1,32 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { THEME_IDS, THEMES } from './theme';
 import { useTheme } from './ThemeProvider';
-import { BottomSheet } from '../ui/BottomSheet';
 
 export function ThemePicker() {
   const { theme, themeId, setTheme, saveError } = useTheme();
-  const [visible, setVisible] = useState(false);
   return <View accessibilityLabel="主题选择">
-    <Text style={[styles.heading, { color: theme.text }]}>主题颜色</Text>
-    <Text style={[styles.help, { color: theme.mutedText }]}>选择一套颜色，立即预览并保存在当前设备。</Text>
-    <Pressable accessibilityRole="button" accessibilityLabel="选择主题颜色" onPress={() => setVisible(true)} style={[styles.current, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      <View style={[styles.swatch, { backgroundColor: theme.primary }]} />
-      <Text style={[styles.currentName, { color: theme.text }]}>{theme.name}</Text>
-      <Text style={{ color: theme.primary }}>更换 ›</Text>
-    </Pressable>
     {saveError ? <Text style={[styles.error, { color: theme.danger }]}>{saveError}</Text> : null}
-    <BottomSheet visible={visible} title="选择主题颜色" onClose={() => setVisible(false)}><View style={styles.grid}>
+    <View style={styles.grid}>
       {THEME_IDS.map(id => {
         const selected = id === themeId;
         const palette = THEMES[id];
-        return <Pressable key={id} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => { void setTheme(id); setVisible(false); }} style={[styles.card, { backgroundColor: palette.primarySoft, borderColor: selected ? palette.primary : theme.border }]}>
+        return <Pressable key={id} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => { void setTheme(id); }} style={[styles.card, { backgroundColor: palette.primarySoft, borderColor: selected ? palette.primary : theme.border }]}>
           <View style={[styles.swatch, { backgroundColor: palette.primary }]} />
           <Text style={[styles.name, { color: palette.primary }]}>{palette.name}</Text>
           <Text style={[styles.check, { color: palette.primary }]}>{selected ? '✓ 已选' : '选择'}</Text>
         </Pressable>;
       })}
-    </View></BottomSheet>
+    </View>
   </View>;
 }
 
