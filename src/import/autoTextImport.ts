@@ -1,6 +1,7 @@
 import type { BookStatus } from '../books/types';
 import type { ImportMode, ImportParseResult } from './importTypes';
 import { parseTextImport } from './textImportParser';
+import { extractLocalText } from './localTextExtraction';
 
 export function detectTextImportMode(text: string): ImportMode {
   const lines = text.replace(/\r\n?/g, '\n').split('\n').map(line => line.trim()).filter(Boolean);
@@ -10,5 +11,6 @@ export function detectTextImportMode(text: string): ImportMode {
 }
 
 export function parseAutoTextImport(text: string, defaultStatus: BookStatus): ImportParseResult {
-  return parseTextImport(text, detectTextImportMode(text), defaultStatus);
+  const mode = detectTextImportMode(text);
+  return mode === 'lines' ? extractLocalText(text, defaultStatus) : parseTextImport(text, mode, defaultStatus);
 }

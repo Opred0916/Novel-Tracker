@@ -55,8 +55,47 @@ function field(line: string): [string, string] | null {
   const match = line.match(/^\s*(书名|标题|title|作者|author|主角|角色|protagonists?|状态|status|评分|rating|作品类型|类型|type|标签|tags|摘记|想法|我的想法|备注|日期|时间|阅读记录)\s*[:：]\s*(.*?)\s*$/i);
   return match ? [match[1].toLowerCase(), match[2]] : null;
 }
+function fieldsOnLine(line: string): [string, string][] {
+  const first = field(line);
+  if (!first) return [];
+  if (['摘记', '想法', '我的想法', '备注'].includes(first[0])) return [first];
+  const markers = [...line.matchAll(/(?:^|[\s;；,，|｜])(书名|标题|title|作者|author|主角|角色|protagonists?|状态|status|评分|rating|作品类型|类型|type|标签|tags|摘记|想法|我的想法|备注|日期|时间|阅读记录)\s*[:：]/gi)];
+  if (markers.length < 2) return [first];
+  return markers.map((marker, index) => [
+    marker[1].toLowerCase(),
+    line.slice(marker.index! + marker[0].length, markers[index + 1]?.index ?? line.length).trim(),
+  ]);
+}
 function cleanTitle(value: string): string {
   return value.replace(/^[-—|：:\s]+/, '').replace(/[，,。；;]+$/, '').trim();
+}
+function halfStars(value: string): number | null {
+  const match = value.trim().match(/^([0-5](?:\.5)?)(?:\s*(?:分|星|\/5))?$/);
+  if (!match) return null;
+  const score = Number(match[1]);
+  return score >= 0.5 && score <= 5 ? Math.round(score * 2) : null;
+}
+export function splitInformalLine(line: string): { title: string; author: string | null; ratingHalfStars: number | null } {
+  let body = line.trim().replace(/^\d{1,3}\s*[.．、)]\s*/, '');
+  let ratingHalfStars: number | null = null;
+  const labeledScore = body.match(/(?:[（(]\s*)?评分\s*[:：]?\s*([0-5](?:\.5)?)(?:\s*(?:分|星|\/5))?\s*[）)]?\s*$/);
+  const bareScore = body.match(/([0-5](?:\.5)?)(?:\s*(?:分|星|\/5))\s*[）)]?\s*$/);
+  const score = labeledScore ?? bareScore;
+  if (score && (labeledScore || score.index === 0 || !/[\d.]/.test(body[score.index! - 1]))) {
+    ratingHalfStars = halfStars(score[1]);
+    if (ratingHalfStars !== null) body = body.slice(0, score.index).replace(/[\s,，;；—–-]+$/, '').trim();
+  }
+  const bracketed = body.match(/《([^》]+)》/);
+  if (bracketed) {
+    const outside = `${body.slice(0, bracketed.index)} ${body.slice(bracketed.index! + bracketed[0].length)}`.trim();
+    const author = outside.replace(/^[\s—–-]+/, '').replace(/^(?:作者\s*[:：]\s*|by\s+)/i, '').trim();
+    return { title: bracketed[1].trim(), author: author || null, ratingHalfStars };
+  }
+  if (ratingHalfStars !== null) {
+    const authorFirst = body.match(/^([^\s]+)\s+(.+)$/);
+    if (authorFirst) return { author: authorFirst[1], title: authorFirst[2].trim(), ratingHalfStars };
+  }
+  return { title: body, author: null, ratingHalfStars };
 }
 function dateLine(text: string): ParsedDate { return parseDate(text); }
 function isUrlOnly(text: string): boolean { return /^https?:\/\/\S+$/i.test(text.trim()); }
@@ -78,8 +117,7 @@ function applyField(target: ImportCandidate, key: string, value: string, sourceT
   else if (key === '主角' || key === '角色' || key === 'protagonists') target.protagonists = splitNames(value);
   else if (key === '状态' || key === 'status') target.status = statusValue(value) ?? target.status;
   else if (key === '评分' || key === 'rating') {
-    const score = Number(value.replace('/5', '').trim());
-    if (Number.isFinite(score) && score >= 0.5 && score <= 5 && score * 2 === Math.round(score * 2)) target.ratingHalfStars = Math.round(score * 2);
+    target.ratingHalfStars = halfStars(value);
   } else if (key === '作品类型' || key === '类型' || key === 'type') target.bookType = typeValue(value);
   else if (key === '标签' || key === 'tags') target.tagIds = splitNames(value);
   else if (key === '日期' || key === '时间') {
@@ -105,13 +143,14 @@ function parseLines(text: string, defaultStatus: BookStatus, result: ImportParse
     if (!line) return;
     if (isUrlOnly(line)) { result.fragments.push({ id: `fragment-${index + 1}`, sourceLine: index + 1, text: line, reason: '链接不会自动抓取，请改为粘贴文字' }); return; }
     const parts = line.split(/\s*[|｜]\s*/);
-    const item = candidate(`candidate-${result.candidates.length + 1}`, index + 1, line, parts[0], defaultStatus);
+    const informal = parts.length === 1 ? splitInformalLine(line) : null;
+    const item = candidate(`candidate-${result.candidates.length + 1}`, index + 1, line, informal?.title ?? parts[0], defaultStatus);
+    if (informal) { item.author = informal.author; item.ratingHalfStars = informal.ratingHalfStars; }
     if (parts.length > 1) {
       if (parts[1]) item.author = parts[1];
       if (parts[2]) item.status = statusValue(parts[2]) ?? item.status;
       if (parts[3]) {
-        const score = Number(parts[3]);
-        if (Number.isFinite(score) && score >= 0.5 && score <= 5) item.ratingHalfStars = Math.round(score * 2);
+        item.ratingHalfStars = halfStars(parts[3]);
       }
     }
     addCandidate(result.candidates, item);
@@ -119,26 +158,37 @@ function parseLines(text: string, defaultStatus: BookStatus, result: ImportParse
 }
 
 function parseBlocks(text: string, defaultStatus: BookStatus, result: ImportParseResult): void {
-  const lines = text.split('\n');
-  let offset = 0;
-  for (const block of text.split(/\n\s*\n/)) {
-    const blockLines = block.split('\n').map(line => line.trim()).filter(Boolean);
-    const sourceLine = offset + 1;
-    offset += block.split('\n').length + 1;
+  const groups: { sourceLine: number; lines: string[] }[] = [];
+  let current: { sourceLine: number; lines: string[] } | null = null;
+  text.split('\n').forEach((raw, index) => {
+    const line = raw.trim();
+    if (!line) { current = null; return; }
+    const startsTitle = fieldsOnLine(line).some(([key]) => ['书名', '标题', 'title'].includes(key));
+    if (!current || (startsTitle && current.lines.some(previous => fieldsOnLine(previous).some(([key]) => ['书名', '标题', 'title'].includes(key))))) {
+      current = { sourceLine: index + 1, lines: [] };
+      groups.push(current);
+    }
+    current.lines.push(line);
+  });
+  for (const group of groups) {
+    const blockLines = group.lines;
+    const sourceLine = group.sourceLine;
+    const block = blockLines.join('\n');
     if (!blockLines.length) continue;
-    const firstField = field(blockLines[0]);
-    const firstTitle = firstField && ['书名', '标题', 'title'].includes(firstField[0]) ? firstField[1] : blockLines[0];
+    const firstTitle = blockLines.flatMap(fieldsOnLine).find(([key]) => ['书名', '标题', 'title'].includes(key))?.[1] ?? blockLines[0];
     if (isUrlOnly(firstTitle)) { result.fragments.push({ id: `fragment-${sourceLine}`, sourceLine, text: firstTitle, reason: '链接不会自动抓取，请改为粘贴文字' }); continue; }
     const item = candidate(`candidate-${result.candidates.length + 1}`, sourceLine, block, firstTitle, defaultStatus);
     let currentDate: ParsedDate = null;
     for (const line of blockLines) {
-      const parsedField = field(line);
-      if (parsedField) {
-        if (parsedField[0] === '日期' || parsedField[0] === '时间') {
-          currentDate = dateLine(parsedField[1]);
-          if (currentDate?.warning) result.warnings.push(currentDate.warning);
+      const parsedFields = fieldsOnLine(line);
+      if (parsedFields.length) {
+        for (const parsedField of parsedFields) {
+          if (parsedField[0] === '日期' || parsedField[0] === '时间') {
+            currentDate = dateLine(parsedField[1]);
+            if (currentDate?.warning) result.warnings.push(currentDate.warning);
+          }
+          applyField(item, parsedField[0], parsedField[1], line, currentDate, result.warnings);
         }
-        applyField(item, parsedField[0], parsedField[1], line, currentDate, result.warnings);
       } else if (line !== firstTitle && !isUiNoise(line)) {
         result.fragments.push({ id: `fragment-${sourceLine}-${result.fragments.length + 1}`, sourceLine, text: line, reason: '无法确认字段归属' });
       }
@@ -148,7 +198,6 @@ function parseBlocks(text: string, defaultStatus: BookStatus, result: ImportPars
     }
     addCandidate(result.candidates, item);
   }
-  void lines;
 }
 
 function numberedHeader(line: string): { title: string; rawTitle: string } | null {
