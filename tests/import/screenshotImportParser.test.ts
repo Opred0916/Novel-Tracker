@@ -44,6 +44,19 @@ test('supports explicit line and field-block modes without inventing dates', () 
   expect(blocks.candidates[0].notes[0]).toMatchObject({ body: '完整日期也先待确认', originalRecordedOn: null, recordedAtHint: '2024-01-02', sourceRef: { pageId: 'page-1', line: 3 } });
 });
 
+test('extracts author title and score from recognized screenshot lines', () => {
+  const result = parseScreenshotImport(pages(['水千丞 针锋对决 5分\n《火焰戎装》 水千丞 4.5分']).pages, 'lines', 'finished');
+  expect(result.candidates.map(item => [item.author, item.title, item.ratingHalfStars])).toEqual([
+    ['水千丞', '针锋对决', 10],
+    ['水千丞', '火焰戎装', 9],
+  ]);
+});
+
+test('keeps adjacent labeled screenshot records as separate books', () => {
+  const result = parseScreenshotImport(pages(['书名：第一本\n作者：作者甲\n书名：第二本\n作者：作者乙']).pages, 'blocks', 'want_to_read');
+  expect(result.candidates.map(item => [item.title, item.author])).toEqual([['第一本', '作者甲'], ['第二本', '作者乙']]);
+});
+
 test('keeps blank-line separated field blocks as separate candidates', () => {
   const result = parseScreenshotImport(pages(['书名：第一本\n作者：作者甲\n\n书名：第二本\n作者：作者乙']).pages, 'blocks', 'want_to_read');
 
@@ -54,6 +67,31 @@ test('rejects oversized batches and more than 500 candidates', () => {
   expect(() => parseScreenshotImport(pages(['x'.repeat(1_048_577)]).pages, 'lines', 'want_to_read')).toThrow('1 MiB');
   const many = Array.from({ length: 501 }, (_, index) => `书${index + 1}`).join('\n');
   expect(() => parseScreenshotImport(pages([many]).pages, 'lines', 'want_to_read')).toThrow('500');
+});
+
+test('auto screenshot mode preserves page provenance and does not move a loose score to the next book', () => {
+  const result = parseScreenshotImport(pages(['《针锋对决》 水千丞\n5分', '《火焰戎装》 水千丞 4.5分'], [false, true]).pages, null, 'finished');
+  expect(result.candidates.map(item => [item.title, item.ratingHalfStars, item.sourceRef])).toEqual([
+    ['针锋对决', null, { kind: 'screenshot', pageId: 'page-1', line: 1 }],
+    ['火焰戎装', 9, { kind: 'screenshot', pageId: 'page-2', line: 1 }],
+  ]);
+  expect(result.fragments).toEqual(expect.arrayContaining([
+    expect.objectContaining({ text: '5分', sourceRef: { kind: 'screenshot', pageId: 'page-1', line: 2 } }),
+  ]));
+});
+
+test('auto screenshot mode retains unreadable source as fragments instead of throwing', () => {
+  const result = parseScreenshotImport(pages(['18:01 小A\n也许是《针锋对决》？']).pages, null, 'want_to_read');
+  expect(result.candidates).toEqual([]);
+  expect(result.fragments.map(item => item.text)).toEqual(['18:01 小A', '也许是《针锋对决》？']);
+});
+
+test('auto screenshot mode still recognizes labeled blocks and numbered replies', () => {
+  const block = parseScreenshotImport(pages(['书名：第一本\n作者：作者甲']).pages, null, 'finished');
+  const numbered = parseScreenshotImport(pages([fixture.split(/\n\s*\n/)[0]]).pages, null, 'finished');
+  expect(block.candidates[0]).toMatchObject({ title: '第一本', author: '作者甲' });
+  expect(numbered.candidates[0].title).toBe('残次品');
+  expect(numbered.fragments.some(item => item.text === 'top1')).toBe(true);
 });
 
 function parseScreenshotImportImport(texts: string[], continuations: boolean[]) {

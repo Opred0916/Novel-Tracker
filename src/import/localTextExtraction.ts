@@ -11,7 +11,9 @@ function structuredBookLine(line: string): boolean {
 }
 
 function possiblePlainTitle(line: string): boolean {
-  return line.length <= 40 && !/[：:，,；;？！?！]/.test(line) && !/《[^》]+》/.test(line) && !/^(?:https?:\/\/|\d{1,2}:\d{2}|\d{4}[-/.]\d{1,2}[-/.]\d{1,2})/.test(line);
+  return line.length <= 40 && !/[：:，,；;？！?！]/.test(line) && !/《[^》]+》/.test(line)
+    && !/^(?:https?:\/\/|\d{1,2}:\d{2}|\d{4}[-/.]\d{1,2}[-/.]\d{1,2})/.test(line)
+    && !/^[0-5](?:\.5)?\s*(?:分|星|\/5)$/.test(line);
 }
 
 export function extractLocalText(text: string, defaultStatus: BookStatus): ImportParseResult {

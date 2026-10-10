@@ -1,5 +1,7 @@
 import { BOOK_STATUSES, type BookStatus } from '../books/types';
-import { MAX_IMPORT_BYTES, MAX_IMPORT_CANDIDATES } from './textImportParser';
+import { MAX_IMPORT_BYTES, MAX_IMPORT_CANDIDATES, splitInformalLine } from './textImportParser';
+import { extractLocalText } from './localTextExtraction';
+import { detectTextImportMode } from './autoTextImport';
 import type { ScreenshotPageDraft } from './screenshotImportDraft';
 import type { ImportCandidate, ImportMode, ImportNoteDraft, ImportParseResult, ImportSourceRef } from './importTypes';
 
@@ -124,7 +126,10 @@ function parseBlocksGroup(pages: ScreenshotPageDraft[], status: BookStatus, resu
   const blocks: SourceLine[][] = [];
   for (const line of lines) {
     const previous = blocks.at(-1)?.at(-1);
-    const startsNewBook = Boolean(previous && (line.pageId === previous.pageId && line.line > previous.line + 1) && field(line.text)?.[0] === '书名');
+    const startsNewBook = Boolean(previous && field(line.text)?.[0] === '书名' && (
+      (line.pageId === previous.pageId && line.line > previous.line + 1)
+      || blocks.at(-1)?.some(entry => field(entry.text)?.[0] === '书名')
+    ));
     if (!blocks.length || startsNewBook) blocks.push([]);
     blocks.at(-1)!.push(line);
   }
@@ -135,15 +140,39 @@ function parseLinesGroup(pages: ScreenshotPageDraft[], status: BookStatus, resul
   for (const line of pages.flatMap(splitLines)) {
     if (isUiNoise(line.text) || dateHint(line.text)) continue;
     const parts = line.text.split(/\s*[|｜]\s*/);
-    const candidate = emptyCandidate(nextCandidateId(), line, parts[0], status);
+    const informal = parts.length === 1 ? splitInformalLine(line.text) : null;
+    const candidate = emptyCandidate(nextCandidateId(), line, informal?.title ?? parts[0], status);
+    if (informal) { candidate.author = informal.author; candidate.ratingHalfStars = informal.ratingHalfStars; }
     if (parts[1]) candidate.author = parts[1];
     if (parts[2]) candidate.status = STATUS_LABELS[parts[2].trim()] ?? candidate.status;
     addCandidate(result, candidate);
   }
 }
 
-export function parseScreenshotImport(pages: ScreenshotPageDraft[], mode: ImportMode, defaultStatus: BookStatus): ImportParseResult {
-  if (!['lines', 'blocks', 'numbered_replies'].includes(mode)) throw new Error('导入模式无效');
+function parseAutoGroup(pages: ScreenshotPageDraft[], status: BookStatus, result: ImportParseResult, nextCandidateId: () => string): void {
+  const sourceLines = pages.flatMap(page => page.text.replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').split('\n')
+    .map((raw, index) => ({ pageId: page.id, line: index + 1, raw, text: raw.trim() })));
+  const combined = sourceLines.map(line => line.raw).join('\n');
+  if (!combined.trim()) return;
+  const detectedMode = detectTextImportMode(combined);
+  if (detectedMode === 'numbered_replies' || (sourceLines.some(line => numberedTitle(line.text)) && sourceLines.some(line => dateHint(line.text)))) {
+    return parseNumberedGroup(pages, status, result, nextCandidateId);
+  }
+  if (detectedMode === 'blocks') return parseBlocksGroup(pages, status, result, nextCandidateId);
+  const extracted = extractLocalText(combined, status);
+  for (const item of extracted.candidates) {
+    const source = sourceLines[item.sourceLine - 1];
+    addCandidate(result, { ...item, id: nextCandidateId(), sourceLine: source.line, sourceText: source.raw, sourceRef: sourceRef(source) });
+  }
+  for (const fragment of extracted.fragments) {
+    const source = sourceLines[fragment.sourceLine - 1];
+    addFragment(result, `fragment-${result.fragments.length + 1}`, source, source.raw, fragment.reason, null, null);
+  }
+  result.warnings.push(...extracted.warnings);
+}
+
+export function parseScreenshotImport(pages: ScreenshotPageDraft[], mode: ImportMode | null, defaultStatus: BookStatus): ImportParseResult {
+  if (mode !== null && !['lines', 'blocks', 'numbered_replies'].includes(mode)) throw new Error('导入模式无效');
   if (!BOOK_STATUSES.includes(defaultStatus)) throw new Error('默认阅读状态无效');
   if (byteLength(pages.map(page => page.text).join('\n')) > MAX_IMPORT_BYTES) throw new Error('导入文字不能超过 1 MiB');
   if (!pages.some(page => page.text.trim())) throw new Error('请输入要导入的文字');
@@ -151,10 +180,11 @@ export function parseScreenshotImport(pages: ScreenshotPageDraft[], mode: Import
   let candidateIndex = 0;
   const nextCandidateId = () => `screenshot-candidate-${++candidateIndex}`;
   for (const group of pageGroups(pages)) {
-    if (mode === 'lines') parseLinesGroup(group, defaultStatus, result, nextCandidateId);
+    if (mode === null) parseAutoGroup(group, defaultStatus, result, nextCandidateId);
+    else if (mode === 'lines') parseLinesGroup(group, defaultStatus, result, nextCandidateId);
     else if (mode === 'blocks') parseBlocksGroup(group, defaultStatus, result, nextCandidateId);
     else parseNumberedGroup(group, defaultStatus, result, nextCandidateId);
   }
-  if (!result.candidates.length) throw new Error('没有识别到可导入的书名');
+  if (mode !== null && !result.candidates.length) throw new Error('没有识别到可导入的书名');
   return result;
 }
