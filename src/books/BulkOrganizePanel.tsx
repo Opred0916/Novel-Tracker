@@ -1,6 +1,7 @@
 import { randomUUID } from 'expo-crypto';
-import { useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { TagPicker } from './TagPicker';
 import { BOOK_TYPE_LABELS } from './TypePicker';
 import { BOOK_TYPES, type BookType, type Tag } from './types';
@@ -18,6 +19,7 @@ export function BulkOrganizePanel({ selectedBooks, tags, repository, onComplete,
   onCancel: () => void;
 }) {
   const { theme } = useTheme();
+  const insets = useContext(SafeAreaInsetsContext);
   const [addTagIds, setAddTagIds] = useState<string[]>([]);
   const [removeTagIds, setRemoveTagIds] = useState<string[]>([]);
   const [pendingTags, setPendingTags] = useState<Tag[]>([]);
@@ -103,13 +105,13 @@ export function BulkOrganizePanel({ selectedBooks, tags, repository, onComplete,
     return value ? BOOK_TYPE_LABELS[value] : '未分类';
   }
 
-  return <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
+  return <ScrollView testID="bulk-organize-scroll" contentContainerStyle={{ ...styles.container, paddingTop: (insets?.top ?? 0) + 12, paddingBottom: (insets?.bottom ?? 0) + 50 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={[styles.heading, { color: theme.text }]}>批量整理 {selectedBooks.size} 本小说</Text>
     <Text style={[styles.help, { color: theme.mutedText }]}>只会修改标签和作品类型，阅读状态、评分、摘记和图片不会改变。</Text>
     <Text style={[styles.label, { color: theme.text }]}>添加标签（可多选）</Text>
-    <TagPicker tags={allTags} selectedIds={addTagIds} onChange={changeAddTags} searchable onCreateTag={createPendingTag} />
+    <TagPicker tags={allTags} selectedIds={addTagIds} onChange={changeAddTags} searchable grouped collapsible onCreateTag={createPendingTag} />
     <Text style={[styles.label, { color: theme.text }]}>移除标签（可多选）</Text>
-    <TagPicker tags={allTags} selectedIds={removeTagIds} onChange={changeRemoveTags} searchable />
+    <TagPicker tags={allTags} selectedIds={removeTagIds} onChange={changeRemoveTags} searchable grouped collapsible />
     <Text style={[styles.label, { color: theme.text }]}>作品类型</Text>
     <View style={styles.options}>
       <Pressable accessibilityRole="radio" accessibilityState={{ checked: typeChange.kind === 'keep' }} onPress={() => { setTypeChange({ kind: 'keep' }); setPreview(null); }} style={[styles.option, { backgroundColor: typeChange.kind === 'keep' ? theme.primary : theme.card, borderColor: typeChange.kind === 'keep' ? theme.primary : theme.border }]}><Text style={{ color: typeChange.kind === 'keep' ? theme.card : theme.text, fontWeight: typeChange.kind === 'keep' ? '700' : '500' }}>保持各书原样</Text></Pressable>

@@ -4,10 +4,11 @@ import { BOOK_TYPES, type BookType } from './types';
 import { ChoiceChip } from '../ui/ChoiceChip';
 
 export const BOOK_TYPE_LABELS: Record<BookType, string> = {
-  romance_male_male: '耽美',
-  romance_female_male: '言情',
+  romance_male_male: 'BL',
+  romance_female_male: 'BG',
   romance_female_female: 'GL',
-  no_romance: '无CP',
+  romance_female_male_reverse: 'GB',
+  no_romance: '无 CP',
   other: '其他',
 };
 

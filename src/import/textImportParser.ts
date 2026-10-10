@@ -11,7 +11,7 @@ const STATUS_LABELS: Record<string, BookStatus> = {
 const TYPE_LABELS: Record<string, BookType> = {
   '耽美': 'romance_male_male', '纯爱': 'romance_male_male', BL: 'romance_male_male',
   '言情': 'romance_female_male', 'BG': 'romance_female_male', 'GL': 'romance_female_female',
-  '百合': 'romance_female_female', '无CP': 'no_romance', '无 CP': 'no_romance', '其他': 'other',
+  '百合': 'romance_female_female', 'GB': 'romance_female_male_reverse', '无CP': 'no_romance', '无 CP': 'no_romance', '其他': 'other',
 };
 
 type ParsedDate = { on: string; time: string | null; warning?: string } | null;

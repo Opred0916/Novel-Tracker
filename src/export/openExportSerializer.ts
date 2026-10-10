@@ -50,7 +50,7 @@ function buildReadme(): string {
     '- images.csv：图片路径和用途索引。',
     '- images/：封面、精彩片段和摘记引用的原图。',
     '',
-    '未知日期在 JSON 中为 null，在 CSV 中为空。状态英文代码对照：want_to_read=想读、reading=在读、finished=读完、dropped=弃读；作品类型代码对照：romance_male_male=耽美、romance_female_male=言情、romance_female_female=GL、no_romance=无CP、other=其他。',
+    '未知日期在 JSON 中为 null，在 CSV 中为空。状态英文代码对照：want_to_read=想读、reading=在读、finished=读完、dropped=弃读；作品类型代码对照：romance_male_male=BL、romance_female_male=BG、romance_female_female=GL、romance_female_male_reverse=GB、no_romance=无 CP、other=其他。',
     '图片用途会在 images.csv 的 usages 列标为 cover（封面）、highlight（精彩片段）或 note（摘记），精确关系以 library.json 为准。',
     'CSV 中以 =、+、- 或 @ 开头的文字可能增加单引号，避免表格软件把它当作公式；JSON 保留原文。',
     '文件未加密，可能包含私人摘记和截图，请妥善保存。',

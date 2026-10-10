@@ -4,7 +4,7 @@ export const BOOK_STATUSES = ['want_to_read', 'reading', 'finished', 'dropped'] 
 
 export type BookStatus = (typeof BOOK_STATUSES)[number];
 
-export const BOOK_TYPES = ['romance_male_male', 'romance_female_male', 'romance_female_female', 'no_romance', 'other'] as const;
+export const BOOK_TYPES = ['romance_male_male', 'romance_female_male', 'romance_female_female', 'romance_female_male_reverse', 'no_romance', 'other'] as const;
 export type BookType = (typeof BOOK_TYPES)[number];
 export type Tag = { id: string; name: string; isSystem: boolean };
 export type ReadingDatesInput = { startedOn: string; endedOn?: string | null };

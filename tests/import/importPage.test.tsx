@@ -59,7 +59,7 @@ test('defaults old records without a status to read and explains the formats wit
   const screen = await render(<ImportPage />);
   expect(screen.getByRole('radio', { name: '已读' }).props.accessibilityState.checked).toBe(true);
   expect(screen.getByText('按书填写详细资料')).toBeTruthy();
-  expect(screen.getByText(/书名：残次品/)).toBeTruthy();
+  expect(screen.getByText(/书名：示例小说/)).toBeTruthy();
   expect(screen.queryByText(/微博链接/)).toBeNull();
   await fireEvent.changeText(screen.getByPlaceholderText('粘贴旧书单或摘记文字'), '书名：残次品');
   await fireEvent.press(screen.getByText('生成导入预览'));

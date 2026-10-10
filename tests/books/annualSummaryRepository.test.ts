@@ -163,7 +163,7 @@ describe('SqliteAnnualSummaryRepository', () => {
       const summary = await new SqliteAnnualSummaryRepository(db).getYear(2026);
       expect(summary.books.map(book => book.bookId)).toEqual(['b', 'a', 'c']);
       expect(summary.topTags).toEqual([{ key: 'system:古代', label: '古代', count: 2 }]);
-      expect(summary.topBookTypes).toEqual([{ key: 'romance_male_male', label: '耽美', count: 2 }]);
+      expect(summary.topBookTypes).toEqual([{ key: 'romance_male_male', label: 'BL', count: 2 }]);
       expect(summary.topAuthors).toEqual([{ key: '同作者', label: '同作者', count: 2 }]);
       expect(summary.highestRatingHalfStars).toBe(10);
       expect(summary.topRatedBooks.map(book => book.bookId)).toEqual(['b', 'a']);

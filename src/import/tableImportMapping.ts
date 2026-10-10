@@ -8,7 +8,7 @@ const statusLabels: Record<string, BookStatus> = {
 };
 const typeLabels: Record<string, BookType> = {
   romance_male_male: 'romance_male_male', romance_female_male: 'romance_female_male', romance_female_female: 'romance_female_female', no_romance: 'no_romance', other: 'other',
-  '耽美': 'romance_male_male', '纯爱': 'romance_male_male', '言情': 'romance_female_male', BG: 'romance_female_male', GL: 'romance_female_female', '百合': 'romance_female_female', '无CP': 'no_romance', '无 CP': 'no_romance', '其他': 'other',
+  '耽美': 'romance_male_male', '纯爱': 'romance_male_male', BL: 'romance_male_male', '言情': 'romance_female_male', BG: 'romance_female_male', GL: 'romance_female_female', '百合': 'romance_female_female', GB: 'romance_female_male_reverse', '无CP': 'no_romance', '无 CP': 'no_romance', '其他': 'other',
 };
 
 export const TABLE_FIELD_LABELS: Record<TableField, string> = {

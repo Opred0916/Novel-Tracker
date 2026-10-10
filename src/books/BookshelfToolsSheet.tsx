@@ -42,7 +42,7 @@ export function BookshelfToolsSheet({ visible, sheet, sortOptions, sortOrder, bo
         {BOOK_TYPES.map(type => <ChoiceChip key={type} label={BOOK_TYPE_LABELS[type]} selected={bookType === type} selectionRole="radio" onPress={() => onBookTypeChange(type)} />)}
       </View>
       <Text style={[styles.heading, { color: theme.text }]}>标签（可多选）</Text>
-      <TagPicker tags={tags} selectedIds={tagIds} onChange={onTagIdsChange} searchable grouped />
+      <TagPicker tags={tags} selectedIds={tagIds} onChange={onTagIdsChange} searchable grouped collapsible />
       {bookType || tagIds.length ? <Pressable accessibilityRole="button" onPress={() => { onResetFilters(); onClose(); }} style={[styles.reset, { borderColor: theme.primary }]}><Text style={[styles.resetText, { color: theme.primary }]}>重置筛选</Text></Pressable> : null}
     </View> : null}
     {sheet === 'more' ? <View style={styles.section}>

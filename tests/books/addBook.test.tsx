@@ -29,7 +29,7 @@ test('adds work type and quick tags to a new novel', async () => {
   ];
   const screen = await render(<AddBookForm onSave={onSave} quickTags={quickTags} />);
   await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '长夜');
-  await fireEvent.press(screen.getByText('耽美'));
+  await fireEvent.press(screen.getByText('BL'));
   await fireEvent.press(screen.getByText('古代'));
   await fireEvent.press(screen.getByText('悬疑'));
   await fireEvent.press(screen.getByText('保存小说'));
@@ -53,7 +53,7 @@ test('adds optional motivation and reading platform', async () => {
   const onSave = jest.fn().mockResolvedValue(undefined);
   const screen = await render(<AddBookForm onSave={onSave} />);
   await fireEvent.changeText(screen.getByPlaceholderText('输入小说书名'), '长夜');
-  await fireEvent.changeText(screen.getByPlaceholderText('为什么想看（可选）'), '朋友推荐');
+  await fireEvent.changeText(screen.getByPlaceholderText('记下吸引你的原因'), '朋友推荐');
   await fireEvent.changeText(screen.getByPlaceholderText('首发平台（可选）'), '晋江文学城');
   await fireEvent.press(screen.getByText('保存小说'));
   await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
