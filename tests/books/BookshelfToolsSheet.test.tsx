@@ -37,9 +37,11 @@ test('shows filter controls and resets only type and tags', async () => {
   expect(props.onResetFilters).toHaveBeenCalled();
 });
 
-test('does not expand every available tag until the user searches', async () => {
+test('groups all available tags and keeps search available', async () => {
   const view = await render(<BookshelfToolsSheet {...props} sheet="filter" tags={[...props.tags, { id: 'suspense', name: '悬疑', isSystem: true }]} />);
-  expect(view.queryByText('古代')).toBeNull();
+  expect(view.getByText('背景与世界')).toBeTruthy();
+  expect(view.getByText('情节与设定')).toBeTruthy();
+  expect(view.getByText('古代')).toBeTruthy();
   await fireEvent.changeText(view.getByPlaceholderText('搜索标签'), '悬疑');
   expect(view.getByText('悬疑')).toBeTruthy();
 });

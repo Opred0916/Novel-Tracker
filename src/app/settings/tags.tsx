@@ -55,7 +55,7 @@ export default function QuickTagsPage() {
   return <ScrollView contentContainerStyle={[styles.container, { backgroundColor: theme.background }]} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={[styles.heading, { color: theme.text }]}>快捷标签</Text>
     <Text style={[styles.help, { color: theme.mutedText }]}>选择添加小说时优先显示的标签。移除快捷标签不会删除书籍上已有的标签。</Text>
-    <TagPicker tags={tags} selectedIds={selectedIds} onChange={setSelectedIds} searchable />
+    <TagPicker tags={tags} selectedIds={selectedIds} onChange={setSelectedIds} searchable grouped />
     <Text style={[styles.heading, { color: theme.text }]}>显示顺序</Text>
     {selectedIds.map(id => {
       const tag = tags.find(item => item.id === id);
