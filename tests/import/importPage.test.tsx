@@ -48,16 +48,18 @@ test('uses pasted text and TXT files as the same preview flow', async () => {
 test('keeps pasted draft when TXT selection is cancelled', async () => {
   const screen = await render(<ImportPage />);
   expect(screen.getByText('选择来源')).toBeTruthy();
-  expect(screen.getByText('解析设置')).toBeTruthy();
+  expect(screen.getByText('导入选项')).toBeTruthy();
   await fireEvent.changeText(screen.getByPlaceholderText('粘贴旧书单或摘记文字'), '保留这段文字');
   await fireEvent.press(screen.getByText('选择 TXT 文件'));
   expect(screen.getByDisplayValue('保留这段文字')).toBeTruthy();
   expect(commitService.commit).not.toHaveBeenCalled();
 });
 
-test('defaults old records without a status to read and explains the formats with examples', async () => {
+test('defaults old records without a status to read and offers manual formats only on request', async () => {
   const screen = await render(<ImportPage />);
   expect(screen.getByRole('radio', { name: '已读' }).props.accessibilityState.checked).toBe(true);
+  expect(screen.queryByText('按书填写详细资料')).toBeNull();
+  await fireEvent.press(screen.getByText('识别不对？手动选择格式'));
   expect(screen.getByText('按书填写详细资料')).toBeTruthy();
   expect(screen.getByText(/书名：示例小说/)).toBeTruthy();
   expect(screen.queryByText(/微博链接/)).toBeNull();

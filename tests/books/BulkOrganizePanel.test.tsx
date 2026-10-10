@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor, within } from '@testing-library/react-native';
 import { BulkOrganizePanel } from '../../src/books/BulkOrganizePanel';
 import type { BulkOrganizePreview } from '../../src/books/bulkOrganize';
 import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
@@ -26,7 +26,8 @@ const preview: BulkOrganizePreview = {
 test('keeps its heading below the top safe area', async () => {
   const repository = { preview: jest.fn(), apply: jest.fn() };
   const view = await render(<SafeAreaInsetsContext.Provider value={{ top: 54, right: 0, bottom: 34, left: 0 }}><BulkOrganizePanel selectedBooks={selectedBooks} tags={tags} repository={repository as never} onComplete={jest.fn()} onCancel={jest.fn()} /></SafeAreaInsetsContext.Provider>);
-  expect(view.getByTestId('bulk-organize-scroll').props.contentContainerStyle.paddingTop).toBeGreaterThanOrEqual(54);
+  expect(view.getByTestId('bulk-organize-header').props.style[1].paddingTop).toBeGreaterThanOrEqual(54);
+  expect(within(view.getByTestId('bulk-organize-scroll')).queryByText('返回选择')).toBeNull();
 });
 
 async function setup(overrides: Partial<{ preview: BulkOrganizePreview; apply: jest.Mock }> = {}) {

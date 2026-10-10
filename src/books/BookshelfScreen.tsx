@@ -76,10 +76,10 @@ export default function Bookshelf() {
   }, [overviewRepository, retry, tagRepo]));
 
   const activeFilterCount = (bookType ? 1 : 0) + tagIds.length;
-  const sortOptions = status === 'want_to_read' ? BOOK_SORT_OPTIONS.filter(option => option.value !== 'recently_finished') : BOOK_SORT_OPTIONS;
+  const sortOptions = status === null || status === 'finished' ? BOOK_SORT_OPTIONS : BOOK_SORT_OPTIONS.filter(option => option.value !== 'recently_finished');
   function changeStatus(next: BookStatus | null) {
     setStatus(next);
-    if (next === 'want_to_read' && sortOrder === 'recently_finished') setSortOrder('recently_updated');
+    if (next !== null && next !== 'finished' && sortOrder === 'recently_finished') setSortOrder('recently_updated');
   }
   const hasConditions = query.trim().length > 0 || activeFilterCount > 0;
   const showIntro = shouldShowIntro({ introSeen: introDismissedThisSession ? true : introSeen, totalBooks: overview?.totalBooks ?? null, status, hasConditions, loading, resultsCurrent, bulkMode });
@@ -87,7 +87,7 @@ export default function Bookshelf() {
   function handleIntro(learnMore: boolean) {
     setIntroDismissedThisSession(true);
     void dataSafetyPreferences.mark('introSeen').catch(() => undefined);
-    if (learnMore) router.push('/settings/data-safety');
+    if (learnMore) router.push('/settings/backup');
   }
 
   function clearFilters() {

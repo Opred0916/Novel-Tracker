@@ -47,7 +47,7 @@ test('learn more hides the card and opens the lasting guide', async () => {
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getByRole('button', { name: '了解备份' })).toBeTruthy());
   await fireEvent.press(screen.getByRole('button', { name: '了解备份' }));
-  expect(router.push).toHaveBeenCalledWith('/settings/data-safety');
+  expect(router.push).toHaveBeenCalledWith('/settings/backup');
   expect(screen.queryByText(/记录保存在这台设备/)).toBeNull();
 });
 

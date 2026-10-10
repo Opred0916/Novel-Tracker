@@ -42,12 +42,13 @@ test('dismissing the reminder does not navigate or hide management tools', async
   expect(router.push).not.toHaveBeenCalled();
 });
 
-test('keeps a permanent path to the data safety guide', async () => {
+test('keeps a permanent path to backup without a redundant guide', async () => {
   const screen = await render(<ManageTab />);
   expect(screen.getByTestId('tab-page-header')).toBeTruthy();
   expect(screen.getByText('书库维护')).toBeTruthy();
-  await fireEvent.press(screen.getByRole('button', { name: '使用与数据安全' }));
-  expect(router.push).toHaveBeenCalledWith('/settings/data-safety');
+  expect(screen.queryByText('使用与数据安全')).toBeNull();
+  await fireEvent.press(screen.getByRole('button', { name: '备份与恢复' }));
+  expect(router.push).toHaveBeenCalledWith('/settings/backup');
 });
 
 test('shows import, export and backup only once without a duplicate data-management menu', async () => {

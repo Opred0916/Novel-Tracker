@@ -105,8 +105,12 @@ export function BulkOrganizePanel({ selectedBooks, tags, repository, onComplete,
     return value ? BOOK_TYPE_LABELS[value] : '未分类';
   }
 
-  return <ScrollView testID="bulk-organize-scroll" contentContainerStyle={{ ...styles.container, paddingTop: (insets?.top ?? 0) + 12, paddingBottom: (insets?.bottom ?? 0) + 50 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-    <Text style={[styles.heading, { color: theme.text }]}>批量整理 {selectedBooks.size} 本小说</Text>
+  return <View style={styles.root}>
+    <View testID="bulk-organize-header" style={[styles.header, { paddingTop: (insets?.top ?? 0) + 12, backgroundColor: theme.background, borderBottomColor: theme.border }]}>
+      <Pressable accessibilityRole="button" disabled={saving} onPress={onCancel} style={styles.headerBack}><Text style={[styles.link, { color: theme.primary }]}>返回选择</Text></Pressable>
+      <Text style={[styles.heading, { color: theme.text }]}>批量整理 {selectedBooks.size} 本小说</Text>
+    </View>
+  <ScrollView testID="bulk-organize-scroll" contentContainerStyle={{ ...styles.container, paddingBottom: (insets?.bottom ?? 0) + 50 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
     <Text style={[styles.help, { color: theme.mutedText }]}>只会修改标签和作品类型，阅读状态、评分、摘记和图片不会改变。</Text>
     <Text style={[styles.label, { color: theme.text }]}>添加标签（可多选）</Text>
     <TagPicker tags={allTags} selectedIds={addTagIds} onChange={changeAddTags} searchable grouped collapsible onCreateTag={createPendingTag} />
@@ -120,7 +124,6 @@ export function BulkOrganizePanel({ selectedBooks, tags, repository, onComplete,
     </View>
     {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
     <View style={styles.actions}>
-      <Pressable accessibilityRole="button" disabled={saving} onPress={onCancel}><Text style={[styles.link, { color: theme.primary }]}>返回选择</Text></Pressable>
       <Pressable accessibilityRole="button" disabled={saving} onPress={() => { void buildPreview(); }} style={[styles.primary, { backgroundColor: theme.primary }]}><Text style={styles.primaryText}>生成预览</Text></Pressable>
     </View>
     {preview ? <View style={styles.preview}>
@@ -136,10 +139,11 @@ export function BulkOrganizePanel({ selectedBooks, tags, repository, onComplete,
       </View>)}
       <Pressable accessibilityRole="button" disabled={saving || preview.changedCount === 0} accessibilityState={{ disabled: saving || preview.changedCount === 0 }} onPress={() => { void applyPreview(); }} style={[styles.primary, { backgroundColor: theme.primary }, (saving || preview.changedCount === 0) && styles.disabled]}><Text style={styles.primaryText}>{saving ? '保存中…' : '确认修改'}</Text></Pressable>
     </View> : null}
-  </ScrollView>;
+  </ScrollView></View>;
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 }, header: { paddingHorizontal: 24, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, gap: 4 }, headerBack: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center' },
   container: { padding: 24, gap: 12, paddingBottom: 50 }, heading: { fontSize: 22, fontWeight: '700', color: '#302a25' }, help: { color: '#766f68', lineHeight: 20 },
   label: { fontSize: 15, fontWeight: '600', color: '#302a25', marginTop: 8 }, options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, option: { borderWidth: 1, borderColor: '#d6cec4', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: '#fff' }, selected: { backgroundColor: '#28584E', borderColor: '#28584E' }, text: { color: '#302a25' }, selectedText: { color: '#fff', fontWeight: '700' },
   actions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }, link: { color: '#28584E', fontWeight: '600', padding: 8 }, primary: { backgroundColor: '#28584E', borderRadius: 12, padding: 14, alignItems: 'center' }, primaryText: { color: '#fff', fontWeight: '700' }, disabled: { opacity: 0.5 }, error: { color: '#b52626' },

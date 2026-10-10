@@ -44,3 +44,8 @@ test('explains a secure connection failure without claiming the email was sent',
   const service = new AccountAuthService(auth);
   await expect(service.sendCode('reader@example.com')).rejects.toThrow('安全连接失败');
 });
+
+test('also explains an SSL failure returned as an auth error', async () => {
+  auth.signInWithOtp.mockResolvedValue({ error: { message: 'fetch failed: UnexpectedException: An SSL error has occurred' } });
+  await expect(new AccountAuthService(auth).sendCode('reader@example.com')).rejects.toThrow('安全连接失败');
+});

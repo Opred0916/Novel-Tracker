@@ -234,6 +234,17 @@ test('want-to-read sorting excludes recently finished and resets an incompatible
   expect(screen.queryByText('最近读完')).toBeNull();
 });
 
+test.each([['在读 2 本', 'reading'], ['弃读 0 本', 'dropped']])('%s sorting excludes recently finished', async (label, status) => {
+  const screen = await render(<Bookshelf />);
+  await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));
+  await fireEvent.press(screen.getByText('排序：最近修改'));
+  await fireEvent.press(screen.getByText('最近读完'));
+  await fireEvent.press(screen.getByRole('radio', { name: label }));
+  await waitFor(() => expect(searchRepo.search).toHaveBeenLastCalledWith(expect.objectContaining({ status, sortOrder: 'recently_updated' })));
+  await fireEvent.press(screen.getByText('排序：最近修改'));
+  expect(screen.queryByText('最近读完')).toBeNull();
+});
+
 test('bookshelf refreshes a nondefault sort after returning from detail', async () => {
   const screen = await render(<Bookshelf />);
   await waitFor(() => expect(screen.getAllByText('长夜').length).toBeGreaterThan(0));

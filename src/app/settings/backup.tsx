@@ -137,6 +137,7 @@ export default function BackupPage() {
   return <ScrollView contentContainerStyle={styles.container}>
     <Text style={[styles.heading, { color: theme.text }]}>备份与恢复</Text>
     <Text style={[styles.help, { color: theme.mutedText }]}>备份包含书籍、阅读记录、摘记和图片，也可能包含私人内容，请妥善保存。</Text>
+    <Text style={[styles.help, { color: theme.mutedText }]}>本机记录可能因卸载或换设备而丢失。生成备份后，请在“文件”或其他安全位置确认它已保存；恢复会替换当前书库。</Text>
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <Text style={[styles.cardTitle, { color: theme.text }]}>当前书库</Text>
       <Text style={[styles.value, { color: theme.text }]}>{overview ? summary(overview.counts) : '正在读取…'}</Text>

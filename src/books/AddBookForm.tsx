@@ -93,7 +93,7 @@ export function AddBookForm({ onSave, quickTags = [], allTags = [], authorSugges
         <Text style={{ color: status === choice ? theme.card : theme.text, fontWeight: status === choice ? '700' : '500' }}>{BOOK_STATUS_LABELS[choice]}</Text>
       </Pressable>)}
     </View>
-    {status === 'want_to_read' ? <View>
+    {status === 'want_to_read' ? <View style={styles.reasonGroup}>
       <Text style={[styles.label, { color: theme.text }]}>想读理由（可选）</Text>
       <TextInput placeholder="记下吸引你的原因" placeholderTextColor={theme.mutedText} value={whyWantToRead} onChangeText={setWhyWantToRead}
         style={[styles.input, styles.multiline, { borderColor: theme.border, backgroundColor: theme.card, color: theme.text }]} multiline textAlignVertical="top" />
@@ -127,7 +127,7 @@ export function AddBookForm({ onSave, quickTags = [], allTags = [], authorSugges
 
 const styles = StyleSheet.create({
   container: { padding: UI_LAYOUT.pageInset, gap: UI_LAYOUT.sectionGap, paddingBottom: 120 },
-  groupContent: { padding: 16, gap: 10 },
+  groupContent: { padding: 16, gap: 10 }, reasonGroup: { gap: 8 },
   label: { fontSize: 15, fontWeight: '600', color: '#302a25', marginTop: 8 },
   input: { borderColor: '#d6cec4', borderWidth: 1, borderRadius: 12, padding: 14, fontSize: 17, backgroundColor: '#fff' },
   multiline: { minHeight: 84 },

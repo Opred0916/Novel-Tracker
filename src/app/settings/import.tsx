@@ -10,6 +10,7 @@ import { TableImportMapping } from '../../import/TableImportMappingView';
 import { TableImportSource } from '../../import/TableImportSource';
 import { findImportDuplicates, type DuplicateHint, type ExistingBookSummary, type ExistingNoteSummary, type ImportReview } from '../../import/importReview';
 import { decodeImportUtf8, parseTextImport } from '../../import/textImportParser';
+import { detectTextImportMode, parseAutoTextImport } from '../../import/autoTextImport';
 import type { ImportMode, ImportParseResult } from '../../import/importTypes';
 import { pickImportTable, pickImportTxt } from '../../import/importPlatform';
 import { cleanupImportScreenshotCopies, MAX_SCREENSHOT_IMPORT_PAGES, pickImportScreenshots } from '../../import/screenshotImportPlatform';
@@ -27,7 +28,7 @@ export default function ImportPage() {
   const tags = useTags();
   const service = useImportCommitService();
   const [text, setText] = useState('');
-  const [mode, setMode] = useState<ImportMode>('blocks');
+  const [mode, setMode] = useState<ImportMode | null>(null);
   const [defaultStatus, setDefaultStatus] = useState<BookStatus>('finished');
   const [review, setReview] = useState<ImportReview | null>(null);
   const [hints, setHints] = useState<DuplicateHint[]>([]);
@@ -114,13 +115,13 @@ export default function ImportPage() {
   async function parseScreenshots() {
     if (!screenshotDraft) return;
     setScreenshotError('');
-    try { await buildReview(parseScreenshotImport(screenshotDraft.pages, mode, defaultStatus)); }
+    try { await buildReview(parseScreenshotImport(screenshotDraft.pages, mode ?? detectTextImportMode(screenshotDraft.pages.map(page => page.text).join('\n')), defaultStatus)); }
     catch (cause) { setScreenshotError(cause instanceof Error ? cause.message : '无法解析截图文字'); }
   }
 
   async function parse(value = text) {
     setError('');
-    try { await buildReview(parseTextImport(value, mode, defaultStatus)); }
+    try { await buildReview(mode ? parseTextImport(value, mode, defaultStatus) : parseAutoTextImport(value, defaultStatus)); }
     catch (cause) { setError(cause instanceof Error ? cause.message : '无法解析这段文字'); }
   }
 
